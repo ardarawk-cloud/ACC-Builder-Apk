@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1a73e8">
+    <title>Catatan Sederhana</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            touch-action: manipulation;
+        }
+        .page { padding: 20px; max-width: 100%; }
+        h1 { text-align: center; margin-bottom: 20px; color: #202124; font-size: 20px; }
+        .search-box { width: 100%; padding: 12px 16px; margin-bottom: 12px; border-radius: 12px; border: 1px solid #ddd; font-size: 16px; background: #fff; }
+        .search-box:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
+        .notes-grid { display: grid; gap: 12px; }
+        @media (min-width: 600px) { .notes-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); } }
+        .note-card { background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s; }
+        .note-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+        .note-title { font-weight: 600; font-size: 15px; margin-bottom: 8px; color: #202124; }
+        .note-preview { font-size: 13px; color: #5f6368; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .actions { margin-top: 10px; display: flex; gap: 8px; }
+        .btn { flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 14px; cursor: pointer; transition: background 0.2s; }
+        .btn-add { background: #1a73e8; color: #fff; }
+        .btn-edit { background: #34a853; color: #fff; }
+        .btn-delete { background: #ea4335; color: #fff; }
+        .btn:hover { opacity: 0.9; }
+        .empty-state { text-align: center; padding: 40px; color: #777; }
+        .form-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 100; }
+        .form-overlay.active { display: flex; }
+        .form-box { background: #fff; padding: 24px; border-radius: 20px; width: 90%; max-width: 400px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); animation: popIn 0.3s ease; }
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .form-box h2 { margin-bottom: 16px; text-align: center; font-size: 18px; }
+        .form-box input, .form-box textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 12px; font-size: 15px; }
+        .form-box textarea { min-height: 80px; resize: vertical; }
+        .form-box .btn { width: 100%; padding: 12px; margin-top: 10px; font-size: 15px; }
+        .overlay-close { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; background: none; border: none; font-size: 20px; color: #777; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <h1>Catatan Sederhana</h1>
+        <input type="text" id="searchNotes" class="search-box" placeholder="Cari catatan..." oninput="filterNotes()">
+        <div class="notes-grid" id="notesGrid"></div>
+    </div>
+
+    <div class="form-overlay" id="noteOverlay">
+        <div class="form-box" id="formBox">
+            <button class="overlay-close" onclick="closeOverlay()">&times;</button>
+            <h2 id="formTitle">Tambah Catatan</h2>
+            <input type="text" id="noteTitle" placeholder="Judul catatan">
+            <textarea id="noteContent" placeholder="Tulis catatan Anda..."></textarea>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-add" onclick="saveNote()">Simpan</button>
+                <button class="btn btn-edit" style="display:none;" onclick="updateNote()">Perbarui</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'catatan_sederhana';
+        const notesGrid = document.getElementById('notesGrid');
+        const searchInput = document.getElementById('searchNotes');
+        const overlay = document.getElementById('noteOverlay');
+        const formBox = document.getElementById('formBox');
+        let editingId = null;
+
+        function loadNotes() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveNotes(all) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+        }
+
+        function renderNotes(filter = '') {
+            const notes = loadNotes();
+            const q = filter.toLowerCase();
+            const filtered = notes.filter(n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q));
+            if (filtered.length === 0) {
+                notesGrid.innerHTML = '<div class="empty-state">Tidak ada catatan ditemukan. Tambah catatan pertama Anda!</div>';
+                return;
+            }
+            notesGrid.innerHTML = filtered.map((n, i) => `
+                <div class="note-card">
+                    <div class="note-title">${escapeHtml(n.title)}</div>
+                    <div class="note-preview">${escapeHtml(n.content.substring(0, 100))}${n.content.length > 100 ? '...' : ''}</div>
+                    <div class="actions">
+                        <button class="btn btn-edit" onclick="editNote('${n.id}')">Edit</button>
+                        <button class="btn btn-delete" onclick="deleteNote('${n.id}')">Hapus</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function saveNote() {
+            const title = document.getElementById('noteTitle').value.trim();
+            const content = document.getElementById('noteContent').value.trim();
+            if (!title || !content) return alert('Judul dan isi wajib diisi.');
+            const note = { id: Date.now().toString(), title, content, createdAt: new Date().toISOString() };
+            let notes = loadNotes();
+            if (editingId) {
+                notes = notes.map(n => n.id === editingId ? note : n);
+                editingId = null;
+                document.getElementById('formTitle').innerText = 'Tambah Catatan';
+                document.querySelector('.btn-edit').style.display = 'none';
+            } else {
+                notes.push(note);
+            }
+            saveNotes(notes);
+            closeOverlay();
+            renderNotes(searchInput.value);
+        }
+
+        function editNote(id) {
+            const notes = loadNotes();
+            const n = notes.find(n => n.id === id);
+            if (!n) return;
+            editingId = id;
+            document.getElementById('noteTitle').value = n.title;
+            document.getElementById('noteContent').value = n.content;
+            document.getElementById('formTitle').innerText = 'Edit Catatan';
+            document.querySelector('.btn-edit').style.display = 'inline-block';
+            document.querySelector('.btn-add').style.display = 'none';
+            overlay.classList.add('active');
+        }
+
+        function updateNote() { saveNote(); }
+
+        function deleteNote(id) {
+            if (!confirm('Hapus catatan ini?')) return;
+            saveNotes(loadNotes().filter(n => n.id !== id));
+            renderNotes(searchInput.value);
+        }
+
+        function filterNotes() {
+            renderNotes(searchInput.value);
+        }
+
+        function openOverlay() { overlay.classList.add('active'); }
+        function closeOverlay() {
+            overlay.classList.remove('active');
+            document.getElementById('noteTitle').value = '';
+            document.getElementById('noteContent').value = '';
+            editingId = null;
+            document.querySelector('.btn-edit').style.display = 'none';
+            document.querySelector('.btn-add').style.display = 'inline-block';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        renderNotes();
+        searchInput.addEventListener('input', filterNotes);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(); });
+    </script>
+</body>
+</html>

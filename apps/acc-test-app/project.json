@@ -1,0 +1,11 @@
+{
+  "id": "acc-test-app",
+  "name": "ACC Test App",
+  "version": 1,
+  "provider": "ai",
+  "last_request_id": "test-20260817-1635",
+  "last_prompt": "Buat aplikasi catatan sederhana untuk Android. Ada tambah catatan, edit, hapus, pencarian, dan semua data tersimpan offline di HP menggunakan localStorage. Gunakan bahasa Indonesia dan desain mobile premium sederhana.",
+  "last_build": "ready",
+  "created_at": "2026-08-17T08:38:35.806935+00:00",
+  "updated_at": "2026-08-17T08:40:02.428106+00:00"
+}
