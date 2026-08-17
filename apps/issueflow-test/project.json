@@ -1,0 +1,11 @@
+{
+  "id": "issueflow-test",
+  "name": "Issue Flow Test",
+  "version": 1,
+  "provider": "ai",
+  "last_request_id": "issueflow-test-1702",
+  "last_prompt": "Buat aplikasi catatan sederhana untuk Android dengan tambah, edit, hapus, pencarian, dan localStorage. Gunakan bahasa Indonesia dan desain mobile sederhana.",
+  "last_build": "ready",
+  "created_at": "2026-08-17T09:07:15.481273+00:00",
+  "updated_at": "2026-08-17T09:08:50.356686+00:00"
+}

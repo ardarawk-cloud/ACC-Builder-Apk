@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Catatan Sederhana</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f5f5f5;
+  --card: #ffffff;
+  --primary: #2196f3;
+  --primary-dark: #1976d2;
+  --danger: #e53935;
+  --text: #212121;
+  --text-secondary: #757575;
+  --border: #e0e0e0;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+header {
+  background: var(--card);
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: var(--shadow);
+}
+header h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: 12px; }
+.search-box {
+  position: relative;
+}
+.search-box input {
+  width: 100%;
+  padding: 12px 16px 12px 44px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  font-size: 1rem;
+  background: var(--bg);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-box input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(33,150,243,0.15);
+}
+.search-box svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+main { flex: 1; padding: 16px; overflow-y: auto; }
+.notes-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+}
+.note-card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.note-title { font-weight: 600; font-size: 1rem; word-break: break-word; }
+.note-content { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.note-meta { font-size: 0.75rem; color: var(--text-secondary); display: flex; justify-content: space-between; margin-top: 4px; }
+.note-actions { display: flex; gap: 8px; margin-top: 8px; }
+.btn-icon {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  touch-action: manipulation;
+}
+.btn-edit { background: #e3f2fd; color: var(--primary); }
+.btn-edit:active { background: #bbdefb; }
+.btn-delete { background: #ffebee; color: var(--danger); }
+.btn-delete:active { background: #ffcdd2; }
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-secondary);
+}
+.empty-state svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.5; }
+.empty-state p { font-size: 1rem; }
+.fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(33,150,243,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+  z-index: 20;
+  touch-action: manipulation;
+}
+.fab:active { transform: scale(0.95); background: var(--primary-dark); }
+.fab svg { width: 24px; height: 24px; }
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 30;
+  padding: 16px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--card);
+  border-radius: 16px 16px 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  z-index: 1;
+}
+.modal-header h2 { font-size: 1.1rem; font-weight: 600; }
+.modal-close {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.modal-close:active { background: var(--bg); }
+.modal-body { padding: 16px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 6px; color: var(--text); }
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: var(--bg);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(33,150,243,0.15);
+}
+.form-group textarea { min-height: 120px; resize: vertical; }
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+.btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.2s;
+}
+.btn-cancel { background: var(--bg); color: var(--text); }
+.btn-cancel:active { background: var(--border); }
+.btn-save { background: var(--primary); color: white; }
+.btn-save:active { background: var(--primary-dark); }
+.toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: rgba(0,0,0,0.85);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  opacity: 0;
+  transition: transform 0.3s, opacity 0.3s;
+  z-index: 40;
+  pointer-events: none;
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+@media (min-width: 480px) {
+  .notes-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 768px) {
+  .notes-grid { grid-template-columns: repeat(3, 1fr); }
+  .modal { border-radius: 16px; max-height: 90vh; }
+  .modal-header { border-radius: 16px 16px 0 0; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Catatan Saya</h1>
+  <div class="search-box">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    <input type="search" id="searchInput" placeholder="Cari catatan..." aria-label="Cari catatan">
+  </div>
+</header>
+<main>
+  <div class="notes-grid" id="notesGrid" role="list"></div>
+  <div class="empty-state" id="emptyState" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+    <p>Belum ada catatan. Tekan tombol + untuk menambah.</p>
+  </div>
+</main>
+<button class="fab" id="fab" aria-label="Tambah catatan">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Tambah Catatan</h2>
+      <button class="modal-close" id="modalClose" aria-label="Tutup">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form id="noteForm" class="modal-body">
+      <div class="form-group">
+        <label for="noteTitle">Judul</label>
+        <input type="text" id="noteTitle" maxlength="100" required autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="noteContent">Isi catatan</label>
+        <textarea id="noteContent" maxlength="5000" required></textarea>
+      </div>
+      <input type="hidden" id="noteId">
+    </form>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-cancel" id="btnCancel">Batal</button>
+      <button type="submit" form="noteForm" class="btn btn-save" id="btnSave">Simpan</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+(() => {
+  const STORAGE_KEY = 'simple_notes_id';
+  const notesGrid = document.getElementById('notesGrid');
+  const emptyState = document.getElementById('emptyState');
+  const searchInput = document.getElementById('searchInput');
+  const fab = document.getElementById('fab');
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalClose = document.getElementById('modalClose');
+  const noteForm = document.getElementById('noteForm');
+  const noteTitle = document.getElementById('noteTitle');
+  const noteContent = document.getElementById('noteContent');
+  const noteId = document.getElementById('noteId');
+  const btnCancel = document.getElementById('btnCancel');
+  const toast = document.getElementById('toast');
+  const modalTitle = document.getElementById('modalTitle');
+
+  let notes = [];
+  let currentFilter = '';
+
+  function loadNotes() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      notes = stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      notes = [];
+    }
+    renderNotes();
+  }
+
+  function saveNotes() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  }
+
+  function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+  }
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function showToast(message) {
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  function renderNotes() {
+    const filtered = notes.filter(note => {
+      if (!currentFilter) return true;
+      const term = currentFilter.toLowerCase();
+      return note.title.toLowerCase().includes(term) || note.content.toLowerCase().includes(term);
+    }).sort((a, b) => new Date(b.updated) - new Date(a.updated));
+
+    notesGrid.innerHTML = '';
+    if (filtered.length === 0) {
+      emptyState.hidden = false;
+      return;
+    }
+    emptyState.hidden = true;
+    filtered.forEach(note => {
+      const card = document.createElement('article');
+      card.className = 'note-card';
+      card.setAttribute('role', 'listitem');
+      card.innerHTML = `
+        <h3 class="note-title">${escapeHtml(note.title)}</h3>
+        <p class="note-content">${escapeHtml(note.content)}</p>
+        <div class="note-meta">
+          <span>Diperbarui: ${formatDate(note.updated)}</span>
+        </div>
+        <div class="note-actions">
+          <button class="btn-icon btn-edit" data-id="${note.id}" aria-label="Edit catatan">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit
+          </button>
+          <button class="btn-icon btn-delete" data-id="${note.id}" aria-label="Hapus catatan">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Hapus
+          </button>
+        </div>
+      `;
+      notesGrid.appendChild(card);
+    });
+  }
+
+  function openModal(editNote = null) {
+    if (editNote) {
+      modalTitle.textContent = 'Edit Catatan';
+      noteId.value = editNote.id;
+      noteTitle.value = editNote.title;
+      noteContent.value = editNote.content;
+    } else {
+      modalTitle.textContent = 'Tambah Catatan';
+      noteId.value = '';
+      noteTitle.value = '';
+      noteContent.value = '';
+    }
+    modalOverlay.classList.add('open');
+    setTimeout(() => noteTitle.focus(), 100);
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    modalOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function handleSave(e) {
+    e.preventDefault();
+    const title = noteTitle.value.trim();
+    const content = noteContent.value.trim();
+    if (!title || !content) return;
+    const now = new Date().toISOString();
+    const id = noteId.value;
+    if (id) {
+      const idx = notes.findIndex(n => n.id === id);
+      if (idx !== -1) {
+        notes[idx] = { ...notes[idx], title, content, updated: now };
+        showToast('Catatan diperbarui');
+      }
+    } else {
+      notes.unshift({ id: generateId(), title, content, created: now, updated: now });
+      showToast('Catatan ditambahkan');
+    }
+    saveNotes();
+    renderNotes();
+    closeModal();
+  }
+
+  function handleDelete(id) {
+    if (!confirm('Hapus catatan ini?')) return;
+    notes = notes.filter(n => n.id !== id);
+    saveNotes();
+    renderNotes();
+    showToast('Catatan dihapus');
+  }
+
+  function handleEdit(id) {
+    const note = notes.find(n => n.id === id);
+    if (note) openModal(note);
+  }
+
+  // Event listeners
+  fab.addEventListener('click', () => openModal());
+  modalClose.addEventListener('click', closeModal);
+  btnCancel.addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(); });
+  noteForm.addEventListener('submit', handleSave);
+
+  notesGrid.addEventListener('click', e => {
+    const editBtn = e.target.closest('.btn-edit');
+    const deleteBtn = e.target.closest('.btn-delete');
+    if (editBtn) handleEdit(editBtn.dataset.id);
+    if (deleteBtn) handleDelete(deleteBtn.dataset.id);
+  });
+
+  searchInput.addEventListener('input', e => {
+    currentFilter = e.target.value.trim();
+    renderNotes();
+  });
+
+  // Keyboard: Escape to close modal
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && modalOverlay.classList.contains('open')) closeModal();
+  });
+
+  // Prevent zoom on input focus (iOS)
+  document.addEventListener('touchstart', () => {}, { passive: true });
+
+  loadNotes();
+})();
+</script>
+</body>
+</html>
