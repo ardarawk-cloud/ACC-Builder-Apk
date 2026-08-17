@@ -1,0 +1,1 @@
+ACC AI Builder now supports a no-PAT issue-triggered build flow. Browser opens a pre-filled GitHub issue; GitHub Actions owns all repository writes and APK build operations using GITHUB_TOKEN.
