@@ -1,0 +1,11 @@
+{
+  "id": "arus-tz46k",
+  "name": "Arus",
+  "version": 1,
+  "provider": "ai",
+  "last_request_id": "1786959223503-tz46k",
+  "last_prompt": "Buat aplikasi penghitung uang harian. Ada pemasukan, pengeluaran, saldo harian, riwayat transaksi, kategori, ringkasan harian, dan semua data tersimpan offline di HP. Gunakan Bahasa Indonesia dan desain mobile yang sederhana dan nyaman.",
+  "last_build": "ready",
+  "created_at": "2026-08-17T09:34:40.637004+00:00",
+  "updated_at": "2026-08-17T09:36:14.701757+00:00"
+}
