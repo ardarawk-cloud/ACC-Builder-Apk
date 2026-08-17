@@ -1,321 +1,34 @@
 <!doctype html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#090b10">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#090b10">
 <title>ACC AI Builder</title>
 <style>
-:root{--bg:#080a0f;--panel:#0f131a;--panel2:#151a24;--line:#252c39;--text:#f5f7fb;--muted:#8e99aa;--accent:#7558ff;--ok:#2acb8d;--warn:#ffb84d;--bad:#ff667a}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
-button,input,textarea{font:inherit}.app{min-height:100vh;display:grid;grid-template-rows:62px 1fr}
-header{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid var(--line);background:#0b0e14;position:sticky;top:0;z-index:20}
-.brand{display:flex;gap:10px;align-items:center;font-weight:900}.logo{width:35px;height:35px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(135deg,#916cff,#4f46e5)}
-.small{font-size:12px;color:var(--muted)}.topActions{display:flex;gap:8px;align-items:center}
-main{min-height:0;display:grid;grid-template-columns:365px 1fr}
-aside{min-height:0;display:grid;grid-template-rows:auto 1fr auto;border-right:1px solid var(--line);background:#0c1016}
-.sideTop{padding:12px;border-bottom:1px solid var(--line)}.projects{padding:10px;overflow:auto;max-height:calc(100vh - 365px)}
-.project{padding:11px 12px;border-radius:11px;border:1px solid transparent;margin-bottom:6px;cursor:pointer}
-.project:hover,.project.active{background:#151b25;border-color:var(--line)}.projectName{font-weight:800;font-size:14px}.projectMeta{margin-top:4px;font-size:11px;color:var(--muted)}
-.composer{padding:12px;border-top:1px solid var(--line);background:#0b0f15}
-textarea,input{width:100%;border:1px solid var(--line);background:#111722;color:#f6f8fc;border-radius:11px;padding:11px;outline:none}
-textarea{resize:vertical}#prompt{min-height:105px}.row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
-.btn{border:0;border-radius:10px;padding:10px 12px;font-weight:800;cursor:pointer}.primary{background:linear-gradient(135deg,var(--accent),#5d43dd);color:#fff;flex:1}
-.ghost{background:#171d27;color:#fff;border:1px solid var(--line)}.success{background:#153f30;color:#c9f8e5;border:1px solid #266247}.danger{background:#30151b;color:#ffcbd2;border:1px solid #5b2531}.btn:disabled{opacity:.45;cursor:not-allowed}
-.workspace{min-width:0;min-height:0;display:grid;grid-template-rows:48px 1fr}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 10px;border-bottom:1px solid var(--line);background:#0c1016}
-.tabs{display:flex;gap:5px}.tab{padding:7px 10px;border-radius:8px;font-size:13px;color:var(--muted);cursor:pointer}.tab.active{background:#19202b;color:#fff}
-.content{position:relative;min-height:650px;background:#06080c}.panel{position:absolute;inset:0}.empty{display:grid;place-items:center;text-align:center;color:var(--muted);padding:30px}
-iframe{width:100%;height:100%;border:0;background:white}.code{width:100%;height:100%;resize:none;border:0;border-radius:0;background:#090d13;color:#dbe4ee;padding:16px;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}
-.buildPanel{padding:18px;overflow:auto;background:#090d13}.buildCard{max-width:900px;margin:0 auto;background:#10151e;border:1px solid var(--line);border-radius:18px;padding:18px}
-.buildHead{display:flex;align-items:flex-start;justify-content:space-between;gap:15px}.badge{font-size:12px;padding:7px 10px;border-radius:999px;background:#1b2230;color:#b9c2d0}.badge.ok{background:#153f30;color:#c9f8e5}.badge.warn{background:#3b2c13;color:#ffe4ac}.badge.bad{background:#3a1820;color:#ffc4cd}
-.log{margin-top:15px;padding:14px;border-radius:12px;background:#070a0f;border:1px solid #1e2531;white-space:pre-wrap;overflow:auto;max-height:430px;color:#b9c5d5;font:12px/1.5 ui-monospace,monospace}
-.hidden{display:none!important}.modal{position:fixed;inset:0;background:#000a;display:grid;place-items:center;padding:18px;z-index:100}.modalCard{width:min(560px,100%);background:#111722;border:1px solid var(--line);border-radius:18px;padding:18px}
-.field{margin-top:12px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}.note{padding:11px;border-radius:10px;background:#151b25;border:1px solid var(--line);font-size:12px;color:#b9c4d3;line-height:1.5}
-@media(max-width:840px){.app{height:auto}.topActions .small{display:none}main{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);min-height:500px}.projects{max-height:200px}.workspace{min-height:780px}.toolbar{padding:7px 8px;flex-direction:column;align-items:flex-start}}
+:root{--bg:#080a0f;--panel:#0f131a;--panel2:#151a24;--line:#252c39;--text:#f5f7fb;--muted:#8e99aa;--accent:#7558ff;--ok:#28c98b;--warn:#ffb84d;--bad:#ff667a}*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}button,input,textarea{font:inherit}.app{min-height:100vh;display:grid;grid-template-rows:64px 1fr}header{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid var(--line);background:#0b0e14;position:sticky;top:0;z-index:20}.brand{display:flex;gap:10px;align-items:center;font-weight:900}.logo{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(135deg,#916cff,#4f46e5)}.small{font-size:12px;color:var(--muted)}.btn{border:0;border-radius:10px;padding:10px 12px;font-weight:800;cursor:pointer}.ghost{background:#171d27;color:#fff;border:1px solid var(--line)}.primary{background:linear-gradient(135deg,var(--accent),#5d43dd);color:#fff}.success{background:#153f30;color:#c9f8e5;border:1px solid #266247}.danger{background:#30151b;color:#ffcbd2;border:1px solid #5b2531}.btn:disabled{opacity:.45;cursor:not-allowed}main{display:grid;grid-template-columns:360px 1fr;min-height:0}aside{display:grid;grid-template-rows:auto 1fr auto;min-height:0;border-right:1px solid var(--line);background:#0c1016}.sideTop{padding:12px;border-bottom:1px solid var(--line)}.projects{padding:10px;overflow:auto;max-height:calc(100vh - 370px)}.project{padding:11px 12px;border-radius:11px;border:1px solid transparent;margin-bottom:7px;cursor:pointer}.project:hover,.project.active{background:#151b25;border-color:var(--line)}.projectName{font-weight:800}.projectMeta{font-size:11px;color:var(--muted);margin-top:4px}.composer{padding:12px;border-top:1px solid var(--line);background:#0b0f15}input,textarea{width:100%;border:1px solid var(--line);background:#111722;color:#fff;border-radius:11px;padding:11px;outline:none}textarea{resize:vertical}#prompt{min-height:110px}.row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}.workspace{display:grid;grid-template-rows:48px 1fr;min-width:0;min-height:0}.toolbar{display:flex;align-items:center;justify-content:space-between;padding:0 10px;border-bottom:1px solid var(--line);background:#0c1016;gap:8px}.tabs{display:flex;gap:5px}.tab{padding:7px 10px;border-radius:8px;font-size:13px;color:var(--muted);cursor:pointer}.tab.active{background:#19202b;color:#fff}.content{position:relative;min-height:650px;background:#06080c}.panel{position:absolute;inset:0}.hidden{display:none!important}.empty{display:grid;place-items:center;text-align:center;color:var(--muted);padding:28px}iframe{width:100%;height:100%;border:0;background:white}.code{width:100%;height:100%;resize:none;border:0;border-radius:0;background:#090d13;color:#dbe4ee;padding:16px;font:13px/1.55 ui-monospace,monospace}.buildPanel{padding:18px;overflow:auto;background:#090d13}.buildCard{max-width:900px;margin:auto;background:#10151e;border:1px solid var(--line);border-radius:18px;padding:18px}.badge{display:inline-block;padding:7px 10px;border-radius:999px;background:#1b2230;color:#c5cfdd;font-size:12px}.badge.ok{background:#153f30;color:#c9f8e5}.badge.warn{background:#3b2c13;color:#ffe4ac}.badge.bad{background:#3a1820;color:#ffc4cd}.log{margin-top:14px;padding:14px;border-radius:12px;background:#070a0f;border:1px solid #1e2531;white-space:pre-wrap;color:#b9c5d5;font:12px/1.5 ui-monospace,monospace}.modal{position:fixed;inset:0;background:#000a;display:grid;place-items:center;padding:18px;z-index:100}.modalCard{width:min(560px,100%);background:#111722;border:1px solid var(--line);border-radius:18px;padding:18px}.field{margin-top:12px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}.note{padding:11px;border-radius:10px;background:#151b25;border:1px solid var(--line);font-size:12px;color:#b9c4d3;line-height:1.5}@media(max-width:840px){main{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);min-height:510px}.projects{max-height:190px}.workspace{min-height:780px}.toolbar{padding:7px 8px;flex-direction:column;align-items:flex-start}}
 </style>
 </head>
 <body>
-<div class="app">
-<header>
-  <div class="brand"><div class="logo">A</div><div>ACC AI Builder <span class="small">GitHub Edition</span></div></div>
-  <div class="topActions"><span class="small" id="status">Ready</span><button class="btn ghost" id="settingsBtn">GitHub Settings</button></div>
-</header>
-
-<main>
-<aside>
-  <div class="sideTop"><button class="btn ghost" id="newBtn" style="width:100%">+ New Project</button></div>
-  <div class="projects" id="projects"><div class="small" style="padding:8px">Hubungkan GitHub dulu.</div></div>
-  <div class="composer">
-    <input id="projectName" placeholder="Nama aplikasi (opsional)">
-    <textarea id="prompt" placeholder="Contoh: Buat aplikasi kasir warung dengan produk, stok, transaksi, laporan harian, dan data tersimpan di HP..."></textarea>
-    <div class="row">
-      <button class="btn primary" id="runBtn">Generate + Build APK</button>
-      <button class="btn success" id="apkBtn" disabled>Download APK</button>
-    </div>
-    <div class="row">
-      <button class="btn ghost" id="refreshBtn">Refresh</button>
-      <button class="btn ghost" id="githubBtn">Open GitHub</button>
-    </div>
-  </div>
-</aside>
-
-<section class="workspace">
-  <div class="toolbar">
-    <div class="tabs">
-      <div class="tab active" data-tab="preview">Preview</div>
-      <div class="tab" data-tab="code">Code</div>
-      <div class="tab" data-tab="build">Build</div>
-    </div>
-    <span class="small" id="repoState">GitHub belum tersambung</span>
-  </div>
-  <div class="content">
-    <div class="panel empty" id="empty"><div><h2>Prompt → GitHub Actions → APK</h2><p>Hubungkan repository GitHub, lalu buat aplikasi langsung dari HP.</p></div></div>
-    <iframe class="panel hidden" id="preview" sandbox="allow-scripts allow-forms allow-modals allow-downloads"></iframe>
-    <textarea class="panel code hidden" id="code" readonly spellcheck="false"></textarea>
-    <div class="panel buildPanel hidden" id="buildPanel">
-      <div class="buildCard">
-        <div class="buildHead">
-          <div><div class="small">GITHUB ACTIONS</div><h2 style="margin:5px 0">Build APK</h2></div>
-          <div class="badge" id="buildBadge">idle</div>
-        </div>
-        <p class="small">Source dibuat dan APK dikompilasi di GitHub-hosted runner. APK final disimpan sebagai GitHub Release asset.</p>
-        <pre class="log" id="buildLog">Belum ada build.</pre>
-      </div>
-    </div>
-  </div>
-</section>
-</main>
-</div>
-
-<div class="modal hidden" id="settingsModal">
-  <div class="modalCard">
-    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-      <div><div class="small">ONE-TIME SETUP</div><h2 style="margin:4px 0 0">GitHub Settings</h2></div>
-      <button class="btn ghost" id="closeSettings">Close</button>
-    </div>
-    <div class="note" style="margin-top:12px">Gunakan fine-grained Personal Access Token khusus repository ACC AI Builder dengan izin minimum <b>Contents: Read and write</b>. Token disimpan hanya di localStorage browser perangkat ini. Status build dibaca dari resource publik repository, jadi izin Actions tidak diperlukan.</div>
-    <div class="field"><label>GitHub Owner / Username</label><input id="setOwner" placeholder="username"></div>
-    <div class="field"><label>Repository</label><input id="setRepo" placeholder="acc-ai-builder"></div>
-    <div class="field"><label>Branch</label><input id="setBranch" value="main"></div>
-    <div class="field"><label>Fine-grained GitHub Token</label><input id="setToken" type="password" placeholder="github_pat_..."></div>
-    <div class="row"><button class="btn primary" id="saveSettings">Save & Connect</button><button class="btn danger" id="clearSettings">Clear</button></div>
-  </div>
-</div>
-
+<div class="app"><header><div class="brand"><div class="logo">A</div><div>ACC AI Builder <span class="small">GitHub Edition</span></div></div><div style="display:flex;gap:8px;align-items:center"><span class="small" id="status">Ready</span><button class="btn ghost" id="settingsBtn">GitHub Settings</button></div></header>
+<main><aside><div class="sideTop"><button class="btn ghost" id="newBtn" style="width:100%">+ New Project</button></div><div class="projects" id="projects"><div class="small" style="padding:8px">Hubungkan GitHub dulu.</div></div><div class="composer"><input id="projectName" placeholder="Nama aplikasi (opsional)"><textarea id="prompt" placeholder="Contoh: Buat aplikasi kasir warung dengan produk, stok, transaksi, laporan harian, dan data tersimpan di HP..."></textarea><div class="row"><button class="btn primary" id="runBtn" style="flex:1">Generate + Build APK</button><button class="btn success" id="apkBtn" disabled>Download APK</button></div><div class="row"><button class="btn ghost" id="refreshBtn">Refresh</button><button class="btn ghost" id="githubBtn">Open GitHub</button></div></div></aside>
+<section class="workspace"><div class="toolbar"><div class="tabs"><div class="tab active" data-tab="preview">Preview</div><div class="tab" data-tab="code">Code</div><div class="tab" data-tab="build">Build</div></div><span class="small" id="repoState">GitHub belum tersambung</span></div><div class="content"><div class="panel empty" id="empty"><div><h2>Prompt → GitHub → APK</h2><p>Project terbaru akan terbuka otomatis setelah refresh.</p></div></div><iframe class="panel hidden" id="preview" sandbox="allow-scripts allow-forms allow-modals allow-downloads"></iframe><textarea class="panel code hidden" id="code" readonly></textarea><div class="panel buildPanel hidden" id="buildPanel"><div class="buildCard"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start"><div><div class="small">APK BUILD</div><h2 style="margin:5px 0">GitHub Actions</h2></div><div class="badge" id="buildBadge">idle</div></div><p class="small">Tidak perlu izin Actions pada token. Builder menunggu GitHub Release APK selesai dibuat.</p><pre class="log" id="buildLog">Belum ada build.</pre></div></div></div></section></main></div>
+<div class="modal hidden" id="settingsModal"><div class="modalCard"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="small">ONE-TIME SETUP</div><h2 style="margin:4px 0">GitHub Settings</h2></div><button class="btn ghost" id="closeSettings">Close</button></div><div class="note" style="margin-top:12px">Token cukup dibatasi ke repository ini dengan <b>Contents: Read and write</b>. Izin Actions tidak diperlukan lagi.</div><div class="field"><label>GitHub Owner / Username</label><input id="setOwner"></div><div class="field"><label>Repository</label><input id="setRepo"></div><div class="field"><label>Branch</label><input id="setBranch" value="main"></div><div class="field"><label>Fine-grained GitHub Token</label><input id="setToken" type="password" placeholder="github_pat_..."></div><div class="row"><button class="btn primary" id="saveSettings" style="flex:1">Save & Connect</button><button class="btn danger" id="clearSettings">Clear</button></div></div></div>
 <script>
-let cfg=JSON.parse(localStorage.getItem("accGithub")||"{}");
-let current=null, activeRequest=null, pollTimer=null, lastRelease=null;
-const $=s=>document.querySelector(s);
-const projectsEl=$("#projects"),preview=$("#preview"),code=$("#code"),empty=$("#empty"),buildPanel=$("#buildPanel"),statusEl=$("#status"),repoState=$("#repoState"),apkBtn=$("#apkBtn");
-
-function setStatus(s){statusEl.textContent=s}
-function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-function connected(){return cfg.owner&&cfg.repo&&cfg.branch&&cfg.token}
-function ghHeaders(extra={}){return {"Accept":"application/vnd.github+json","Authorization":`Bearer ${cfg.token}`,"X-GitHub-Api-Version":"2022-11-28",...extra}}
-async function gh(path,options={}){
-  if(!connected()) throw new Error("GitHub belum dikonfigurasi.");
-  const r=await fetch(`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}${path}`,{
-    ...options,headers:ghHeaders(options.headers||{})
-  });
-  if(!r.ok){
-    const data=await r.json().catch(()=>({}));
-    throw new Error(data.message||`GitHub ${r.status}`);
-  }
-  if(r.status===204)return null;
-  return r.json();
-}
-async function publicGh(path){
-  const r=await fetch(`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}${path}`,{
-    headers:{"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}
-  });
-  if(!r.ok){
-    const data=await r.json().catch(()=>({}));
-    throw new Error(data.message||`GitHub ${r.status}`);
-  }
-  return r.json();
-}
-function b64(str){return btoa(unescape(encodeURIComponent(str)))}
-function fromB64(s){return decodeURIComponent(escape(atob(String(s).replace(/\n/g,""))))}
-function slug(s){return String(s||"app").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,45)||"app"}
-function reqId(){return `${Date.now()}-${Math.random().toString(36).slice(2,8)}`}
-function showTab(name){
-  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===name));
-  empty.classList.add("hidden");preview.classList.add("hidden");code.classList.add("hidden");buildPanel.classList.add("hidden");
-  if(!current && name!=="build"){empty.classList.remove("hidden");return}
-  if(name==="preview")preview.classList.remove("hidden");
-  if(name==="code")code.classList.remove("hidden");
-  if(name==="build")buildPanel.classList.remove("hidden");
-}
-function setBuild(state,text=""){
-  const badge=$("#buildBadge");badge.textContent=state;badge.className="badge";
-  if(["completed","ready","success"].includes(state))badge.classList.add("ok");
-  else if(["queued","in_progress","waiting","requested"].includes(state))badge.classList.add("warn");
-  else if(["failure","cancelled","timed_out","error"].includes(state))badge.classList.add("bad");
-  $("#buildLog").textContent=text||state;
-}
-async function loadRepo(){
-  if(!connected()){repoState.textContent="GitHub belum tersambung";return}
-  try{
-    const r=await gh("");
-    repoState.textContent=`${r.full_name} · ${cfg.branch}`;
-    await loadProjects();
-  }catch(e){repoState.textContent="Connection error";setStatus(e.message)}
-}
-async function getContent(path){
-  const x=await gh(`/contents/${path}?ref=${encodeURIComponent(cfg.branch)}`);
-  return fromB64(x.content);
-}
-async function loadProjects(){
-  try{
-    const dirs=await gh(`/contents/apps?ref=${encodeURIComponent(cfg.branch)}`);
-    const folders=(Array.isArray(dirs)?dirs:[]).filter(x=>x.type==="dir").slice(0,30);
-    const metas=[];
-    for(const f of folders){
-      try{metas.push(JSON.parse(await getContent(`apps/${f.name}/project.json`)))}catch{}
-    }
-    metas.sort((a,b)=>String(b.updated_at||"").localeCompare(String(a.updated_at||"")));
-    projectsEl.innerHTML=metas.length?metas.map(p=>`<div class="project ${current?.id===p.id?"active":""}" data-id="${esc(p.id)}"><div class="projectName">${esc(p.name)}</div><div class="projectMeta">v${esc(p.version||1)} · ${esc(p.last_build||"ready")}</div></div>`).join(""):`<div class="small" style="padding:8px">Belum ada project.</div>`;
-    document.querySelectorAll(".project").forEach(el=>el.onclick=()=>openProject(el.dataset.id));
-  }catch(e){
-    if(String(e.message).includes("404")) projectsEl.innerHTML='<div class="small" style="padding:8px">Belum ada project. Generate aplikasi pertama.</div>';
-    else throw e;
-  }
-}
-async function openProject(id){
-  stopPoll();setStatus("Loading project...");
-  try{
-    const meta=JSON.parse(await getContent(`apps/${id}/project.json`));
-    const html=await getContent(`apps/${id}/index.html`);
-    current=meta;code.value=html;preview.srcdoc=html;$("#projectName").value=meta.name||"";
-    lastRelease=null;apkBtn.disabled=true;
-    if(meta.last_request_id){
-      activeRequest={id:meta.last_request_id,commitSha:null,projectId:id};
-      await findRelease(meta.last_request_id,true);
-    }
-    showTab("preview");await loadProjects();setStatus("Ready");
-  }catch(e){alert(e.message);setStatus("Error")}
-}
-async function createRequest(){
-  const prompt=$("#prompt").value.trim();
-  if(!prompt)return alert("Tulis prompt dulu.");
-  if(!connected()){$("#settingsModal").classList.remove("hidden");return}
-  const id=reqId();
-  const name=($("#projectName").value.trim()||(current?.name)||prompt.split(/[.!?]/)[0]||"ACC App").slice(0,50);
-  const projectId=current?.id||slug(name)+"-"+id.slice(-6);
-  const request={
-    request_id:id,
-    project_id:projectId,
-    project_name:name,
-    mode:current?"modify":"generate",
-    prompt,
-    created_at:new Date().toISOString()
-  };
-  setStatus("Sending to GitHub...");
-  $("#runBtn").disabled=true;
-  try{
-    const result=await gh(`/contents/requests/${id}.json`,{
-      method:"PUT",
-      body:JSON.stringify({
-        message:`ACC Builder request ${id}`,
-        content:b64(JSON.stringify(request,null,2)),
-        branch:cfg.branch
-      })
-    });
-    activeRequest={id,projectId,commitSha:result.commit.sha};
-    current={id:projectId,name,last_request_id:id};
-    apkBtn.disabled=true;lastRelease=null;
-    setBuild("requested",`Request ${id}\nGitHub commit: ${result.commit.sha}\nMenunggu GitHub Actions...`);
-    showTab("build");startPoll();setStatus("GitHub Actions requested");
-  }catch(e){alert(e.message);setStatus("Error")}
-  $("#runBtn").disabled=false;
-}
-async function pollBuild(){
-  if(!activeRequest)return;
-  try{
-    const runs=await publicGh(`/actions/runs?branch=${encodeURIComponent(cfg.branch)}&event=push&per_page=30`);
-    let run=(runs.workflow_runs||[]).find(r=>!activeRequest.commitSha||r.head_sha===activeRequest.commitSha);
-    if(run){
-      const state=run.status==="completed"?(run.conclusion||"completed"):run.status;
-      setBuild(state,[
-        `Request: ${activeRequest.id}`,
-        `Workflow: ${run.name}`,
-        `Status: ${run.status}`,
-        `Conclusion: ${run.conclusion||"-"}`,
-        `Run #${run.run_number}`,
-        ``,
-        run.html_url
-      ].join("\n"));
-      if(run.status==="completed"){
-        if(run.conclusion==="success"){
-          await refreshCurrentProject();
-          await findRelease(activeRequest.id,false);
-          setStatus(lastRelease?"APK ready":"Build selesai, menunggu release...");
-        }else{
-          stopPoll();setStatus(`Build ${run.conclusion||"failed"}`);
-        }
-      }
-    }else{
-      setBuild("queued",`Request ${activeRequest.id}\nMenunggu workflow GitHub Actions dibuat...`);
-    }
-  }catch(e){setStatus(e.message)}
-}
-async function refreshCurrentProject(){
-  if(!activeRequest?.projectId)return;
-  try{
-    const meta=JSON.parse(await getContent(`apps/${activeRequest.projectId}/project.json`));
-    const html=await getContent(`apps/${activeRequest.projectId}/index.html`);
-    current=meta;code.value=html;preview.srcdoc=html;await loadProjects();
-  }catch{}
-}
-async function findRelease(requestId,silent){
-  try{
-    const rel=await publicGh(`/releases/tags/build-${requestId}`);
-    const asset=(rel.assets||[]).find(a=>a.name.toLowerCase().endsWith(".apk"));
-    if(asset){
-      lastRelease={release:rel,asset};apkBtn.disabled=false;
-      if(!silent){setBuild("ready",`APK READY\n${asset.name}\nSize: ${(asset.size/1024/1024).toFixed(1)} MB\nRelease: ${rel.html_url}`);stopPoll()}
-      return true;
-    }
-  }catch(e){
-    if(!String(e.message).includes("Not Found")&&!silent)console.warn(e);
-  }
-  return false;
-}
-async function downloadApk(){
-  if(!lastRelease?.asset)return;
-  setStatus("Downloading APK...");
-  try{
-    const a=document.createElement("a");
-    a.href=lastRelease.asset.browser_download_url;
-    a.download=lastRelease.asset.name;
-    a.target="_blank";
-    document.body.appendChild(a);a.click();a.remove();
-    setStatus("APK download started");
-  }catch(e){alert(e.message);setStatus("Error")}
-}
-function startPoll(){stopPoll();pollBuild();pollTimer=setInterval(pollBuild,3000)}
-function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null}}
-$("#runBtn").onclick=createRequest;
-apkBtn.onclick=downloadApk;
-$("#refreshBtn").onclick=async()=>{await loadRepo();if(activeRequest)await pollBuild()};
-$("#githubBtn").onclick=()=>{if(cfg.owner&&cfg.repo)window.open(`https://github.com/${cfg.owner}/${cfg.repo}`,"_blank")};
-$("#newBtn").onclick=()=>{stopPoll();current=null;activeRequest=null;lastRelease=null;$("#prompt").value="";$("#projectName").value="";code.value="";preview.srcdoc="";apkBtn.disabled=true;setBuild("idle","Belum ada build.");showTab("preview");loadProjects()};
-document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>showTab(t.dataset.tab));
-
-$("#settingsBtn").onclick=()=>{
-  $("#setOwner").value=cfg.owner||"";$("#setRepo").value=cfg.repo||"";$("#setBranch").value=cfg.branch||"main";$("#setToken").value="";
-  $("#settingsModal").classList.remove("hidden");
-};
-$("#closeSettings").onclick=()=>$("#settingsModal").classList.add("hidden");
-$("#saveSettings").onclick=async()=>{
-  const next={owner:$("#setOwner").value.trim(),repo:$("#setRepo").value.trim(),branch:$("#setBranch").value.trim()||"main",token:$("#setToken").value.trim()||cfg.token||""};
-  if(!next.owner||!next.repo||!next.token)return alert("Owner, repository, dan token wajib diisi.");
-  cfg=next;localStorage.setItem("accGithub",JSON.stringify(cfg));$("#settingsModal").classList.add("hidden");setStatus("Connecting...");
-  await loadRepo();setStatus("Connected");
-};
-$("#clearSettings").onclick=()=>{localStorage.removeItem("accGithub");cfg={};current=null;stopPoll();$("#settingsModal").classList.add("hidden");projectsEl.innerHTML='<div class="small" style="padding:8px">Hubungkan GitHub dulu.</div>';repoState.textContent="GitHub belum tersambung";setStatus("Disconnected")};
-
-showTab("preview");if(connected())loadRepo();
+let cfg=JSON.parse(localStorage.getItem('accGithub')||'{}'),current=null,lastRelease=null,pollTimer=null,activeRequest=null;
+const $=s=>document.querySelector(s),projectsEl=$('#projects'),preview=$('#preview'),code=$('#code'),empty=$('#empty'),buildPanel=$('#buildPanel'),apkBtn=$('#apkBtn');
+function connected(){return !!(cfg.owner&&cfg.repo&&cfg.branch&&cfg.token)}function setStatus(s){$('#status').textContent=s}function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}function b64(s){return btoa(unescape(encodeURIComponent(s)))}function fromB64(s){return decodeURIComponent(escape(atob(String(s).replace(/\n/g,''))))}function slug(s){return String(s||'app').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,45)||'app'}function reqId(){return `${Date.now()}-${Math.random().toString(36).slice(2,8)}`}
+function headers(auth=true){const h={'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};if(auth&&cfg.token)h.Authorization=`Bearer ${cfg.token}`;return h}
+async function api(path,opt={},auth=true){if(!connected())throw new Error('GitHub belum dikonfigurasi.');const r=await fetch(`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}${path}`,{...opt,headers:{...headers(auth),...(opt.headers||{})}});if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.message||`GitHub ${r.status}`)}if(r.status===204)return null;return r.json()}
+async function getContent(path){const x=await api(`/contents/${path}?ref=${encodeURIComponent(cfg.branch)}`);return fromB64(x.content)}
+function showTab(name){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===name));empty.classList.add('hidden');preview.classList.add('hidden');code.classList.add('hidden');buildPanel.classList.add('hidden');if(!current&&name!=='build'){empty.classList.remove('hidden');return}if(name==='preview')preview.classList.remove('hidden');if(name==='code')code.classList.remove('hidden');if(name==='build')buildPanel.classList.remove('hidden')}
+function setBuild(state,text){const b=$('#buildBadge');b.textContent=state;b.className='badge '+(state==='ready'?'ok':state==='failed'?'bad':'warn');$('#buildLog').textContent=text||state}
+async function findRelease(requestId){if(!requestId)return false;try{const rel=await api(`/releases/tags/build-${encodeURIComponent(requestId)}`);const asset=(rel.assets||[]).find(a=>a.name.toLowerCase().endsWith('.apk'));if(asset){lastRelease={rel,asset};apkBtn.disabled=false;setBuild('ready',`APK READY\n${asset.name}\n${(asset.size/1024/1024).toFixed(1)} MB`);stopPoll();return true}}catch(e){if(!String(e.message).toLowerCase().includes('not found'))console.warn(e)}return false}
+async function openProject(id,auto=false){try{const meta=JSON.parse(await getContent(`apps/${id}/project.json`)),html=await getContent(`apps/${id}/index.html`);current=meta;code.value=html;preview.srcdoc=html;$('#projectName').value=meta.name||'';lastRelease=null;apkBtn.disabled=true;activeRequest=meta.last_request_id?{id:meta.last_request_id,projectId:id}:null;await findRelease(meta.last_request_id);showTab(auto?'preview':'preview');setStatus(meta.last_build==='ready'?'Project ready':'Project loaded')}catch(e){if(!auto)alert(e.message);setStatus('Error')}}
+async function loadProjects(autoOpen=true){const dirs=await api(`/contents/apps?ref=${encodeURIComponent(cfg.branch)}`).catch(()=>[]);const folders=(Array.isArray(dirs)?dirs:[]).filter(x=>x.type==='dir');const metas=[];for(const f of folders){try{metas.push(JSON.parse(await getContent(`apps/${f.name}/project.json`)))}catch{}}metas.sort((a,b)=>String(b.updated_at||'').localeCompare(String(a.updated_at||'')));projectsEl.innerHTML=metas.length?metas.map(p=>`<div class="project ${current?.id===p.id?'active':''}" data-id="${esc(p.id)}"><div class="projectName">${esc(p.name)}</div><div class="projectMeta">v${esc(p.version||1)} · ${esc(p.last_build||'unknown')}</div></div>`).join(''):'<div class="small" style="padding:8px">Belum ada project.</div>';document.querySelectorAll('.project').forEach(el=>el.onclick=()=>openProject(el.dataset.id));if(autoOpen&&metas.length&&!current)await openProject(metas[0].id,true)}
+async function loadRepo(autoOpen=true){if(!connected()){showTab('preview');return}try{const r=await api('');$('#repoState').textContent=`${r.full_name} · ${cfg.branch}`;await loadProjects(autoOpen)}catch(e){setStatus(e.message)}}
+async function createRequest(){const prompt=$('#prompt').value.trim();if(!prompt)return alert('Tulis prompt dulu.');if(!connected()){openSettings();return}const id=reqId(),name=($('#projectName').value.trim()||current?.name||prompt.split(/[.!?]/)[0]||'ACC App').slice(0,50),projectId=current?.id||`${slug(name)}-${id.slice(-6)}`,request={request_id:id,project_id:projectId,project_name:name,mode:current?'modify':'generate',prompt,created_at:new Date().toISOString()};$('#runBtn').disabled=true;setStatus('Mengirim request...');try{await api(`/contents/requests/${id}.json`,{method:'PUT',body:JSON.stringify({message:`ACC Builder request ${id}`,content:b64(JSON.stringify(request,null,2)),branch:cfg.branch})});current={id:projectId,name,last_request_id:id};activeRequest={id,projectId};lastRelease=null;apkBtn.disabled=true;setBuild('building',`Request ${id}\nGitHub sedang membuat aplikasi dan APK...`);showTab('build');startPoll();setStatus('Build dimulai')}catch(e){alert(e.message);setStatus('Error')}$('#runBtn').disabled=false}
+async function pollRelease(){if(!activeRequest)return;if(await findRelease(activeRequest.id)){await openProject(activeRequest.projectId,true);await loadProjects(false);setStatus('APK ready')}}function startPoll(){stopPoll();pollRelease();pollTimer=setInterval(pollRelease,8000)}function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null}}
+function downloadApk(){if(lastRelease?.asset?.browser_download_url)location.href=lastRelease.asset.browser_download_url}
+function openSettings(){$('#setOwner').value=cfg.owner||'';$('#setRepo').value=cfg.repo||'';$('#setBranch').value=cfg.branch||'main';$('#setToken').value='';$('#settingsModal').classList.remove('hidden')}
+$('#runBtn').onclick=createRequest;apkBtn.onclick=downloadApk;$('#refreshBtn').onclick=async()=>{current=null;lastRelease=null;apkBtn.disabled=true;await loadRepo(true);setStatus('Refreshed')};$('#githubBtn').onclick=()=>{if(cfg.owner&&cfg.repo)window.open(`https://github.com/${cfg.owner}/${cfg.repo}`,'_blank')};$('#newBtn').onclick=()=>{stopPoll();current=null;activeRequest=null;lastRelease=null;apkBtn.disabled=true;$('#projectName').value='';$('#prompt').value='';code.value='';preview.srcdoc='';showTab('preview')};document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>showTab(t.dataset.tab));$('#settingsBtn').onclick=openSettings;$('#closeSettings').onclick=()=>$('#settingsModal').classList.add('hidden');$('#saveSettings').onclick=async()=>{const next={owner:$('#setOwner').value.trim(),repo:$('#setRepo').value.trim(),branch:$('#setBranch').value.trim()||'main',token:$('#setToken').value.trim()||cfg.token||''};if(!next.owner||!next.repo||!next.token)return alert('Owner, repository, dan token wajib diisi.');cfg=next;localStorage.setItem('accGithub',JSON.stringify(cfg));$('#settingsModal').classList.add('hidden');current=null;await loadRepo(true);setStatus('Connected')};$('#clearSettings').onclick=()=>{localStorage.removeItem('accGithub');cfg={};current=null;stopPoll();$('#settingsModal').classList.add('hidden');projectsEl.innerHTML='<div class="small" style="padding:8px">Hubungkan GitHub dulu.</div>';$('#repoState').textContent='GitHub belum tersambung';showTab('preview')};showTab('preview');if(connected())loadRepo(true);
 </script>
-</body>
-</html>
+</body></html>
