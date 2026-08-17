@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Pencatatan Keuangan Harian</title>
+<style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f5f5f5;color:#333;min-height:100vh;display:flex;justify-content:center;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+    .container{max-width:480px;width:100%;background:#fff;border-radius:0;box-shadow:none;overflow:hidden;min-height:100vh;display:flex;flex-direction:column;}
+    .top-bar{background:#0066cc;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;}
+    .top-bar h1{font-size:1.1rem;margin:0;font-weight:600;}
+    .nav{display:flex;gap:4px;}
+    .nav-btn{background:none;border:none;color:#fff;padding:8px 12px;cursor:pointer;font-size:0.85rem;border-radius:4px;transition:background 0.2s;}
+    .nav-btn.active{background:rgba(255,255,255,0.2);font-weight:600;}
+    .nav-btn:active{background:rgba(255,255,255,0.3);}
+    main{flex:1;overflow-y:auto;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom));}
+    .view{display:none;}
+    .view.active{display:block;animation:fadeIn 0.2s;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+    .section{margin-bottom:20px;}
+    .section h2{font-size:1rem;color:#0066cc;margin-bottom:12px;font-weight:600;}
+    .summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .summary-card{background:#f8f9fa;border-radius:8px;padding:12px;text-align:center;}
+    .summary-card .label{font-size:0.75rem;color:#666;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+    .summary-card .value{font-size:1.25rem;font-weight:700;color:#333;}
+    .summary-card.income .value{color:#2e7d32;}
+    .summary-card.expense .value{color:#c62828;}
+    .date-filter label{display:block;font-size:0.85rem;font-weight:600;margin-bottom:6px;color:#555;}
+    .date-filter input[type="date"]{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:1rem;background:#fff;}
+    .transaction-list{display:flex;flex-direction:column;gap:8px;}
+    .transaction-item{background:#fff;border:1px solid #eee;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;box-shadow:0 1px 2px rgba(0,0,0,0.03);}
+    .transaction-info{flex:1;min-width:0;}
+    .transaction-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:4px;}
+    .transaction-date{font-weight:600;font-size:0.9rem;color:#333;}
+    .transaction-type{font-size:0.7rem;padding:2px 6px;border-radius:4px;font-weight:600;text-transform:uppercase;}
+    .transaction-type.income{background:#e8f5e9;color:#2e7d32;}
+    .transaction-type.expense{background:#fdeaea;color:#c62828;}
+    .transaction-details{font-size:0.8rem;color:#666;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+    .transaction-category{background:#f0f0f0;padding:2px 8px;border-radius:12px;font-weight:500;}
+    .transaction-description{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .transaction-amount{font-weight:700;font-size:1rem;white-space:nowrap;}
+    .transaction-amount.income{color:#2e7d32;}
+    .transaction-amount.expense{color:#c62828;}
+    .transaction-actions{display:flex;gap:6px;flex-shrink:0;}
+    .transaction-actions button{background:none;border:none;padding:6px 10px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;transition:background 0.2s;}
+    .transaction-actions .edit{background:#fff3e0;color:#e65100;}
+    .transaction-actions .edit:active{background:#ffe0b2;}
+    .transaction-actions .delete{background:#fdeaea;color:#c62828;}
+    .transaction-actions .delete:active{background:#f9caca;}
+    .form-group{margin-bottom:16px;}
+    .form-group label{display:block;font-size:0.85rem;font-weight:600;margin-bottom:6px;color:#555;}
+    .form-group input,.form-group select{width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:1rem;background:#fff;transition:border-color 0.2s;}
+    .form-group input:focus,.form-group select:focus{outline:none;border-color:#0066cc;box-shadow:0 0 0 3px rgba(0,102,204,0.1);}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .btn{width:100%;padding:14px;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;transition:background 0.2s,transform 0.1s;}
+    .btn:active{transform:scale(0.98);}
+    .btn-primary{background:#0066cc;color:#fff;}
+    .btn-primary:hover{background:#0055aa;}
+    .btn-secondary{background:#e0e0e0;color:#333;margin-top:8px;}
+    .btn-secondary:hover{background:#d0d0d0;}
+    .empty-state{text-align:center;padding:40px 20px;color:#999;}
+    .empty-state svg{width:64px;height:64px;margin-bottom:12px;opacity:0.5;}
+    .empty-state p{font-size:0.9rem;margin-bottom:8px;}
+    .category-manager{margin-top:12px;padding-top:12px;border-top:1px solid #eee;}
+    .category-manager h3{font-size:0.85rem;font-weight:600;color:#555;margin-bottom:8px;}
+    .category-tags{display:flex;flex-wrap:wrap;gap:6px;}
+    .category-tag{background:#f0f0f0;padding:4px 10px;border-radius:12px;font-size:0.75rem;font-weight:500;display:flex;align-items:center;gap:4px;}
+    .category-tag button{background:none;border:none;padding:0;color:#999;font-size:0.7rem;cursor:pointer;line-height:1;}
+    .category-tag button:hover{color:#c62828;}
+    .add-category-form{display:flex;gap:8px;margin-top:8px;}
+    .add-category-form input{flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;}
+    .add-category-form button{padding:10px 14px;background:#0066cc;color:#fff;border:none;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;}
+    @media (max-width:400px){
+        .form-row{grid-template-columns:1fr;}
+        .summary{grid-template-columns:1fr;}
+    }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="top-bar">
+    <h1>Keuangan Harian</h1>
+    <nav class="nav" role="tablist" aria-label="Navigasi utama">
+      <button id="btn-dashboard" class="nav-btn active" role="tab" aria-selected="true" aria-controls="dashboard">Dashboard</button>
+      <button id="btn-add" class="nav-btn" role="tab" aria-selected="false" aria-controls="add-transaction">Tambah</button>
+      <button id="btn-history" class="nav-btn" role="tab" aria-selected="false" aria-controls="history">Riwayat</button>
+    </nav>
+  </header>
+
+  <main id="main-content" role="tabpanel">
+    <!-- Dashboard -->
+    <section id="dashboard" class="view active" role="tabpanel" aria-labelledby="btn-dashboard">
+      <div class="section summary">
+        <div class="summary-card income">
+          <div class="label">Total Pemasukan</div>
+          <div class="value" id="total-income">0 IDR</div>
+        </div>
+        <div class="summary-card expense">
+          <div class="label">Total Pengeluaran</div>
+          <div class="value" id="total-expense">0 IDR</div>
+        </div>
+        <div class="summary-card" style="grid-column:1/-1;">
+          <div class="label">Saldo Saat Ini</div>
+          <div class="value" id="balance">0 IDR</div>
+        </div>
+        <div class="summary-card income">
+          <div class="label">Hari Ini (Masuk)</div>
+          <div class="value" id="today-income">0 IDR</div>
+        </div>
+        <div class="summary-card expense">
+          <div class="label">Hari Ini (Keluar)</div>
+          <div class="value" id="today-expense">0 IDR</div>
+        </div>
+      </div>
+
+      <div class="section date-filter">
+        <label for="date-filter">Filter Tanggal</label>
+        <input type="date" id="date-filter" aria-label="Filter transaksi berdasarkan tanggal">
+      </div>
+
+      <div class="section">
+        <h2>Transaksi Terbaru</h2>
+        <div class="transaction-list" id="transaction-list" role="list" aria-label="Daftar transaksi">
+          <!-- Transactions rendered here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Add Transaction -->
+    <section id="add-transaction" class="view" role="tabpanel" aria-labelledby="btn-add">
+      <form id="transaction-form" novalidate>
+        <input type="hidden" id="editing-id" value="">
+        <div class="form-group">
+          <label for="date">Tanggal <span aria-hidden="true">*</span></label>
+          <input type="date" id="date" required aria-required="true">
+        </div>
+        <div class="form-group">
+          <label for="category">Kategori <span aria-hidden="true">*</span></label>
+          <select id="category" required aria-required="true">
+            <option value="" disabled selected>Pilih Kategori</option>
+          </select>
+        </div>
+        <div class="form-group category-manager">
+          <h3>Kelola Kategori</h3>
+          <div class="category-tags" id="category-tags" aria-label="Daftar kategori"></div>
+          <div class="add-category-form">
+            <input type="text" id="new-category" placeholder="Kategori baru" aria-label="Nama kategori baru">
+            <button type="button" id="btn-add-category">Tambah</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="amount">Jumlah <span aria-hidden="true">*</span></label>
+            <input type="number" id="amount" step="0.01" min="0.01" required aria-required="true" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label for="type">Jenis <span aria-hidden="true">*</span></label>
+            <select id="type" required aria-required="true">
+              <option value="income">Pemasukan</option>
+              <option value="expense">Pengeluaran</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="description">Deskripsi</label>
+          <input type="text" id="description" placeholder="Contoh: Makanan di restoran" maxlength="100">
+        </div>
+        <button type="submit" class="btn btn-primary" id="btn-submit">Simpan</button>
+        <button type="button" class="btn btn-secondary" id="cancel-add">Batal</button>
+      </form>
+    </section>
+
+    <!-- History -->
+    <section id="history" class="view" role="tabpanel" aria-labelledby="btn-history">
+      <div class="section date-filter">
+        <label for="history-date-filter">Filter Tanggal</label>
+        <input type="date" id="history-date-filter" aria-label="Filter riwayat berdasarkan tanggal">
+      </div>
+      <div class="section">
+        <h2>Semua Transaksi</h2>
+        <div class="transaction-list" id="history-list" role="list" aria-label="Daftar riwayat transaksi">
+          <!-- Transactions rendered here -->
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+    // ============ STORAGE & STATE ============
+    const STORAGE_KEY_TRANSACTIONS = 'finance_transactions';
+    const STORAGE_KEY_CATEGORIES = 'finance_categories';
+
+    let transactions = [];
+    let categories = [];
+    let editingId = null;
+
+    // ============ DOM ELEMENTS ============
+    const btnDashboard = document.getElementById('btn-dashboard');
+    const btnAdd = document.getElementById('btn-add');
+    const btnHistory = document.getElementById('btn-history');
+    const dashboard = document.getElementById('dashboard');
+    const addSection = document.getElementById('add-transaction');
+    const historySection = document.getElementById('history');
+    const transactionList = document.getElementById('transaction-list');
+    const historyList = document.getElementById('history-list');
+    const dateFilter = document.getElementById('date-filter');
+    const historyDateFilter = document.getElementById('history-date-filter');
+    const transactionForm = document.getElementById('transaction-form');
+    const cancelAddBtn = document.getElementById('cancel-add');
+    const categorySelect = document.getElementById('category');
+    const dateInput = document.getElementById('date');
+    const amountInput = document.getElementById('amount');
+    const typeSelect = document.getElementById('type');
+    const descriptionInput = document.getElementById('description');
+    const editingIdInput = document.getElementById('editing-id');
+    const btnSubmit = document.getElementById('btn-submit');
+    const categoryTags = document.getElementById('category-tags');
+    const newCategoryInput = document.getElementById('new-category');
+    const btnAddCategory = document.getElementById('btn-add-category');
+
+    // Summary elements
+    const totalIncomeEl = document.getElementById('total-income');
+    const totalExpenseEl = document.getElementById('total-expense');
+    const balanceEl = document.getElementById('balance');
+    const todayIncomeEl = document.getElementById('today-income');
+    const todayExpenseEl = document.getElementById('today-expense');
+
+    // ============ UTILITIES ============
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('id-ID', {style:'currency', currency:'IDR', minimumFractionDigits:0, maximumFractionDigits:0}).format(amount);
+    }
+
+    function getTodayString() {
+        return new Date().toISOString().split('T')[0];
+    }
+
+    function saveData() {
+        localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
+        localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(categories));
+    }
+
+    function loadData() {
+        try {
+            transactions = JSON.parse(localStorage.getItem(STORAGE_KEY_TRANSACTIONS)) || [];
+            categories = JSON.parse(localStorage.getItem(STORAGE_KEY_CATEGORIES)) || [];
+        } catch (e) {
+            transactions = [];
+            categories = [];
+        }
+        // Default categories if empty
+        if (categories.length === 0) {
+            categories = ['Makanan', 'Transportasi', 'Belanja', 'Gaji', 'Hiburan', 'Kesehatan', 'Pendidikan', 'Lainnya'];
+            saveData();
+        }
+    }
+
+    // ============ RENDER FUNCTIONS ============
+    function populateCategorySelect() {
+        const currentValue = categorySelect.value;
+        categorySelect.innerHTML = '<option value="" disabled selected>Pilih Kategori</option>';
+        categories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            categorySelect.appendChild(opt);
+        });
+        if (categories.includes(currentValue)) categorySelect.value = currentValue;
+    }
+
+    function renderCategoryTags() {
+        categoryTags.innerHTML = '';
+        categories.forEach(cat => {
+            const tag = document.createElement('span');
+            tag.className = 'category-tag';
+            tag.innerHTML = `${cat} <button type="button" aria-label="Hapus kategori ${cat}" data-cat="${cat}">×</button>`;
+            categoryTags.appendChild(tag);
+        });
+    }
+
+    function updateSummary() {
+        let totalIncome = 0, totalExpense = 0, todayIncome = 0, todayExpense = 0;
+        const today = getTodayString();
+        transactions.forEach(t => {
+            const amt = Number(t.amount);
+            if (t.type === 'income') {
+                totalIncome += amt;
+                if (t.date === today) todayIncome += amt;
+            } else {
+                totalExpense += amt;
+                if (t.date === today) todayExpense += amt;
+            }
+        });
+        const balance = totalIncome - totalExpense;
+        totalIncomeEl.textContent = formatCurrency(totalIncome);
+        totalExpenseEl.textContent = formatCurrency(totalExpense);
+        balanceEl.textContent = formatCurrency(balance);
+        todayIncomeEl.textContent = formatCurrency(todayIncome);
+        todayExpenseEl.textContent = formatCurrency(todayExpense);
+        // Color balance
+        balanceEl.style.color = balance >= 0 ? '#2e7d32' : '#c62828';
+    }
+
+    function createTransactionElement(t, showCategoryDesc = true) {
+        const item = document.createElement('div');
+        item.className = 'transaction-item';
+        item.dataset.id = t.id;
+        item.role = 'listitem';
+        const typeClass = t.type === 'income' ? 'income' : 'expense';
+        const typeLabel = t.type === 'income' ? 'Masuk' : 'Keluar';
+        const amountSign = t.type === 'income' ? '+' : '-';
+        item.innerHTML = `
+            <div class="transaction-info">
+                <div class="transaction-header">
+                    <span class="transaction-date">${t.date}</span>
+                    <span class="transaction-type ${typeClass}">${typeLabel}</span>
+                </div>
+                <div class="transaction-details">
+                    ${showCategoryDesc ? `<span class="transaction-category">${t.category}</span>` : ''}
+                    ${showCategoryDesc && t.description ? `<span class="transaction-description">${t.description}</span>` : ''}
+                </div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+                <span class="transaction-amount ${typeClass}">${amountSign}${formatCurrency(t.amount)}</span>
+                <div class="transaction-actions">
+                    <button class="edit" data-id="${t.id}" aria-label="Edit transaksi">Edit</button>
+                    <button class="delete" data-id="${t.id}" aria-label="Hapus transaksi">Hapus</button>
+                </div>
+            </div>
+        `;
+        return item;
+    }
+
+    function renderDashboard() {
+        transactionList.innerHTML = '';
+        const filterDate = dateFilter.value;
+        const filtered = filterDate ? transactions.filter(t => t.date === filterDate) : transactions.slice().reverse().slice(0, 10);
+        if (filtered.length === 0) {
+            transactionList.innerHTML = `
+                <div class="empty-state" style="grid-column:1/-1;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    <p>${filterDate ? 'Tidak ada transaksi pada tanggal ini.' : 'Belum ada transaksi.'}</p>
+                </div>
+            `;
+        } else {
+            filtered.forEach(t => transactionList.appendChild(createTransactionElement(t, false)));
+        }
+        updateSummary();
+    }
+
+    function renderHistory() {
+        historyList.innerHTML = '';
+        const filterDate = historyDateFilter.value;
+        const filtered = filterDate ? transactions.filter(t => t.date === filterDate) : transactions.slice().reverse();
+        if (filtered.length === 0) {
+            historyList.innerHTML = `
+                <div class="empty-state">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    <p>${filterDate ? 'Tidak ada transaksi pada tanggal ini.' : 'Riwayat kosong.'}</p>
+                </div>
+            `;
+        } else {
+            filtered.forEach(t => historyList.appendChild(createTransactionElement(t, true)));
+        }
+        updateSummary();
+    }
+
+    // ============ VIEW SWITCHING ============
+    function switchView(viewName) {
+        // Update nav buttons
+        [btnDashboard, btnAdd, btnHistory].forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-selected', 'false');
+        });
+        // Hide all views
+        [dashboard, addSection, historySection].forEach(v => v.classList.remove('active'));
+
+        if (viewName === 'dashboard') {
+            dashboard.classList.add('active');
+            btnDashboard.classList.add('active');
+            btnDashboard.setAttribute('aria-selected', 'true');
+            renderDashboard();
+        } else if (viewName === 'add-transaction') {
+            addSection.classList.add('active');
+            btnAdd.classList.add('active');
+            btnAdd.setAttribute('aria-selected', 'true');
+            resetForm();
+            dateInput.focus();
+        } else if (viewName === 'history') {
+            historySection.classList.add('active');
+            btnHistory.classList.add('active');
+            btnHistory.setAttribute('aria-selected', 'true');
+            renderHistory();
+        }
+    }
+
+    // ============ FORM HANDLING ============
+    function resetForm() {
+        transactionForm.reset();
+        editingId = null;
+        editingIdInput.value = '';
+        btnSubmit.textContent = 'Simpan';
+        dateInput.value = getTodayString();
+        populateCategorySelect();
+        renderCategoryTags();
+    }
+
+    function fillFormForEdit(transaction) {
+        dateInput.value = transaction.date;
+        categorySelect.value = transaction.category;
+        amountInput.value = transaction.amount;
+        typeSelect.value = transaction.type;
+        descriptionInput.value = transaction.description || '';
+        editingId = transaction.id;
+        editingIdInput.value = transaction.id;
+        btnSubmit.textContent = 'Update';
+        switchView('add-transaction');
+    }
+
+    function validateForm() {
+        const date = dateInput.value;
+        const category = categorySelect.value;
+        const amount = parseFloat(amountInput.value);
+        const type = typeSelect.value;
+        if (!date || !category || isNaN(amount) || amount <= 0 || !type) {
+            alert('Harap isi semua bidang wajib dengan benar.');
+            return false;
+        }
+        return true;
+    }
+
+    function handleFormSubmit(e) {
+        e.preventDefault();
+        if (!validateForm()) return;
+
+        const transactionData = {
+            date: dateInput.value,
+            category: categorySelect.value,
+            amount: parseFloat(amountInput.value),
+            type: typeSelect.value,
+            description: descriptionInput.value.trim()
+        };
+
+        if (editingId) {
+            const idx = transactions.findIndex(t => t.id === editingId);
+            if (idx !== -1) {
+                transactions[idx] = {...transactions[idx], ...transactionData};
+            }
+            editingId = null;
+        } else {
+            transactionData.id = Date.now().toString();
+            transactions.push(transactionData);
+        }
+
+        saveData();
+        resetForm();
+        switchView('dashboard');
+    }
+
+    // ============ TRANSACTION ACTIONS ============
+    function handleEdit(id) {
+        const trans = transactions.find(t => t.id === id);
+        if (trans) fillFormForEdit(trans);
+    }
+
+    function handleDelete(id) {
+        if (confirm('Yakin ingin menghapus transaksi ini?')) {
+            transactions = transactions.filter(t => t.id !== id);
+            saveData();
+            renderDashboard();
+            renderHistory();
+        }
+    }
+
+    // ============ CATEGORY MANAGEMENT ============
+    function addCategory() {
+        const name = newCategoryInput.value.trim();
+        if (!name) return;
+        if (categories.includes(name)) {
+            alert('Kategori sudah ada.');
+            return;
+        }
+        categories.push(name);
+        saveData();
+        populateCategorySelect();
+        renderCategoryTags();
+        newCategoryInput.value = '';
+    }
+
+    function deleteCategory(cat) {
+        if (categories.length <= 1) {
+            alert('Minimal satu kategori harus ada.');
+            return;
+        }
+        if (confirm(`Hapus kategori "${cat}"? Transaksi dengan kategori ini tidak terhapus.`)) {
+            categories = categories.filter(c => c !== cat);
+            saveData();
+            populateCategorySelect();
+            renderCategoryTags();
+        }
+    }
+
+    // ============ EVENT LISTENERS ============
+    function initEventListeners() {
+        // Navigation
+        btnDashboard.addEventListener('click', () => switchView('dashboard'));
+        btnAdd.addEventListener('click', () => switchView('add-transaction'));
+        btnHistory.addEventListener('click', () => switchView('history'));
+
+        // Form
+        transactionForm.addEventListener('submit', handleFormSubmit);
+        cancelAddBtn.addEventListener('click', () => {
+            resetForm();
+            switchView('dashboard');
+        });
+
+        // Date filters
+        dateFilter.addEventListener('change', renderDashboard);
+        historyDateFilter.addEventListener('change', renderHistory);
+
+        // Transaction list delegation (dashboard)
+        transactionList.addEventListener('click', e => {
+            const target = e.target;
+            if (target.classList.contains('edit')) handleEdit(target.dataset.id);
+            else if (target.classList.contains('delete')) handleDelete(target.dataset.id);
+        });
+
+        // History list delegation
+        historyList.addEventListener('click', e => {
+            const target = e.target;
+            if (target.classList.contains('edit')) handleEdit(target.dataset.id);
+            else if (target.classList.contains('delete')) handleDelete(target.dataset.id);
+        });
+
+        // Category tags delegation
+        categoryTags.addEventListener('click', e => {
+            if (e.target.tagName === 'BUTTON') deleteCategory(e.target.dataset.cat);
+        });
+
+        // Add category
+        btnAddCategory.addEventListener('click', addCategory);
+        newCategoryInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') addCategory();
+        });
+    }
+
+    // ============ INIT ============
+    function init() {
+        loadData();
+        populateCategorySelect();
+        renderCategoryTags();
+        initEventListeners();
+        switchView('dashboard');
+    }
+
+    // Start app
+    init();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "id": "qc-brain-test",
+  "name": "QC Brain Test",
+  "version": 1,
+  "provider": "ai",
+  "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "qc": "passed",
+  "last_request_id": "qc-brain-test-20260817",
+  "last_prompt": "Buat aplikasi pencatat keuangan harian mobile dalam Bahasa Indonesia. Wajib ada dashboard, tambah pemasukan/pengeluaran, kategori, riwayat transaksi, edit dan hapus transaksi, filter tanggal, ringkasan harian, saldo, localStorage agar data tetap ada setelah aplikasi ditutup, dan semua tab/tombol wajib benar-benar berfungsi. Jangan membuat placeholder atau halaman kosong.",
+  "last_build": "ready",
+  "created_at": "2026-08-17T10:07:55.593613+00:00",
+  "updated_at": "2026-08-17T10:09:27.912074+00:00"
+}

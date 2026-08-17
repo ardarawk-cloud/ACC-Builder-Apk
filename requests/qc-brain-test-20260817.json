@@ -1,0 +1,8 @@
+{
+  "request_id": "qc-brain-test-20260817",
+  "project_id": "qc-brain-test",
+  "project_name": "QC Brain Test",
+  "mode": "generate",
+  "prompt": "Buat aplikasi pencatat keuangan harian mobile dalam Bahasa Indonesia. Wajib ada dashboard, tambah pemasukan/pengeluaran, kategori, riwayat transaksi, edit dan hapus transaksi, filter tanggal, ringkasan harian, saldo, localStorage agar data tetap ada setelah aplikasi ditutup, dan semua tab/tombol wajib benar-benar berfungsi. Jangan membuat placeholder atau halaman kosong.",
+  "created_at": "2026-08-17T10:01:40.614216+00:00"
+}
