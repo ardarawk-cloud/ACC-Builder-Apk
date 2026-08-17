@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Social Media Builder</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:Arial,sans-serif;background:#f5f5f5;color:#333;}
+.app{max-width:480px;margin:auto;padding:10px;}
+header{background:#0066cc;color:#fff;padding:10px;text-align:center;}
+nav{display:flex;justify-content:center;background:#eee;padding:5px 0;}
+nav a{flex:1;text-align:center;padding:10px;background:#ddd;color:#000;text-decoration:none;border-radius:5px;margin:0 2px;}
+nav a.active{background:#0066cc;color:#fff;}
+.page{display:none;padding:10px;background:#fff;border-radius:8px;margin-top:10px;}
+.btn{display:block;width:100%;padding:12px;margin:5px 0;background:#0066cc;color:#fff;border:none;border-radius:5px;font-size:16px;cursor:pointer;}
+.btn-outline{background:#fff;color:#0066cc;border:2px solid #0066cc;}
+.btn-outline:hover{background:#e6e6e6;}
+.hidden{display:none;}
+.input-field{width:100%;padding:10px;margin:5px 0;border:1px solid #ccc;border-radius:4px;}
+.page-header{font-weight:bold;margin-bottom:10px;}
+.channel-list{margin-bottom:10px;}
+.channel-item{padding:8px;border-bottom:1px solid #eee;}
+.channel-item input{margin-right:5px;}
+.poster-preview{max-width:100%;height:auto;margin:10px 0;border:1px solid #ccc;}
+.schedule-input{font-size:14px;margin-top:5px;}
+.caption-output{white-space:pre-wrap;margin:10px 0;padding:10px;background:#f9f9f9;border:1px solid #ccc;border-radius:4px;}
+.selected-pages{margin-top:10px;}
+.selected-page{display:inline-block;background:#0066cc;color:#fff;padding:5px 10px;margin:2px;border-radius:3px;}
+.status-draft{color:#888;}
+.status-ready{color:#28a745;}
+.status-scheduled{color:#17a2b8;}
+.status-published{color:#dc3545;}
+.status-failed{color:#dc3545;}
+</style>
+</head>
+<body>
+<div class="app">
+<header><h2>Social Media Builder</h2></header>
+<nav>
+<a href="#home" class="nav-link">Home</a>
+<a href="#content" class="nav-link">Content</a>
+<a href="#create" class="nav-link">Create</a>
+<a href="#calendar" class="nav-link">Calendar</a>
+<a href="#channels" class="nav-link">Channels</a>
+<a href="#settings" class="nav-link">Settings</a>
+</nav>
+
+<!-- Home -->
+<section id="page-home" class="page">
+<h2 class="page-header">Selamat Datang</h2>
+<p>Gunakan aplikasi ini untuk membuat, mengedit, dan mempublikasikan konten media sosial Anda.</p>
+</section>
+
+<!-- Content -->
+<section id="page-content" class="page">
+<h2 class="page-header">Content</h2>
+<ul id="content-list" class="channel-list"></ul>
+</section>
+
+<!-- Create -->
+<section id="page-create" class="page">
+<h2 class="page-header">Create</h2>
+
+<div class="input-field">
+<label for="channel-select">Pilih Channel</label>
+<select id="channel-select"></select>
+</div>
+
+<div class="input-field">
+<label for="materi-text">Materi (teks)</label>
+<textarea id="materi-text" rows="3"></textarea>
+</div>
+
+<div class="input-field">
+<button class="btn btn-outline" id="btn-gen-materi">Generate Materi</button>
+</div>
+
+<div class="input-field">
+<button class="btn btn-outline" id="btn-gen-poster">Generate Poster</button>
+</div>
+
+<img id="poster-img" class="poster-preview" src="" alt="Poster preview">
+
+<div class="input-field">
+<label for="caption-text">Caption</label>
+<textarea id="caption-text" rows="3"></textarea>
+</div>
+
+<div class="input-field">
+<button class="btn btn-outline" id="btn-gen-caption">Generate Caption</button>
+</div>
+
+<div class="input-field schedule-input">
+<label for="schedule-input">Jadwalkan Publikasi</label>
+<input type="datetime-local" id="schedule-input">
+</div>
+
+<div class="selected-pages" id="selected-pages"></div>
+
+<button class="btn" id="btn-save-draft">Save as Draft</button>
+<button class="btn" id="btn-schedule">Schedule</button>
+<button class="btn" id="btn-publish">Publish</button>
+</section>
+
+<!-- Calendar -->
+<section id="page-calendar" class="page">
+<h2 class="page-header">Calendar</h2>
+<p>Fitur belum tersedia.</p>
+</section>
+
+<!-- Channels -->
+<section id="page-channels" class="page">
+<h2 class="page-header">Channels</h2>
+<div id="channel-list" class="channel-list"></div>
+
+<div class="input-field">
+<input type="text" id="new-channel-name" placeholder="Nama Channel Baru">
+</div>
+<div class="input-field">
+<input type="text" id="new-channel-prompt" placeholder="Prompt AI Channel">
+</div>
+<button class="btn btn-outline" id="btn-add-channel">Add Channel</button>
+</section>
+
+<!-- Settings -->
+<section id="page-settings" class="page">
+<h2 class="page-header">Settings</h2>
+<p>Fitur belum tersedia.</p>
+</section>
+</div>
+
+<script>
+function $(id){return document.getElementById(id);}
+
+function loadChannels(){
+ var json=localStorage.getItem('channels');
+ if(!json){
+  var def=[{id:1,name:'Channel 1',prompt:''}];
+  localStorage.setItem('channels',JSON.stringify(def));
+  return def;
+ }
+ return JSON.parse(json);
+}
+function saveChannels(ch){ localStorage.setItem('channels',JSON.stringify(ch)); }
+
+function loadSelectedPages(){
+ var json=localStorage.getItem('selectedPages');
+ return json?JSON.parse(json):[];
+}
+function saveSelectedPages(p){ localStorage.setItem('selectedPages',JSON.stringify(p)); }
+
+function generateMateri(){
+ var topics=['Pemancingan di Danau','Resep Makanan Sehat','Tips Traveling','Pola Hemat Energi','Cerita Inspiratif'];
+ var topic=topics[Math.floor(Math.random()*topics.length)];
+ return 'Materi: '+topic+' - Dapatkan penawaran khusus hanya untuk Anda!';
+}
+function generatePoster(materi){
+ var canvas=document.createElement('canvas');
+ canvas.width=1080; canvas.height=1920;
+ var ctx=canvas.getContext('2d');
+ ctx.fillStyle='#f2f2f2';
+ ctx.fillRect(0,0,1080,1920);
+ ctx.fillStyle='#0066cc';
+ ctx.font='48px Arial';
+ ctx.fillText('Poster',100,200);
+ ctx.fillStyle='#fff';
+ ctx.font='24px Arial';
+ ctx.fillText(materi,100,300);
+ return canvas.toDataURL('image/png');
+}
+function generateCaption(){
+ var tags=['#Travel','#Food','#Motivation','#Health','#Inspirasi'];
+ var tag=tags[Math.floor(Math.random()*tags.length)];
+ return 'Jangan lupa coba ide ini! '+tag;
+}
+function renderChannels(){
+ var channels=loadChannels();
+ var sel=$('channel-select');
+ sel.innerHTML='';
+ channels.forEach(function(ch){
+  var opt=document.createElement('option');
+  opt.value=ch.id;
+  opt.textContent=ch.name;
+  sel.appendChild(opt);
+ });
+}
+function renderSelectedPages(){
+ var pages=loadSelectedPages();
+ var container=$('selected-pages');
+ container.innerHTML='';
+ pages.forEach(function(p){
+  var span=document.createElement('span');
+  span.className='selected-page';
+  span.textContent=p;
+  container.appendChild(span);
+ });
+}
+function renderContentList(){
+ var contents=loadContents();
+ var list=$('content-list');
+ list.innerHTML='';
+ contents.forEach(function(c){
+  var li=document.createElement('li');
+  li.textContent=c.materi;
+  li.dataset.id=c.id;
+  li.className='content-item status-'+c.status;
+  li.innerHTML+=' <span class="status">'+c.status+'</span>';
+  list.appendChild(li);
+ });
+}
+function loadContents(){
+ var json=localStorage.getItem('contents');
+ return json?JSON.parse(json):[];
+}
+function saveContents(arr){ localStorage.setItem('contents',JSON.stringify(arr)); }
+
+function btnGenMateri(){
+ var txt=$('materi-text');
+ txt.value=generateMateri();
+}
+function btnGenPoster(){
+ var mat=$('materi-text').value;
+ var img=$('poster-img');
+ img.src=generatePoster(mat);
+}
+function btnGenCaption(){
+ var cap=$('caption-text');
+ cap.value=generateCaption();
+}
+function btnSaveDraft(){
+ var channel=$('channel-select').value;
+ var mat=$('materi-text').value;
+ var img=$('poster-img').src;
+ var cap=$('caption-text').value;
+ var schedule=$('schedule-input').value;
+ var pages=[];
+ var checks=$('page-checkboxes')?$('page-checkboxes').querySelectorAll('input[type=checkbox]:checked'):[];
+ for(var i=0;i<checks.length;i++) pages.push(checks[i].value);
+ var contents=loadContents();
+ var newContent={id:new Date().getTime(),channelId:channel,materi:mat,posterUrl:img,caption:cap,status:'draft',scheduleTime:schedule?new Date(schedule).getTime():null};
+ contents.push(newContent);
+ saveContents(contents);
+ alert('Content saved as draft');
+ renderContentList();
+}
+function btnSchedule(){
+ var contents=loadContents();
+ var latest=null;
+ for(var i=contents.length-1;i>=0;i--){
+  if(contents[i].status==='draft'){
+   latest=contents[i];
+   break;
+  }
+ }
+ if(!latest){ alert('Belum ada konten draft.'); return; }
+ var sch=$('schedule-input').value;
+ if(!sch){ alert('Pilih waktu jadwal.'); return; }
+ latest.status='scheduled';
+ latest.scheduleTime=new Date(sch).getTime();
+ saveContents(contents);
+ renderContentList();
+}
+function btnPublish(){
+ var contents=loadContents();
+ var latest=null;
+ for(var i=contents.length-1;i>=0;i--){
+  if(contents[i].status==='scheduled'){
+   latest=contents[i];
+   break;
+  }
+ }
+ if(!latest){ alert('Tidak ada konten yang dijadwalkan.'); return; }
+ latest.status='published';
+ saveContents(contents);
+ renderContentList();
+ alert('Konten dipublikasikan ke halaman yang dipilih.');
+}
+function renderPage(){
+ var hash=location.hash.substr(1)||'home';
+ $('.page').addClass('hidden');
+ $('#page-'+hash).removeClass('hidden');
+ router();
+}
+function router(){
+ var hash=location.hash.substr(1);
+ var pg=$('page-'+hash);
+ if(pg){ $('.page').addClass('hidden'); pg.classList.remove('hidden'); }
+}
+function populateChannels(){
+ var chans=loadChannels();
+ chans.forEach(function(ch){
+  var opt=document.createElement('option');
+  opt.value=ch.id;
+  opt.textContent=ch.name;
+  $('channel-select').appendChild(opt);
+ });
+}
+function populatePages(){
+ var pages=loadSelectedPages();
+ var container=$('selected-pages');
+ container.innerHTML='';
+ pages.forEach(function(p){
+  var span=document.createElement('span');
+  span.className='selected-page';
+  span.textContent=p;
+  container.appendChild(span);
+ });
+}
+function addChannel(){
+ var name=$('new-channel-name').value;
+ var prompt=$('new-channel-prompt').value;
+ if(!name||!prompt){ alert('Isi nama dan prompt.'); return; }
+ var chans=loadChannels();
+ chans.push({id:new Date().getTime(),name:name,prompt:prompt});
+ saveChannels(chans);
+ renderChannels();
+ $('new-channel-name').value='';
+ $('new-channel-prompt').value='';
+}
+function init(){
+ renderChannels();
+ populateChannels();
+ renderSelectedPages();
+ renderContentList();
+ // checkboxes for pages
+ var pages=['Page A','Page B','Page C'];
+ pages.forEach(function(p){
+  var label=document.createElement('label');
+  label.style.margin='0 5px 0 0';
+  label.innerHTML='<input type="checkbox" value="'+p+'"> '+p;
+  $('selected-pages').appendChild(label);
+ });
+ router();
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
