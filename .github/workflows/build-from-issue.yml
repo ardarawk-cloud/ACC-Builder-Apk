@@ -1,0 +1,168 @@
+name: ACC Builder - Issue to APK
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: acc-ai-builder
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: startsWith(github.event.issue.title, '[ACC BUILD]') && github.event.issue.user.login == github.repository_owner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Convert issue to request
+        id: req
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: python3 scripts/issue_to_request.py
+
+      - name: Generate application with AI
+        id: generate
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_BASE_URL: ${{ secrets.AI_BASE_URL }}
+          AI_MODEL: ${{ secrets.AI_MODEL }}
+        run: python3 scripts/ai_generate.py "${{ steps.req.outputs.request_file }}"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Prepare Capacitor project
+        shell: bash
+        run: |
+          PROJECT="${{ steps.generate.outputs.project_id }}"
+          APP_NAME="${{ steps.generate.outputs.app_name }}"
+          APP_ID="com.accbuilder.$(echo "$PROJECT" | tr -cd 'a-z0-9' | cut -c1-40)"
+          BUILD_DIR="$RUNNER_TEMP/acc-mobile"
+          mkdir -p "$BUILD_DIR/www"
+          cp "apps/$PROJECT/index.html" "$BUILD_DIR/www/index.html"
+          cd "$BUILD_DIR"
+
+          cat > package.json <<'JSON'
+          {
+            "name":"acc-generated-app",
+            "version":"1.0.0",
+            "private":true,
+            "dependencies":{
+              "@capacitor/core":"^7.0.0",
+              "@capacitor/android":"^7.0.0"
+            },
+            "devDependencies":{
+              "@capacitor/cli":"^7.0.0"
+            }
+          }
+          JSON
+
+          python3 - <<PY
+          import json
+          cfg={
+            "appId":"$APP_ID",
+            "appName":'''$APP_NAME''',
+            "webDir":"www",
+            "server":{"androidScheme":"https"}
+          }
+          open('capacitor.config.json','w').write(json.dumps(cfg,ensure_ascii=False,indent=2))
+          PY
+
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+          echo "build_dir=$BUILD_DIR" >> "$GITHUB_ENV"
+
+      - name: Compile APK
+        shell: bash
+        run: |
+          cd "$build_dir/android"
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Prepare APK
+        id: apk
+        shell: bash
+        run: |
+          PROJECT="${{ steps.generate.outputs.project_id }}"
+          VERSION="${{ steps.generate.outputs.version }}"
+          REQUEST="${{ steps.generate.outputs.request_id }}"
+          mkdir -p dist
+          APK_NAME="${PROJECT}-v${VERSION}.apk"
+          cp "$build_dir/android/app/build/outputs/apk/debug/app-debug.apk" "dist/$APK_NAME"
+          echo "path=dist/$APK_NAME" >> "$GITHUB_OUTPUT"
+          echo "name=$APK_NAME" >> "$GITHUB_OUTPUT"
+          echo "tag=build-$REQUEST" >> "$GITHUB_OUTPUT"
+
+      - name: Mark project ready
+        run: python3 scripts/mark_build.py "${{ steps.generate.outputs.project_id }}" ready
+
+      - name: Commit request and generated project
+        shell: bash
+        run: |
+          git config user.name "ACC AI Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add "${{ steps.req.outputs.request_file }}" "apps/${{ steps.generate.outputs.project_id }}"
+          if ! git diff --cached --quiet; then
+            git commit -m "ACC Builder: ${{ steps.generate.outputs.project_id }} v${{ steps.generate.outputs.version }}"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.name }}
+          path: ${{ steps.apk.outputs.path }}
+          retention-days: 14
+
+      - name: Create APK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          TAG="${{ steps.apk.outputs.tag }}"
+          APK="${{ steps.apk.outputs.path }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --clobber
+          else
+            gh release create "$TAG" "$APK" \
+              --title "ACC APK · ${{ steps.generate.outputs.app_name }} v${{ steps.generate.outputs.version }}" \
+              --notes "Generated automatically by ACC AI Builder." \
+              --target main
+          fi
+
+      - name: Comment result and close request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ steps.apk.outputs.tag }}"
+          gh issue comment "${{ github.event.issue.number }}" --body "✅ APK selesai dibuat: $RELEASE_URL"
+          gh issue close "${{ github.event.issue.number }}" --reason completed
+
+      - name: Comment failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" --body "❌ Build gagal. Buka tab Actions untuk melihat step yang gagal."
