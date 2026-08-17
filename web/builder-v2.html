@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090b10">
+<title>ACC AI Builder V2</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#090c12;color:#f7f8fb;font-family:system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:760px;margin:auto;min-height:100vh;padding:18px}.head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 20px}.brand{font-weight:900;font-size:20px}.tag{font-size:12px;color:#b8c1d1;background:#171d28;border:1px solid #283142;border-radius:999px;padding:7px 10px}.card{background:#111722;border:1px solid #283142;border-radius:20px;padding:18px;margin-bottom:14px}.ok{background:#0e2b22;border-color:#1d5d47;color:#c9f6e6}.title{font-size:26px;font-weight:900;margin:0 0 6px}.muted{color:#9aa6b7;font-size:13px;line-height:1.5}label{display:block;font-size:12px;color:#9aa6b7;margin:14px 0 6px}input,textarea{width:100%;border:1px solid #2a3445;border-radius:13px;background:#0c111a;color:white;padding:14px;font:inherit;outline:none}textarea{min-height:150px;resize:vertical}.btn{display:block;width:100%;border:0;border-radius:14px;padding:15px 16px;text-align:center;text-decoration:none;font-weight:900;font-size:17px;cursor:pointer}.primary{background:linear-gradient(135deg,#7857ff,#593fdc);color:white;margin-top:15px}.ghost{background:#171d28;color:white;border:1px solid #2a3445;margin-top:9px}.steps{margin:8px 0 0;padding-left:22px;color:#bdc6d5;line-height:1.7}.version{font-size:11px;color:#738096;text-align:center;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head"><div><div class="brand">ACC AI Builder</div><div class="muted">GitHub Issue Flow</div></div><div class="tag">NO-PAT V2</div></div>
+
+  <div class="card ok"><b>✓ Builder baru aktif</b><div class="muted" style="color:#b9dfd1;margin-top:5px">Tidak memakai GitHub token di HP. Generate dilakukan lewat GitHub Issue.</div></div>
+
+  <div class="card">
+    <h1 class="title">Buat APK</h1>
+    <div class="muted">Isi nama dan instruksi. Tombol di bawah akan membawa kamu ke GitHub dengan form request sudah terisi.</div>
+    <label>Nama aplikasi</label>
+    <input id="name" value="Arus" placeholder="Contoh: Arus">
+    <label>Prompt</label>
+    <textarea id="prompt" placeholder="Jelaskan aplikasi yang ingin dibuat...">Buat aplikasi penghitung uang harian. Ada pemasukan, pengeluaran, saldo harian, riwayat transaksi, kategori, ringkasan harian, dan semua data tersimpan offline di HP. Gunakan Bahasa Indonesia dan desain mobile yang sederhana dan nyaman.</textarea>
+    <a id="generate" class="btn primary" href="#">Generate + Build APK →</a>
+    <a class="btn ghost" href="https://github.com/ardarawk-cloud/ACC-Builder-Apk/releases">Lihat APK yang sudah jadi</a>
+  </div>
+
+  <div class="card">
+    <b>Cara pakai</b>
+    <ol class="steps"><li>Tekan <b>Generate + Build APK</b>.</li><li>GitHub terbuka dengan judul dan isi otomatis.</li><li>Tekan <b>Submit new issue</b>.</li><li>GitHub Actions membuat APK otomatis.</li><li>Buka <b>Lihat APK yang sudah jadi</b> setelah build selesai.</li></ol>
+  </div>
+  <div class="version">ACC BUILDER V2 · 2026-08-17</div>
+</div>
+<script>
+const owner='ardarawk-cloud', repo='ACC-Builder-Apk';
+function slug(s){return (s||'app').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,45)||'app'}
+function updateLink(){
+  const name=document.getElementById('name').value.trim()||'ACC App';
+  const prompt=document.getElementById('prompt').value.trim();
+  const id=Date.now().toString()+'-'+Math.random().toString(36).slice(2,7);
+  const project=slug(name)+'-'+id.slice(-5);
+  const title='[ACC BUILD] '+name;
+  const body=`ACC_REQUEST_ID=${id}\nACC_PROJECT_ID=${project}\nACC_PROJECT_NAME=${name}\nACC_MODE=generate\n\nPROMPT:\n${prompt}`;
+  document.getElementById('generate').href=`https://github.com/${owner}/${repo}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+}
+document.getElementById('name').addEventListener('input',updateLink);
+document.getElementById('prompt').addEventListener('input',updateLink);
+document.getElementById('generate').addEventListener('click',e=>{if(!document.getElementById('prompt').value.trim()){e.preventDefault();alert('Isi prompt dulu.')}});
+updateLink();
+</script>
+</body>
+</html>
