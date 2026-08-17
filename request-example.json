@@ -1,0 +1,8 @@
+{
+  "request_id": "example-only",
+  "project_id": "kasir-warung-demo",
+  "project_name": "Kasir Warung Demo",
+  "mode": "generate",
+  "prompt": "Buat aplikasi kasir warung dengan produk, stok, transaksi dan laporan harian.",
+  "created_at": "2026-08-17T00:00:00Z"
+}
