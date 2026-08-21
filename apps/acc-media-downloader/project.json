@@ -7,7 +7,7 @@
   "qc": "passed",
   "last_request_id": "media-downloader-final-20260821",
   "last_prompt": "Final direct-media Android downloader with local history, favorites, settings, YouTube official-link handling, and ACC native download bridge.",
-  "last_build": "building",
+  "last_build": "ready",
   "created_at": "2026-08-21T02:10:00Z",
-  "updated_at": "2026-08-21T02:10:00Z"
+  "updated_at": "2026-08-21T02:12:29.733748+00:00"
 }
