@@ -19,7 +19,7 @@ permissions:
 
 concurrency:
   group: acc-ai-builder
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -48,13 +48,58 @@ jobs:
           echo "file=$FILE" >> "$GITHUB_OUTPUT"
           echo "Using $FILE"
 
+      - name: Read request metadata
+        id: meta
+        shell: bash
+        run: |
+          python3 - "${{ steps.request.outputs.file }}" <<'PY'
+          import json, os, re, sys
+          req=json.load(open(sys.argv[1], encoding='utf-8'))
+          def safe(v):
+              x=re.sub(r'[^a-z0-9-_]+','-',str(v).lower())
+              x=re.sub(r'-+','-',x).strip('-')
+              return x[:60] or 'app'
+          out=os.environ['GITHUB_OUTPUT']
+          with open(out,'a',encoding='utf-8') as f:
+              f.write('mode='+str(req.get('mode') or 'generate')+'\n')
+              f.write('project_id='+safe(req['project_id'])+'\n')
+              f.write('app_name='+str(req.get('project_name') or 'ACC App').replace('\n',' ')[:50]+'\n')
+              f.write('request_id='+str(req['request_id']).replace('\n',' ')+'\n')
+          PY
+
       - name: Generate application with AI
+        if: steps.meta.outputs.mode != 'build_existing'
         id: generate
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           AI_BASE_URL: ${{ secrets.AI_BASE_URL }}
           AI_MODEL: ${{ secrets.AI_MODEL }}
         run: python3 scripts/ai_generate.py "${{ steps.request.outputs.file }}"
+
+      - name: Resolve build metadata
+        id: app
+        shell: bash
+        run: |
+          PROJECT="${{ steps.meta.outputs.project_id }}"
+          META="apps/$PROJECT/project.json"
+          HTML="apps/$PROJECT/index.html"
+          if [ ! -f "$HTML" ] || [ ! -f "$META" ]; then
+            echo "Existing app source is missing: $PROJECT"
+            exit 1
+          fi
+          python3 - "$META" <<'PY'
+          import json, os, sys
+          meta=json.load(open(sys.argv[1], encoding='utf-8'))
+          out=os.environ['GITHUB_OUTPUT']
+          with open(out,'a',encoding='utf-8') as f:
+              f.write('project_id='+str(meta['id']).replace('\n',' ')+'\n')
+              f.write('app_name='+str(meta.get('name') or meta['id']).replace('\n',' ')+'\n')
+              f.write('version='+str(int(meta.get('version',1)))+'\n')
+              f.write('request_id='+str(meta.get('last_request_id') or 'build').replace('\n',' ')+'\n')
+          PY
+          if [ "${{ steps.meta.outputs.mode }}" = "build_existing" ]; then
+            echo "request_id=${{ steps.meta.outputs.request_id }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -70,8 +115,8 @@ jobs:
       - name: Prepare Capacitor project
         shell: bash
         run: |
-          PROJECT="${{ steps.generate.outputs.project_id }}"
-          APP_NAME="${{ steps.generate.outputs.app_name }}"
+          PROJECT="${{ steps.app.outputs.project_id }}"
+          APP_NAME="${{ steps.app.outputs.app_name }}"
           APP_ID="com.accbuilder.$(echo "$PROJECT" | tr -cd 'a-z0-9' | cut -c1-40)"
           BUILD_DIR="$RUNNER_TEMP/acc-mobile"
           mkdir -p "$BUILD_DIR/www"
@@ -109,6 +154,128 @@ jobs:
           npx cap sync android
           echo "build_dir=$BUILD_DIR" >> "$GITHUB_ENV"
 
+      - name: Add ACC Android download bridge
+        shell: bash
+        run: |
+          MAIN="$(find "$build_dir/android/app/src/main/java" -name MainActivity.java | head -n 1)"
+          if [ -z "$MAIN" ]; then
+            echo "MainActivity.java not found"
+            exit 1
+          fi
+          PACKAGE="$(sed -n 's/^package \(.*\);/\1/p' "$MAIN" | head -n 1)"
+          cat > "$MAIN" <<JAVA
+          package $PACKAGE;
+
+          import android.app.Activity;
+          import android.app.DownloadManager;
+          import android.content.ClipboardManager;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.os.Environment;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.URLUtil;
+          import android.widget.Toast;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  if (getBridge() != null && getBridge().getWebView() != null) {
+                      getBridge().getWebView().addJavascriptInterface(new ACCNative(this), "ACCNative");
+                  }
+              }
+
+              public static class ACCNative {
+                  private final Context context;
+                  ACCNative(Context context) { this.context = context; }
+
+                  private Uri checkedUri(String raw) {
+                      if (raw == null) return null;
+                      Uri uri = Uri.parse(raw.trim());
+                      String scheme = uri.getScheme();
+                      if (scheme == null || !(scheme.equalsIgnoreCase("https") || scheme.equalsIgnoreCase("http"))) return null;
+                      return uri;
+                  }
+
+                  private boolean isYouTube(Uri uri) {
+                      String host = uri == null ? null : uri.getHost();
+                      if (host == null) return false;
+                      host = host.toLowerCase();
+                      if (host.startsWith("www.")) host = host.substring(4);
+                      return host.equals("youtube.com") || host.endsWith(".youtube.com") || host.equals("youtu.be");
+                  }
+
+                  private String cleanName(String value, String url) {
+                      String name = value == null ? "" : value.trim();
+                      name = name.replaceAll("[\\\\/:*?\"<>|\\r\\n]+", "_");
+                      if (name.length() == 0 || name.length() > 180) name = URLUtil.guessFileName(url, null, null);
+                      return name;
+                  }
+
+                  private void toast(String message) {
+                      if (context instanceof Activity) {
+                          ((Activity) context).runOnUiThread(() -> Toast.makeText(context, message, Toast.LENGTH_SHORT).show());
+                      }
+                  }
+
+                  @JavascriptInterface
+                  public String getClipboard() {
+                      try {
+                          ClipboardManager cb = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                          if (cb != null && cb.hasPrimaryClip() && cb.getPrimaryClip() != null && cb.getPrimaryClip().getItemCount() > 0) {
+                              CharSequence text = cb.getPrimaryClip().getItemAt(0).coerceToText(context);
+                              return text == null ? "" : text.toString();
+                          }
+                      } catch (Exception ignored) {}
+                      return "";
+                  }
+
+                  @JavascriptInterface
+                  public void openExternal(String rawUrl) {
+                      try {
+                          Uri uri = checkedUri(rawUrl);
+                          if (uri == null) { toast("URL tidak valid"); return; }
+                          Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                          context.startActivity(intent);
+                      } catch (Exception e) {
+                          toast("Tidak ada aplikasi untuk membuka link");
+                      }
+                  }
+
+                  @JavascriptInterface
+                  public void download(String rawUrl, String requestedName) {
+                      try {
+                          Uri uri = checkedUri(rawUrl);
+                          if (uri == null) { toast("URL download tidak valid"); return; }
+                          if (isYouTube(uri)) { toast("Gunakan opsi download resmi YouTube"); return; }
+                          String fileName = cleanName(requestedName, rawUrl);
+                          DownloadManager.Request request = new DownloadManager.Request(uri)
+                                  .setTitle(fileName)
+                                  .setDescription("ACC Media Downloader")
+                                  .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                                  .setAllowedOverMetered(true)
+                                  .setAllowedOverRoaming(true)
+                                  .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+                          DownloadManager manager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+                          if (manager == null) { toast("Android Download Manager tidak tersedia"); return; }
+                          manager.enqueue(request);
+                          toast("Download dimulai");
+                      } catch (Exception e) {
+                          toast("Gagal memulai download");
+                      }
+                  }
+              }
+          }
+          JAVA
+
+          MANIFEST="$build_dir/android/app/src/main/AndroidManifest.xml"
+          if ! grep -q 'usesCleartextTraffic' "$MANIFEST"; then
+            sed -i 's/<application/<application android:usesCleartextTraffic="true"/' "$MANIFEST"
+          fi
+
       - name: Compile APK
         shell: bash
         run: |
@@ -120,9 +287,9 @@ jobs:
         id: apk
         shell: bash
         run: |
-          PROJECT="${{ steps.generate.outputs.project_id }}"
-          VERSION="${{ steps.generate.outputs.version }}"
-          REQUEST="${{ steps.generate.outputs.request_id }}"
+          PROJECT="${{ steps.app.outputs.project_id }}"
+          VERSION="${{ steps.app.outputs.version }}"
+          REQUEST="${{ steps.app.outputs.request_id }}"
           mkdir -p dist
           APK_NAME="${PROJECT}-v${VERSION}.apk"
           cp "$build_dir/android/app/build/outputs/apk/debug/app-debug.apk" "dist/$APK_NAME"
@@ -131,16 +298,16 @@ jobs:
           echo "tag=build-$REQUEST" >> "$GITHUB_OUTPUT"
 
       - name: Mark project ready
-        run: python3 scripts/mark_build.py "${{ steps.generate.outputs.project_id }}" ready
+        run: python3 scripts/mark_build.py "${{ steps.app.outputs.project_id }}" ready
 
       - name: Commit generated project
         shell: bash
         run: |
           git config user.name "ACC AI Builder"
           git config user.email "actions@users.noreply.github.com"
-          git add "apps/${{ steps.generate.outputs.project_id }}"
+          git add "apps/${{ steps.app.outputs.project_id }}"
           if ! git diff --cached --quiet; then
-            git commit -m "ACC Builder: update ${{ steps.generate.outputs.project_id }}"
+            git commit -m "ACC Builder: update ${{ steps.app.outputs.project_id }}"
             git pull --rebase origin "${{ github.ref_name }}"
             git push origin "HEAD:${{ github.ref_name }}"
           fi
@@ -163,7 +330,7 @@ jobs:
             gh release upload "$TAG" "$APK" --clobber
           else
             gh release create "$TAG" "$APK" \
-              --title "ACC APK · ${{ steps.generate.outputs.app_name }} v${{ steps.generate.outputs.version }}" \
-              --notes "Generated and compiled automatically by ACC AI Builder." \
+              --title "ACC APK · ${{ steps.app.outputs.app_name }} v${{ steps.app.outputs.version }}" \
+              --notes "Compiled automatically by ACC AI Builder. Direct-media downloads use the Android Download Manager. YouTube links use official handling only." \
               --target "${{ github.sha }}"
           fi

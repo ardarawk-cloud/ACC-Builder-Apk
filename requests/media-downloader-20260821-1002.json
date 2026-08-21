@@ -1,8 +1,8 @@
 {
-  "request_id": "media-downloader-20260821-1002",
+  "request_id": "media-downloader-final-20260821-1020",
   "project_id": "acc-media-downloader",
   "project_name": "ACC Media Downloader",
-  "mode": "generate",
-  "prompt": "Buat aplikasi Android mobile-first bernama ACC Media Downloader dalam satu index.html yang kompatibel dengan Capacitor Android. Aplikasi adalah downloader media untuk file yang dimiliki pengguna atau pengguna punya izin untuk menyimpannya. Jangan menggunakan situs downloader pihak ketiga, proxy publik, scraping service, remote script, login, token, atau secret. Home: input/paste URL, Analyze Link, validasi HTTP/HTTPS, preview nama file/domain/tipe. Dukungan URL file media langsung seperti MP4, WEBM, MP3, M4A, JPG, PNG, PDF, ZIP dan tipe lain yang dapat diunduh browser/WebView. Tombol Download memakai anchor download dan fallback open URL. Deteksi youtube.com, youtu.be, music.youtube.com; jangan ekstrak stream atau bypass proteksi, tetapi tampilkan kartu YouTube link detected dengan tombol Open in YouTube dan keterangan unduh hanya melalui opsi resmi atau untuk konten sendiri/berizin. Clipboard paste dengan fallback. Riwayat localStorage dengan nama, URL, domain, tanggal, status, hapus satu dan clear all. Favorites/bookmark. Settings: auto-clear input, confirm before download, theme dark/light/system, default folder label informasional. Premium dark UI original ACC merah/putih tanpa memakai logo YouTube sebagai logo app. Bottom navigation Home, History, Favorites, Settings. Error/loading/empty states, toast, modal konfirmasi. Escape semua data sebelum render, tanpa eval. Seluruh CSS dan JS inline, tanpa dependency eksternal. Safe-area Android, touch target besar, responsive, sticky top bar dan bottom nav. Semua tombol wajib berfungsi. UI bahasa Indonesia. About/legal: Use only for media you own or have permission to download. Versi awal 1.0.0. Prioritaskan fungsi nyata direct-media URL, keamanan, kestabilan, dan tampilan premium.",
-  "created_at": "2026-08-21T02:02:00Z"
+  "mode": "build_existing",
+  "prompt": "Build the reviewed existing ACC Media Downloader source exactly as committed. Do not regenerate it with AI. Package it with the ACC Android native download bridge and publish the APK release.",
+  "created_at": "2026-08-21T02:20:00Z"
 }
