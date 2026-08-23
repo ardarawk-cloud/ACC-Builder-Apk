@@ -272,6 +272,17 @@ public class MainActivity extends BridgeActivity {
 '''.replace("__PACKAGE__", package)
 main.write_text(java, encoding="utf-8")
 
+# youtubedl-android 0.18.1 requires API 24; Capacitor 7 defaults to 23.
+variables = android / "variables.gradle"
+if variables.exists():
+    v = variables.read_text(encoding="utf-8")
+    v, count = re.subn(r"minSdkVersion\s*=\s*\d+", "minSdkVersion = 24", v, count=1)
+    if count == 0:
+        raise SystemExit("minSdkVersion not found in variables.gradle")
+    variables.write_text(v, encoding="utf-8")
+else:
+    raise SystemExit("variables.gradle not found")
+
 gradle = android / "app/build.gradle"
 text = gradle.read_text(encoding="utf-8")
 marker = "io.github.junkfood02.youtubedl-android:library:0.18.1"
@@ -301,4 +312,4 @@ res.mkdir(parents=True, exist_ok=True)
     <path android:fillColor="#FF2848" android:pathData="M25,63 L45,18 C49,9 59,9 63,18 L83,63 L70,63 L54,29 L39,63 Z"/>
     <path android:fillColor="#FFFFFF" android:pathData="M48,55 H60 V73 H70 L54,90 L38,73 H48 Z"/>
 </vector>\n''', encoding="utf-8")
-print(f"Configured ACC Media native Android at {android}")
+print(f"Configured ACC Media native Android at {android} with minSdk 24")
