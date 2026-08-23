@@ -110,12 +110,28 @@ jobs:
             mkdir -p "$BUILD_DIR/www"
             cp "apps/$PROJECT/index.html" "$BUILD_DIR/www/index.html"
             if [ -f "apps/$PROJECT/icon.svg" ]; then cp "apps/$PROJECT/icon.svg" "$BUILD_DIR/www/icon.svg"; fi
+            if [ -f "apps/$PROJECT/v3.js" ]; then
+              cp "apps/$PROJECT/v3.js" "$BUILD_DIR/www/v3.js"
+              python3 - "$BUILD_DIR/www/index.html" <<'PY'
+          from pathlib import Path
+          import sys
+          p=Path(sys.argv[1])
+          s=p.read_text(encoding='utf-8')
+          marker='<script src="v3.js"></script>'
+          if marker not in s:
+              if '</body>' not in s.lower():
+                  raise SystemExit('index.html has no closing body')
+              pos=s.lower().rfind('</body>')
+              s=s[:pos]+marker+'\n'+s[pos:]
+              p.write_text(s,encoding='utf-8')
+          PY
+            fi
             cd "$BUILD_DIR"
 
             cat > package.json <<'JSON'
           {
             "name":"acc-generated-app",
-            "version":"1.1.0",
+            "version":"1.2.0",
             "private":true,
             "dependencies":{
               "@capacitor/core":"^7.0.0",
@@ -211,5 +227,5 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$APK" --clobber
           else
-            gh release create "$TAG" "$APK" --title "ACC APK · ${{ steps.app.outputs.app_name }} v${{ steps.app.outputs.version }}" --notes "ACC Media Downloader v1.1.0: local yt-dlp + FFmpeg video/audio engine, quality selection, Downloads export, and premium launcher logo." --target "${{ github.sha }}"
+            gh release create "$TAG" "$APK" --title "ACC APK · ${{ steps.app.outputs.app_name }} v${{ steps.app.outputs.version }}" --notes "ACC Media Downloader v3: YouTube video/audio engine, Spotify album/playlist official helper, authorized batch direct-media downloads, quality selection, Downloads export, and premium launcher logo." --target "${{ github.sha }}"
           fi
