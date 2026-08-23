@@ -1,0 +1,8 @@
+{
+  "request_id": "media-downloader-v2-20260824",
+  "project_id": "acc-media-downloader",
+  "project_name": "ACC Media Downloader",
+  "mode": "build_existing",
+  "prompt": "Build reviewed v2 source with local yt-dlp and FFmpeg YouTube video/audio engine, selectable video quality, native progress callbacks, Downloads export, direct-media Android DownloadManager, and new premium ACC launcher logo.",
+  "created_at": "2026-08-24T01:21:00+08:00"
+}
