@@ -1,0 +1,1 @@
+ACC Media Downloader v2 build: local yt-dlp + FFmpeg engine, video/audio controls, selectable quality, progress callbacks, Downloads export, and premium launcher logo.
