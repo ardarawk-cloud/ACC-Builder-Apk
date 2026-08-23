@@ -128,7 +128,7 @@ jobs:
             cat > package.json <<'JSON'
           {
             "name":"acc-generated-app",
-            "version":"1.4.0",
+            "version":"1.4.1",
             "private":true,
             "dependencies":{"@capacitor/core":"^7.0.0","@capacitor/android":"^7.0.0"},
             "devDependencies":{"@capacitor/cli":"^7.0.0"}
@@ -147,6 +147,7 @@ jobs:
               python3 "$GITHUB_WORKSPACE/scripts/configure_acc_media_android.py" "$BUILD_DIR"
               python3 "$GITHUB_WORKSPACE/scripts/patch_acc_media_youtube_403.py" "$BUILD_DIR"
               python3 "$GITHUB_WORKSPACE/scripts/patch_acc_media_metadata.py" "$BUILD_DIR"
+              python3 "$GITHUB_WORKSPACE/scripts/fix_acc_media_metadata_insertion.py" "$BUILD_DIR"
             fi
             cd "$BUILD_DIR/android"
             chmod +x gradlew
