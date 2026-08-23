@@ -1,13 +1,13 @@
 {
   "id": "acc-media-downloader",
   "name": "ACC Media Downloader",
-  "version": 3,
+  "version": 4,
   "provider": "manual",
   "model": "gpt-5.6-sol",
   "qc": "pending-build",
-  "last_request_id": "media-downloader-v3-20260824",
-  "last_prompt": "Add Spotify album/playlist official helper and authorized batch direct-media downloads while keeping YouTube video/audio and premium branding.",
-  "last_build": "ready",
+  "last_request_id": "media-downloader-v31-youtube403-20260824",
+  "last_prompt": "Refresh yt-dlp to latest nightly at runtime, improve YouTube client compatibility for SABR/403 failures, sanitize technical errors, and preserve v3 Spotify helper/batch features.",
+  "last_build": "building",
   "created_at": "2026-08-21T02:10:00Z",
-  "updated_at": "2026-08-23T18:08:31.046911+00:00"
+  "updated_at": "2026-08-24T02:53:00+08:00"
 }
