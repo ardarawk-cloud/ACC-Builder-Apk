@@ -1,0 +1,1 @@
+ACC Media Downloader v1.1.0 bundles youtubedl-android / yt-dlp and FFmpeg components. Third-party components retain their respective licenses. Use downloading features only for media you own or have permission to download.
