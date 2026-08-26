@@ -5,7 +5,7 @@
   "provider": "manual-v5-eleven-music",
   "last_request_id": "eleven-music-v5",
   "last_prompt": "Connect Original Song to Eleven Music v2 with real full-song generation from lyrics, genre, mood and vocal settings; keep local demo and remix lab separate",
-  "last_build": "building",
+  "last_build": "ready",
   "created_at": "2026-08-26T09:29:00Z",
-  "updated_at": "2026-08-26T12:30:00Z"
+  "updated_at": "2026-08-26T12:52:07.161731+00:00"
 }
