@@ -5,7 +5,7 @@
   "provider": "manual-v2.1",
   "last_request_id": "remix-analyzer-v2.1",
   "last_prompt": "Simple Original Song plus Remix mode with automatic local BPM/key detection for every imported source and separate target BPM/key controls",
-  "last_build": "building",
+  "last_build": "ready",
   "created_at": "2026-08-26T09:29:00Z",
-  "updated_at": "2026-08-26T11:20:00Z"
+  "updated_at": "2026-08-26T11:20:47.876876+00:00"
 }
