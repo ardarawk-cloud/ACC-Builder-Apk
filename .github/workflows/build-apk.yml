@@ -143,6 +143,17 @@ jobs:
             npm install --no-audit --no-fund
             npx cap add android
             npx cap sync android
+
+            # Optional per-app native launcher branding.
+            if [ -f "$GITHUB_WORKSPACE/apps/$PROJECT/icon-android.xml" ]; then
+              RES="$BUILD_DIR/android/app/src/main/res"
+              mkdir -p "$RES/mipmap-anydpi"
+              find "$RES" -type f \( -name 'ic_launcher*.png' -o -name 'ic_launcher*.webp' \) -delete
+              rm -f "$RES/mipmap-anydpi-v26/ic_launcher.xml" "$RES/mipmap-anydpi-v26/ic_launcher_round.xml"
+              cp "$GITHUB_WORKSPACE/apps/$PROJECT/icon-android.xml" "$RES/mipmap-anydpi/ic_launcher.xml"
+              cp "$GITHUB_WORKSPACE/apps/$PROJECT/icon-android.xml" "$RES/mipmap-anydpi/ic_launcher_round.xml"
+            fi
+
             if [ "$PROJECT" = "acc-media-downloader" ]; then
               python3 "$GITHUB_WORKSPACE/scripts/configure_acc_media_android.py" "$BUILD_DIR"
               python3 "$GITHUB_WORKSPACE/scripts/patch_acc_media_youtube_403.py" "$BUILD_DIR"
@@ -220,5 +231,5 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$APK" --clobber
           else
-            gh release create "$TAG" "$APK" --title "ACC APK · ${{ steps.app.outputs.app_name }} v${{ steps.app.outputs.version }}" --notes "ACC Media Downloader v3.2: readable title-based filenames, embedded audio metadata and cover art, MP3 bitrate selection (128/192/256/320 kbps), video title filenames, runtime yt-dlp refresh, Spotify helper/batch downloads, and premium branding." --target "${{ github.sha }}"
+            gh release create "$TAG" "$APK" --title "ACC APK · ${{ steps.app.outputs.app_name }} v${{ steps.app.outputs.version }}" --notes "ACC Builder generated Android APK." --target "${{ github.sha }}"
           fi
