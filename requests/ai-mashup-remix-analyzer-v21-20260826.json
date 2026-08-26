@@ -1,0 +1,7 @@
+{
+  "request_id": "ai-mashup-remix-analyzer-v21-20260826",
+  "project_id": "ai-mashup-bootleg-studio",
+  "project_name": "AI Mashup & Bootleg Studio",
+  "mode": "build_existing",
+  "prompt": "Build existing v2.1 with automatic local BPM and musical key detection for imported remix sources. Source BPM/key are read-only analysis results; target BPM/key remain editable. Keep Original Song workflow, local preview engine, projects, settings, branding and launcher icon intact."
+}
