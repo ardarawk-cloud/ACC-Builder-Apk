@@ -1,0 +1,7 @@
+{
+  "request_id": "ai-mashup-remix-render-v22-20260826",
+  "project_id": "ai-mashup-bootleg-studio",
+  "project_name": "AI Mashup & Bootleg Studio",
+  "mode": "build_existing",
+  "prompt": "Build existing v2.2 project with local remix audio preview renderer."
+}
