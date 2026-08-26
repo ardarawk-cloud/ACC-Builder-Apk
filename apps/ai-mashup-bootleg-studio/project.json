@@ -1,11 +1,11 @@
 {
   "id": "ai-mashup-bootleg-studio",
   "name": "AI Mashup & Bootleg Studio",
-  "version": 2,
-  "provider": "manual-v2",
-  "last_request_id": "original-song-v2",
-  "last_prompt": "Simple Original Song flow with real local instrumental rendering, remix mode, projects, and cloud AI backend adapter",
-  "last_build": "ready",
+  "version": 3,
+  "provider": "manual-v2.1",
+  "last_request_id": "remix-analyzer-v2.1",
+  "last_prompt": "Simple Original Song plus Remix mode with automatic local BPM/key detection for every imported source and separate target BPM/key controls",
+  "last_build": "building",
   "created_at": "2026-08-26T09:29:00Z",
-  "updated_at": "2026-08-26T11:16:58.585600+00:00"
+  "updated_at": "2026-08-26T11:20:00Z"
 }
