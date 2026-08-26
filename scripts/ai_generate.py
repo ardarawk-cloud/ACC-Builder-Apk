@@ -58,6 +58,16 @@ def validate_html(code):
     return code
 
 
+def try_validate_html(code):
+    """Return validated HTML or None. Review passes are advisory and must never destroy a valid candidate."""
+    if not code:
+        return None
+    try:
+        return validate_html(code)
+    except Exception:
+        return None
+
+
 def functional_qc(code, prompt):
     """Conservative static checks. Return a list of reasons that justify repair/failure."""
     low = code.lower()
@@ -70,11 +80,9 @@ def functional_qc(code, prompt):
     forms = len(re.findall(r"<form\b", low))
     scripts = len(re.findall(r"<script\b", low))
 
-    # Interactive UI without any JS is almost certainly decorative in a single-file offline app.
     if buttons + selects + forms >= 2 and scripts == 0:
         issues.append("interactive controls exist but there is no JavaScript")
 
-    # Detect obvious dead links/buttons.
     dead_links = len(re.findall(r'href=["\']#["\']', low))
     if dead_links >= 2:
         issues.append(f"found {dead_links} dead href=# links")
@@ -87,25 +95,21 @@ def functional_qc(code, prompt):
     if found_fake:
         issues.append("placeholder/fake feature markers found: " + ", ".join(found_fake))
 
-    # Multi-page/tab requests need working view switching code, not just labels.
     nav_words = ["dashboard", "content", "create", "calendar", "channels", "settings", "riwayat", "laporan"]
     nav_hits = sum(1 for w in nav_words if w in low)
     if nav_hits >= 3 and scripts == 0:
         issues.append("multi-section navigation is visible but has no switching logic")
 
-    # Data-oriented apps should persist locally when user expects offline/local behavior.
     data_words = ["offline", "tersimpan", "simpan", "transaksi", "catatan", "stok", "kasir", "riwayat", "saldo"]
     if any(w in prompt_low for w in data_words):
         if "localstorage" not in low and "indexeddb" not in low:
             issues.append("prompt requires persistent/offline data but no localStorage/IndexedDB is implemented")
 
-    # CRUD-ish requests should have mutation logic.
     crud_words = ["tambah", "edit", "hapus", "delete", "riwayat", "transaksi"]
     if sum(1 for w in crud_words if w in prompt_low) >= 2:
         if scripts == 0 or buttons == 0:
             issues.append("CRUD-like request lacks executable interaction logic")
 
-    # Social/media builder requests must not be an empty shell.
     social_words = ["social media", "poster", "caption", "publish", "channel", "calendar", "content"]
     if sum(1 for w in social_words if w in prompt_low) >= 2:
         text_len = len(re.sub(r"<[^>]+>", " ", code))
@@ -147,9 +151,12 @@ def request_chat(base, key, model, messages, temperature=0.18, timeout=240):
 
 def model_candidates():
     configured = os.getenv("AI_MODEL", "").strip()
-    candidates = [PRIMARY_FREE_MODEL]
-    if configured and configured not in candidates:
+    candidates = []
+    # Prefer the explicitly configured model. Free models are fallbacks, not the quality ceiling.
+    if configured:
         candidates.append(configured)
+    if PRIMARY_FREE_MODEL not in candidates:
+        candidates.append(PRIMARY_FREE_MODEL)
     if FALLBACK_FREE_MODEL not in candidates:
         candidates.append(FALLBACK_FREE_MODEL)
     return candidates
@@ -169,7 +176,7 @@ def call_best_model(messages, temperature=0.18):
                 return content, actual
         except Exception as e:
             errors.append(str(e))
-    raise RuntimeError("All free AI candidates failed: " + " | ".join(errors))
+    raise RuntimeError("All AI candidates failed: " + " | ".join(errors))
 
 
 SYSTEM_PROMPT = """You are the principal software engineer and QA gate for ACC AI Builder.
@@ -222,19 +229,20 @@ def generate_with_qc(prompt, current_code, mode):
         return None, None, ["AI unavailable"]
     code = validate_html(code)
 
-    # Always perform one AI review/repair pass. This greatly reduces attractive-but-empty shells.
+    # Review passes may improve a valid candidate, but an incomplete reviewer response must never destroy it.
     first_issues = functional_qc(code, prompt)
     reviewed, review_model = repair_app(prompt, code, first_issues, 1)
-    if reviewed:
-        code = validate_html(reviewed)
+    reviewed_valid = try_validate_html(reviewed)
+    if reviewed_valid:
+        code = reviewed_valid
         model = review_model or model
 
     remaining = functional_qc(code, prompt)
     if remaining:
-        # One final targeted repair pass, then fail hard if static checks still detect broken behavior.
         repaired, repair_model = repair_app(prompt, code, remaining, 2)
-        if repaired:
-            code = validate_html(repaired)
+        repaired_valid = try_validate_html(repaired)
+        if repaired_valid:
+            code = repaired_valid
             model = repair_model or model
         remaining = functional_qc(code, prompt)
 
@@ -262,7 +270,6 @@ def main():
     code, actual_model, qc_issues = generate_with_qc(prompt, current_code, mode)
     provider = "ai"
     if not code:
-        # Safe fallback only exists for diagnostics. Workflow should not treat this as a production-quality app.
         code = mock_html(name, prompt)
         provider = "mock"
 
