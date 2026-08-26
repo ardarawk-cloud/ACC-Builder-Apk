@@ -1,0 +1,7 @@
+{
+  "request_id": "ai-mashup-eleven-music-v5-20260826",
+  "project_id": "ai-mashup-bootleg-studio",
+  "project_name": "AI Mashup & Bootleg Studio",
+  "mode": "build_existing",
+  "prompt": "Build existing v5 with Eleven Music v2 full song generation adapter"
+}
