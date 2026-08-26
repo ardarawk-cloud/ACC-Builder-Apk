@@ -1,0 +1,11 @@
+{
+  "id": "ai-mashup-bootleg-studio",
+  "name": "AI Mashup & Bootleg Studio",
+  "version": 1,
+  "provider": "manual-mvp",
+  "last_request_id": "marketplace-mvp-v1",
+  "last_prompt": "Studio engine plus Free/Pro Pack Store and Creator Marketplace MVP",
+  "last_build": "building",
+  "created_at": "2026-08-26T09:29:00Z",
+  "updated_at": "2026-08-26T10:05:00Z"
+}
