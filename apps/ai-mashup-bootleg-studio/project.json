@@ -5,7 +5,7 @@
   "provider": "manual-v2.2",
   "last_request_id": "remix-render-v2.2",
   "last_prompt": "Add real local remix preview rendering from analyzed source plus target genre groove, with audio player, regenerate, export WAV, and saved remix project",
-  "last_build": "building",
+  "last_build": "ready",
   "created_at": "2026-08-26T09:29:00Z",
-  "updated_at": "2026-08-26T12:15:00Z"
+  "updated_at": "2026-08-26T12:18:27.486563+00:00"
 }
