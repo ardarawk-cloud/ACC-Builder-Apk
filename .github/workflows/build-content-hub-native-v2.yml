@@ -1,0 +1,168 @@
+name: Build ACC Content Hub Native HTTP V2 APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "content-hub-v2.trigger"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout builder
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Rebuild ACC Content Hub with explicit native fetch bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD="$RUNNER_TEMP/acc-content-hub-native-v2"
+          SRC="$RUNNER_TEMP/acc-v1.apk"
+          EXTRACT="$RUNNER_TEMP/acc-v1-extract"
+          mkdir -p "$BUILD/www" "$EXTRACT"
+
+          curl -fL --retry 3 "https://github.com/ardarawk-cloud/ACC-Builder-Apk/releases/download/acc-content-hub-native-http-v1-20260827/ACC-Content-Hub-Native-HTTP.apk" -o "$SRC"
+          unzip -q "$SRC" 'assets/public/*' -d "$EXTRACT"
+          cp -R "$EXTRACT/assets/public/." "$BUILD/www/"
+
+          cd "$BUILD"
+          cat > package.json <<'JSON'
+          {
+            "name":"acc-content-hub-native-v2",
+            "version":"2.0.0",
+            "private":true,
+            "dependencies":{"@capacitor/core":"^7.0.0","@capacitor/android":"^7.0.0"},
+            "devDependencies":{"@capacitor/cli":"^7.0.0","esbuild":"^0.25.0"}
+          }
+          JSON
+
+          cat > capacitor.config.json <<'JSON'
+          {
+            "appId":"com.acc.contenthub.v2",
+            "appName":"ACC Content Hub",
+            "webDir":"www",
+            "server":{"androidScheme":"https"},
+            "plugins":{"CapacitorHttp":{"enabled":true}}
+          }
+          JSON
+
+          npm install --no-audit --no-fund
+
+          cat > native-fetch-src.js <<'JS'
+          import { CapacitorHttp } from '@capacitor/core';
+
+          const webFetch = window.fetch.bind(window);
+          function headerObject(h) {
+            const out = {};
+            try {
+              new Headers(h || {}).forEach((v, k) => { out[k] = v; });
+            } catch (_) {
+              if (h && typeof h === 'object') Object.assign(out, h);
+            }
+            return out;
+          }
+          function makeBody(body, headers) {
+            if (body == null) return undefined;
+            if (typeof body !== 'string') return body;
+            const ct = String(headers['content-type'] || headers['Content-Type'] || '').toLowerCase();
+            if (ct.includes('application/json')) {
+              try { return JSON.parse(body); } catch (_) { return body; }
+            }
+            return body;
+          }
+          window.fetch = async function(input, init) {
+            const url = typeof input === 'string' ? input : (input && input.url) || '';
+            if (!/^https?:\/\//i.test(url)) return webFetch(input, init);
+            const cfg = init || {};
+            const headers = headerObject(cfg.headers || (input && input.headers));
+            const method = String(cfg.method || (input && input.method) || 'GET').toUpperCase();
+            const options = { url, method, headers };
+            if (cfg.body != null) options.data = makeBody(cfg.body, headers);
+            try {
+              const r = await CapacitorHttp.request(options);
+              let payload = r.data;
+              let text;
+              if (typeof payload === 'string') text = payload;
+              else if (payload == null) text = '';
+              else text = JSON.stringify(payload);
+              const rh = new Headers(r.headers || {});
+              if (!rh.has('content-type')) rh.set('content-type', 'application/json');
+              return new Response(text, { status: r.status || 200, headers: rh });
+            } catch (err) {
+              console.error('ACC native HTTP failed', err);
+              throw err;
+            }
+          };
+          window.__ACC_NATIVE_HTTP_V2__ = true;
+          JS
+
+          npx esbuild native-fetch-src.js --bundle --format=iife --platform=browser --outfile=www/native-fetch.js
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('www/index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='<script src="./native-fetch.js"></script>'
+          if marker not in s:
+              app='<script src="./app.js"></script>'
+              if app not in s:
+                  raise SystemExit('app.js marker not found')
+              s=s.replace(app, marker+app, 1)
+              p.write_text(s,encoding='utf-8')
+          PY
+
+          npx cap add android
+          npx cap sync android
+
+          RES="$BUILD/android/app/src/main/res"
+          mkdir -p "$RES/mipmap-anydpi"
+          find "$RES" -type f \( -name 'ic_launcher*.png' -o -name 'ic_launcher*.webp' \) -delete
+          rm -f "$RES/mipmap-anydpi-v26/ic_launcher.xml" "$RES/mipmap-anydpi-v26/ic_launcher_round.xml"
+          cat > "$RES/mipmap-anydpi/ic_launcher.xml" <<'XML'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108"><path android:fillColor="#07090D" android:pathData="M0,0H108V108H0Z"/><path android:fillColor="#F6C34A" android:pathData="M33.62,62.49 L22.83,62.49 L21.12,67.37 L14.18,67.37 L24.1,40.59 L32.33,40.59 L42.25,67.37 L35.31,67.37 L33.62,62.49 Z M24.55,57.52 L31.88,57.52 L28.22,46.87 L24.55,57.52 Z M67.04,65.9 Q65.14,66.89,63.08,67.39 Q61.01,67.89,58.77,67.89 Q52.08,67.89,48.17,64.15 Q44.26,60.41,44.26,54.01 Q44.26,47.59,48.17,43.85 Q52.08,40.11,58.77,40.11 Q61.01,40.11,63.08,40.61 Q65.14,41.11,67.04,42.1 L67.04,47.64 Q65.12,46.33,63.25,45.72 Q61.39,45.11,59.33,45.11 Q55.63,45.11,53.51,47.48 Q51.4,49.85,51.4,54.01 Q51.4,58.15,53.51,60.52 Q55.63,62.89,59.33,62.89 Q61.39,62.89,63.25,62.28 Q65.12,61.67,67.04,60.36 L67.04,65.9 Z M94,65.9 Q92.09,66.89,90.03,67.39 Q87.97,67.89,85.73,67.89 Q79.04,67.89,75.13,64.15 Q71.22,60.41,71.22,54.01 Q71.22,47.59,75.13,43.85 Q79.04,40.11,85.73,40.11 Q87.97,40.11,90.03,40.61 Q92.09,41.11,94,42.1 L94,47.64 Q92.08,46.33,90.21,45.72 Q88.35,45.11,86.29,45.11 Q82.59,45.11,80.47,47.48 Q78.36,49.85,78.36,54.01 Q78.36,58.15,80.47,60.52 Q82.59,62.89,86.29,62.89 Q88.35,62.89,90.21,62.28 Q92.08,61.67,94,60.36 L94,65.9 Z"/><path android:fillColor="#FFFFFF" android:fillAlpha="0.96" android:pathData="M15,76H93V79H15Z"/><path android:fillColor="#F6C34A" android:pathData="M78,34 L84,34 L72,56 L78,56 L68,76 L71,58 L65,58 Z"/></vector>
+          XML
+          cp "$RES/mipmap-anydpi/ic_launcher.xml" "$RES/mipmap-anydpi/ic_launcher_round.xml"
+
+          cd "$BUILD/android"
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/dist/ACC-Content-Hub-Native-HTTP-V2.apk"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ACC-Content-Hub-Native-HTTP-V2
+          path: dist/ACC-Content-Hub-Native-HTTP-V2.apk
+          retention-days: 30
+
+      - name: Publish public APK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          TAG="acc-content-hub-native-http-v2-20260827"
+          APK="dist/ACC-Content-Hub-Native-HTTP-V2.apk"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --clobber
+          else
+            gh release create "$TAG" "$APK" --title "ACC Content Hub · Native HTTP V2" --notes "Explicit CapacitorHttp bridge replaces external window.fetch calls before ACC app scripts load." --target "$GITHUB_SHA"
+          fi
