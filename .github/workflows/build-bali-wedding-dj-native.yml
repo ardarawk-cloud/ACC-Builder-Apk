@@ -1,0 +1,77 @@
+name: Build Bali Wedding DJ Native APK
+
+on:
+  push:
+    branches:
+      - feat/bali-wedding-dj-native-v1
+    paths:
+      - "native/bali-wedding-dj-src/**"
+      - ".github/workflows/build-bali-wedding-dj-native.yml"
+      - "bali-wedding-dj-native.trigger"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - name: Setup Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Restore native project
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat native/bali-wedding-dj-src/part*.b64 > /tmp/bwd.b64
+          base64 -d /tmp/bwd.b64 > /tmp/bwd.tar.gz
+          tar -xzf /tmp/bwd.tar.gz
+          test -f bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          test -f bwd-native/app/src/main/java/com/baliweddingdj/app/WeddingDb.java
+          if grep -R "WebView" -n bwd-native/app/src/main/java; then
+            echo "WebView usage is forbidden for this native build."
+            exit 1
+          fi
+
+      - name: Build native APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd bwd-native
+          gradle --no-daemon :app:assembleDebug --stacktrace
+          mkdir -p ../dist
+          cp app/build/outputs/apk/debug/app-debug.apk ../dist/BALI-WEDDING-DJ-Native-v1.apk
+
+      - name: APK checksum
+        shell: bash
+        run: sha256sum dist/BALI-WEDDING-DJ-Native-v1.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BALI-WEDDING-DJ-Native-v1
+          path: dist/BALI-WEDDING-DJ-Native-v1.apk
+          retention-days: 30
