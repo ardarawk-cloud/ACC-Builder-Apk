@@ -1,0 +1,171 @@
+name: Build ACC AI Builder Native APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "acc-ai-builder-native.trigger"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout builder
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build native ACC AI Builder
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD="$RUNNER_TEMP/acc-ai-builder-native"
+          mkdir -p "$BUILD/www"
+          cp web/index.html "$BUILD/www/index.html"
+          cd "$BUILD"
+
+          cat > package.json <<'JSON'
+          {
+            "name":"acc-ai-builder-native",
+            "version":"1.0.0",
+            "private":true,
+            "dependencies":{
+              "@capacitor/core":"^7.0.0",
+              "@capacitor/android":"^7.0.0",
+              "@capacitor/browser":"^7.0.0"
+            },
+            "devDependencies":{
+              "@capacitor/cli":"^7.0.0",
+              "esbuild":"^0.25.0"
+            }
+          }
+          JSON
+
+          cat > capacitor.config.json <<'JSON'
+          {
+            "appId":"com.acc.aibuilder",
+            "appName":"ACC AI Builder",
+            "webDir":"www",
+            "server":{"androidScheme":"https"},
+            "plugins":{"CapacitorHttp":{"enabled":true}}
+          }
+          JSON
+
+          npm install --no-audit --no-fund
+
+          cat > native-bridge-src.js <<'JS'
+          import { CapacitorHttp } from '@capacitor/core';
+          import { Browser } from '@capacitor/browser';
+
+          const webFetch = window.fetch.bind(window);
+          function headerObject(h) {
+            const out = {};
+            try { new Headers(h || {}).forEach((v, k) => { out[k] = v; }); }
+            catch (_) { if (h && typeof h === 'object') Object.assign(out, h); }
+            return out;
+          }
+          function makeBody(body, headers) {
+            if (body == null) return undefined;
+            if (typeof body !== 'string') return body;
+            const ct = String(headers['content-type'] || headers['Content-Type'] || '').toLowerCase();
+            if (ct.includes('application/json')) {
+              try { return JSON.parse(body); } catch (_) { return body; }
+            }
+            return body;
+          }
+          window.fetch = async function(input, init) {
+            const url = typeof input === 'string' ? input : (input && input.url) || '';
+            if (!/^https?:\/\//i.test(url)) return webFetch(input, init);
+            const cfg = init || {};
+            const headers = headerObject(cfg.headers || (input && input.headers));
+            const method = String(cfg.method || (input && input.method) || 'GET').toUpperCase();
+            const options = { url, method, headers };
+            if (cfg.body != null) options.data = makeBody(cfg.body, headers);
+            const r = await CapacitorHttp.request(options);
+            let payload = r.data;
+            const text = typeof payload === 'string' ? payload : (payload == null ? '' : JSON.stringify(payload));
+            const rh = new Headers(r.headers || {});
+            if (!rh.has('content-type')) rh.set('content-type', 'application/json');
+            return new Response(text, { status: r.status || 200, headers: rh });
+          };
+
+          window.__ACC_OPEN_EXTERNAL__ = async function(url) {
+            try { await Browser.open({ url, presentationStyle: 'popover' }); }
+            catch (_) { window.location.href = url; }
+          };
+          window.__ACC_NATIVE_APP__ = true;
+          JS
+
+          npx esbuild native-bridge-src.js --bundle --format=iife --platform=browser --outfile=www/native-bridge.js
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('www/index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='<script src="./native-bridge.js"></script>'
+          if marker not in s:
+              s=s.replace('<script>', marker+'\n<script>', 1)
+          s=s.replace("window.location.href=url}", "window.__ACC_OPEN_EXTERNAL__?window.__ACC_OPEN_EXTERNAL__(url):window.location.href=url}")
+          s=s.replace("downloadBtn.onclick=()=>{if(releaseUrl)location.href=releaseUrl}", "downloadBtn.onclick=()=>{if(releaseUrl){if(window.__ACC_OPEN_EXTERNAL__)window.__ACC_OPEN_EXTERNAL__(releaseUrl);else location.href=releaseUrl}}")
+          s=s.replace("$('#githubBtn').onclick=()=>location.href=`https://github.com/${OWNER}/${REPO}`", "$('#githubBtn').onclick=()=>{const u=`https://github.com/${OWNER}/${REPO}`;if(window.__ACC_OPEN_EXTERNAL__)window.__ACC_OPEN_EXTERNAL__(u);else location.href=u}")
+          s=s.replace('No-PAT Edition', 'Native APK v1')
+          p.write_text(s, encoding='utf-8')
+          PY
+
+          npx cap add android
+          npx cap sync android
+
+          RES="$BUILD/android/app/src/main/res"
+          mkdir -p "$RES/mipmap-anydpi"
+          find "$RES" -type f \( -name 'ic_launcher*.png' -o -name 'ic_launcher*.webp' \) -delete
+          rm -f "$RES/mipmap-anydpi-v26/ic_launcher.xml" "$RES/mipmap-anydpi-v26/ic_launcher_round.xml"
+          cat > "$RES/mipmap-anydpi/ic_launcher.xml" <<'XML'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+            <path android:fillColor="#080A0F" android:pathData="M0,0H108V108H0Z"/>
+            <path android:fillColor="#D7A93A" android:pathData="M20,76 L40,28 H52 L72,76 H60 L55,63 H37 L32,76 Z M41,53 H51 L46,40 Z"/>
+            <path android:fillColor="#F5E4A8" android:pathData="M72,31 L91,31 L91,41 L82,41 L82,77 L72,77 Z"/>
+            <path android:fillColor="#D7A93A" android:pathData="M18,84 H92 V88 H18 Z"/>
+          </vector>
+          XML
+          cp "$RES/mipmap-anydpi/ic_launcher.xml" "$RES/mipmap-anydpi/ic_launcher_round.xml"
+
+          cd "$BUILD/android"
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/dist/ACC-AI-Builder-Native-v1.apk"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ACC-AI-Builder-Native-v1
+          path: dist/ACC-AI-Builder-Native-v1.apk
+          retention-days: 30
+
+      - name: Publish APK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          TAG="acc-ai-builder-native-v1"
+          APK="dist/ACC-AI-Builder-Native-v1.apk"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --clobber
+          else
+            gh release create "$TAG" "$APK" --title "ACC AI Builder · Native APK v1" --notes "Installable ACC AI Builder control center: prompt, project list, preview, GitHub build queue, and APK download. AI keys remain in GitHub Actions secrets." --target "$GITHUB_SHA"
+          fi
