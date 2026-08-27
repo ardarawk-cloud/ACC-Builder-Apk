@@ -46,8 +46,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat native/bali-wedding-dj-src/part*.b64 > /tmp/bwd.b64
+          cat \
+            native/bali-wedding-dj-src/part00.b64 \
+            native/bali-wedding-dj-src/part01-0.b64 \
+            native/bali-wedding-dj-src/part01-1.b64 \
+            native/bali-wedding-dj-src/part01-2.b64 \
+            native/bali-wedding-dj-src/part01-3.b64 \
+            native/bali-wedding-dj-src/part01-4.b64 \
+            native/bali-wedding-dj-src/part01-5.b64 \
+            native/bali-wedding-dj-src/part02.b64 \
+            native/bali-wedding-dj-src/part03.b64 \
+            native/bali-wedding-dj-src/part04.b64 > /tmp/bwd.b64
+          test "$(wc -c < /tmp/bwd.b64)" = "27968"
           base64 -d /tmp/bwd.b64 > /tmp/bwd.tar.gz
+          echo "86cba805905897f5c48350be8bfa36a1b6164ba2f455ed93a0c0865c31905650  /tmp/bwd.tar.gz" | sha256sum -c -
           tar -xzf /tmp/bwd.tar.gz
           test -f bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
           test -f bwd-native/app/src/main/java/com/baliweddingdj/app/WeddingDb.java
