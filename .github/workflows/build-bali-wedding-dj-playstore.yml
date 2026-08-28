@@ -37,16 +37,16 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android platform
+      - name: Install Android 16 platform
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
-      - name: Setup Gradle 8.9
+      - name: Setup Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.9"
+          gradle-version: "8.11.1"
 
       - name: Restore native project
         shell: bash
@@ -67,6 +67,7 @@ jobs:
           base64 -d /tmp/bwd.b64 > /tmp/bwd.tar.gz
           echo "86cba805905897f5c48350be8bfa36a1b6164ba2f455ed93a0c0865c31905650  /tmp/bwd.tar.gz" | sha256sum -c -
           tar -xzf /tmp/bwd.tar.gz
+          test -f bwd-native/build.gradle
           test -f bwd-native/app/build.gradle
           test -f bwd-native/app/src/main/AndroidManifest.xml
           if grep -R "WebView" -n bwd-native/app/src/main/java; then
@@ -74,8 +75,39 @@ jobs:
             exit 1
           fi
 
+      - name: Upgrade project for Android 16 / API 36
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('bwd-native/build.gradle')
+          rs = root.read_text()
+          count = 0
+          rs, n = re.subn(r"(id\s+['\"]com\.android\.application['\"]\s+version\s+['\"])[^'\"]+(['\"])", r"\g<1>8.9.1\2", rs, count=1)
+          count += n
+          rs, n = re.subn(r"(com\.android\.tools\.build:gradle:)[0-9A-Za-z.\-]+", r"\g<1>8.9.1", rs, count=1)
+          count += n
+          if count == 0:
+              raise SystemExit('Could not locate Android Gradle Plugin version')
+          root.write_text(rs)
+
+          app = Path('bwd-native/app/build.gradle')
+          s = app.read_text()
+          s, c1 = re.subn(r'compileSdk\s*(?:=\s*)?\d+', 'compileSdk 36', s, count=1)
+          s, c2 = re.subn(r'targetSdk\s*(?:=\s*)?\d+', 'targetSdk 36', s, count=1)
+          if c1 != 1 or c2 != 1:
+              raise SystemExit('Could not safely set compileSdk/targetSdk 36')
+          app.write_text(s)
+          PY
+
       - name: Apply production wording and versioning
         shell: bash
+        env:
+          VERSION_CODE: ${{ inputs.version_code }}
+          VERSION_NAME: ${{ inputs.version_name }}
         run: |
           set -euo pipefail
           find bwd-native/app/src/main/java -name '*.java' -print0 | xargs -0 sed -i 's/"Reception"/"Wedding Reception"/g'
@@ -92,9 +124,8 @@ jobs:
               raise SystemExit('Package ID drift detected; expected com.baliweddingdj.app')
           p.write_text(s)
           PY
-        env:
-          VERSION_CODE: ${{ inputs.version_code }}
-          VERSION_NAME: ${{ inputs.version_name }}
+          grep -R 'Wedding Reception' -n bwd-native/app/src/main/java
+          grep -E 'compileSdk|targetSdk|versionCode|versionName|applicationId' bwd-native/app/build.gradle
 
       - name: Restore private upload keystore
         shell: bash
