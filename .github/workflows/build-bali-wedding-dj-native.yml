@@ -68,6 +68,13 @@ jobs:
             exit 1
           fi
 
+      - name: Apply UI wording update
+        shell: bash
+        run: |
+          set -euo pipefail
+          find bwd-native/app/src/main/java -name '*.java' -print0 | xargs -0 sed -i 's/"Reception"/"Wedding Reception"/g'
+          grep -R 'Wedding Reception' -n bwd-native/app/src/main/java
+
       - name: Build native APK
         shell: bash
         run: |
@@ -75,15 +82,15 @@ jobs:
           cd bwd-native
           gradle --no-daemon :app:assembleDebug --stacktrace
           mkdir -p ../dist
-          cp app/build/outputs/apk/debug/app-debug.apk ../dist/BALI-WEDDING-DJ-Native-v1.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../dist/BALI-WEDDING-DJ-Native-v1.1.apk
 
       - name: APK checksum
         shell: bash
-        run: sha256sum dist/BALI-WEDDING-DJ-Native-v1.apk
+        run: sha256sum dist/BALI-WEDDING-DJ-Native-v1.1.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BALI-WEDDING-DJ-Native-v1
-          path: dist/BALI-WEDDING-DJ-Native-v1.apk
+          name: BALI-WEDDING-DJ-Native-v1.1
+          path: dist/BALI-WEDDING-DJ-Native-v1.1.apk
           retention-days: 30
