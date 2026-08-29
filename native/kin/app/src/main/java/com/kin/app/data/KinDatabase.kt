@@ -1,20 +1,22 @@
 package com.kin.app.data
 
 import android.content.Context
+import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.Index
+import androidx.room.Insert
 import androidx.room.Junction
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
+import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "kin_profile")
@@ -50,6 +52,20 @@ data class KinCircleEntity(
 data class KinPersonCircleCrossRef(
     val personId: String,
     val circleId: String,
+)
+
+@Entity(tableName = "kin_posts")
+data class KinPostEntity(
+    @PrimaryKey val id: String,
+    val authorDisplayName: String,
+    val authorUsername: String,
+    val text: String,
+    val audience: String,
+    val feeling: String? = null,
+    val listening: String? = null,
+    val location: String? = null,
+    val withPeople: String? = null,
+    val createdAt: Long,
 )
 
 data class KinPersonWithCircles(
@@ -92,12 +108,21 @@ interface KinDao {
     @Query("DELETE FROM kin_person_circle WHERE personId = :personId")
     suspend fun clearPersonCircles(personId: String)
 
+    @Query("DELETE FROM kin_people WHERE id = :personId")
+    suspend fun deletePerson(personId: String)
+
     @Query("UPDATE kin_people SET privateNote = :note WHERE id = :personId")
     suspend fun updatePrivateNote(personId: String, note: String)
 
     @Transaction
     @Query("SELECT * FROM kin_people ORDER BY displayName COLLATE NOCASE ASC")
     fun observePeople(): Flow<List<KinPersonWithCircles>>
+
+    @Query("SELECT * FROM kin_posts ORDER BY createdAt DESC")
+    fun observePosts(): Flow<List<KinPostEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertPost(post: KinPostEntity)
 }
 
 @Database(
@@ -106,18 +131,43 @@ interface KinDao {
         KinPersonEntity::class,
         KinCircleEntity::class,
         KinPersonCircleCrossRef::class,
+        KinPostEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class KinDatabase : RoomDatabase() {
     abstract fun kinDao(): KinDao
 
     companion object {
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `kin_posts` (
+                        `id` TEXT NOT NULL,
+                        `authorDisplayName` TEXT NOT NULL,
+                        `authorUsername` TEXT NOT NULL,
+                        `text` TEXT NOT NULL,
+                        `audience` TEXT NOT NULL,
+                        `feeling` TEXT,
+                        `listening` TEXT,
+                        `location` TEXT,
+                        `withPeople` TEXT,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
         fun create(context: Context): KinDatabase = Room.databaseBuilder(
             context.applicationContext,
             KinDatabase::class.java,
             "kin.db",
-        ).build()
+        )
+            .addMigrations(MIGRATION_1_2)
+            .build()
     }
 }
