@@ -5,19 +5,37 @@ plugins {
 
 android {
     namespace = "com.kin.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.kin.app"
+        applicationId = "com.ardacore.kin"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        targetSdk = 36
+        versionCode = providers.gradleProperty("KIN_VERSION_CODE").orNull?.toIntOrNull() ?: 3
+        versionName = providers.gradleProperty("KIN_VERSION_NAME").orNull ?: "0.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("kinDev") {
+            val devStore = rootProject.file("dev-signing/kin-dev.jks")
+            storeFile = devStore
+            storePassword = "kin-dev-only"
+            keyAlias = "kin-dev"
+            keyPassword = "kin-dev-only"
+        }
+    }
+
     buildTypes {
+        debug {
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            val devStore = rootProject.file("dev-signing/kin-dev.jks")
+            if (devStore.exists()) {
+                signingConfig = signingConfigs.getByName("kinDev")
+            }
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
