@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -31,6 +32,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.kin.app.auth.KinAuthRepository
+import com.kin.app.auth.KinAuthResult
+import com.kin.app.auth.KinRegistration
+import com.kin.app.auth.PreviewKinAuthRepository
+import kotlinx.coroutines.launch
 
 private enum class AuthRoute { WELCOME, LOGIN, REGISTER }
 
@@ -44,6 +50,7 @@ private val authColors = lightColorScheme(
 
 @Composable
 fun KinEntry() {
+    val authRepository = remember { PreviewKinAuthRepository() }
     var signedIn by rememberSaveable { mutableStateOf(false) }
     var route by rememberSaveable { mutableStateOf(AuthRoute.WELCOME) }
 
@@ -63,11 +70,13 @@ fun KinEntry() {
                     onRegister = { route = AuthRoute.REGISTER },
                 )
                 AuthRoute.LOGIN -> LoginScreen(
+                    authRepository = authRepository,
                     onBack = { route = AuthRoute.WELCOME },
                     onSignedIn = { signedIn = true },
                     onRegister = { route = AuthRoute.REGISTER },
                 )
                 AuthRoute.REGISTER -> RegisterScreen(
+                    authRepository = authRepository,
                     onBack = { route = AuthRoute.WELCOME },
                     onRegistered = { signedIn = true },
                     onLogin = { route = AuthRoute.LOGIN },
@@ -126,6 +135,7 @@ private fun WelcomeScreen(
 
 @Composable
 private fun LoginScreen(
+    authRepository: KinAuthRepository,
     onBack: () -> Unit,
     onSignedIn: () -> Unit,
     onRegister: () -> Unit,
@@ -133,6 +143,8 @@ private fun LoginScreen(
     var identity by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     AuthFormFrame(
         title = "Welcome back",
@@ -145,6 +157,7 @@ private fun LoginScreen(
             label = { Text("Email or username") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            enabled = !loading,
         )
         OutlinedTextField(
             value = password,
@@ -154,22 +167,27 @@ private fun LoginScreen(
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            enabled = !loading,
         )
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(
             onClick = {
-                if (identity.isBlank() || password.length < 4) {
-                    error = "Enter your account and password."
-                } else {
-                    onSignedIn()
+                scope.launch {
+                    loading = true
+                    when (val result = authRepository.login(identity.trim(), password)) {
+                        KinAuthResult.Success -> onSignedIn()
+                        is KinAuthResult.Error -> error = result.message
+                    }
+                    loading = false
                 }
             },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
+            enabled = !loading,
         ) {
-            Text("Log in")
+            Text(if (loading) "Logging in…" else "Log in")
         }
-        TextButton(onClick = onRegister, modifier = Modifier.fillMaxWidth()) {
+        TextButton(onClick = onRegister, modifier = Modifier.fillMaxWidth(), enabled = !loading) {
             Text("New to KIN? Create account")
         }
     }
@@ -177,6 +195,7 @@ private fun LoginScreen(
 
 @Composable
 private fun RegisterScreen(
+    authRepository: KinAuthRepository,
     onBack: () -> Unit,
     onRegistered: () -> Unit,
     onLogin: () -> Unit,
@@ -186,6 +205,8 @@ private fun RegisterScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     AuthFormFrame(
         title = "Create your space",
@@ -198,6 +219,7 @@ private fun RegisterScreen(
             label = { Text("Display name") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            enabled = !loading,
         )
         OutlinedTextField(
             value = username,
@@ -206,6 +228,7 @@ private fun RegisterScreen(
             prefix = { Text("@") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            enabled = !loading,
         )
         OutlinedTextField(
             value = email,
@@ -214,6 +237,7 @@ private fun RegisterScreen(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            enabled = !loading,
         )
         OutlinedTextField(
             value = password,
@@ -223,25 +247,35 @@ private fun RegisterScreen(
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            enabled = !loading,
         )
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(
             onClick = {
-                val validEmail = email.contains("@") && email.substringAfter("@").contains(".")
-                when {
-                    displayName.isBlank() -> error = "Add your display name."
-                    username.length < 3 -> error = "Username must be at least 3 characters."
-                    !validEmail -> error = "Enter a valid email address."
-                    password.length < 6 -> error = "Password must be at least 6 characters."
-                    else -> onRegistered()
+                scope.launch {
+                    loading = true
+                    val result = authRepository.register(
+                        KinRegistration(
+                            displayName = displayName.trim(),
+                            username = username.trim(),
+                            email = email.trim(),
+                            password = password,
+                        )
+                    )
+                    when (result) {
+                        KinAuthResult.Success -> onRegistered()
+                        is KinAuthResult.Error -> error = result.message
+                    }
+                    loading = false
                 }
             },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
+            enabled = !loading,
         ) {
-            Text("Create account")
+            Text(if (loading) "Creating…" else "Create account")
         }
-        TextButton(onClick = onLogin, modifier = Modifier.fillMaxWidth()) {
+        TextButton(onClick = onLogin, modifier = Modifier.fillMaxWidth(), enabled = !loading) {
             Text("Already have KIN? Log in")
         }
     }
