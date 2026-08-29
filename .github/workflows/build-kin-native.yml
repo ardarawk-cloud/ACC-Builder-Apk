@@ -10,6 +10,10 @@ on:
       - "kin-native.trigger"
   workflow_dispatch:
 
+concurrency:
+  group: kin-dev-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
