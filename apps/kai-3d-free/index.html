@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#07090d" />
+<title>KAI 3D FREE</title>
+<style>
+:root{--bg:#07090d;--panel:#10141d;--panel2:#161c28;--line:#252d3c;--text:#f5f7fb;--muted:#98a3b7;--accent:#70a7ff;--ok:#54d69a;--bad:#ff7474}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% -10%,#1d2c49 0,#0b0f17 30%,var(--bg) 70%);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}.wrap{max-width:720px;margin:auto;padding:24px 16px 70px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}.logo{width:46px;height:46px;border:1px solid #4b648b;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#20375d,#0d1421);font-weight:900;letter-spacing:-1px}.brand h1{font-size:20px;margin:0}.brand p{margin:3px 0 0;color:var(--muted);font-size:12px}.card{background:linear-gradient(180deg,rgba(22,28,40,.96),rgba(13,17,25,.96));border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 12px 40px rgba(0,0,0,.2)}label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}.row{display:flex;gap:10px;align-items:center}.row>*{flex:1}input[type=text],input[type=number]{width:100%;background:#0b0f16;border:1px solid #2d3648;color:white;border-radius:12px;padding:13px 14px;outline:none}.btn{border:0;border-radius:12px;padding:13px 14px;font-weight:800;background:#253044;color:white}.btn.primary{background:linear-gradient(135deg,#5b8fff,#78b8ff);color:#06111f}.btn:disabled{opacity:.45}.drop{display:block;border:1.5px dashed #39465e;border-radius:16px;padding:20px;text-align:center;background:#0a0e15;cursor:pointer}.drop img{width:100%;max-height:330px;object-fit:contain;border-radius:12px;margin-top:12px;background:#05070a}.small{font-size:12px;color:var(--muted);line-height:1.55}.switch{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid #202736}.switch:first-child{border-top:0}.switch input{width:22px;height:22px}.status{display:flex;gap:10px;align-items:center}.dot{width:11px;height:11px;border-radius:99px;background:#536079;box-shadow:0 0 0 5px rgba(83,96,121,.1)}.dot.ok{background:var(--ok);box-shadow:0 0 0 5px rgba(84,214,154,.12)}.dot.bad{background:var(--bad);box-shadow:0 0 0 5px rgba(255,116,116,.12)}.progress{height:8px;background:#080b10;border-radius:99px;overflow:hidden;margin-top:12px}.bar{height:100%;width:0;background:linear-gradient(90deg,#5b8fff,#8cc6ff);transition:width .35s}.hidden{display:none}.result{padding:14px;border:1px solid #2e6a52;background:rgba(44,116,84,.12);border-radius:14px}.tag{display:inline-block;padding:5px 9px;border:1px solid #324058;border-radius:999px;font-size:11px;color:#b8c4d8;margin-right:5px}.note{padding:11px 12px;border-radius:12px;background:#0b0f16;border:1px solid #232b39;margin-top:10px}.footer{text-align:center;color:#5f6b80;font-size:11px;margin-top:22px}
+</style>
+</head>
+<body><div class="wrap">
+<div class="brand"><div class="logo">K3D</div><div><h1>KAI 3D FREE</h1><p>Personal self-hosted 3D generator · no credits</p></div></div>
+
+<div class="card">
+<label>KAI 3D Bridge URL</label>
+<div class="row"><input id="server" type="text" placeholder="https://xxxx.trycloudflare.com"><button class="btn" id="testBtn">TEST</button></div>
+<div class="status" style="margin-top:12px"><span class="dot" id="serverDot"></span><span class="small" id="serverText">Belum terhubung</span></div>
+</div>
+
+<div class="card">
+<label>REFERENCE IMAGE</label>
+<input id="file" type="file" accept="image/*" hidden>
+<label class="drop" for="file"><b id="dropTitle">Pilih gambar objek</b><div class="small">PNG/JPG · objek tunggal dengan bentuk jelas menghasilkan mesh lebih baik.</div><img id="preview" class="hidden" alt="preview"></label>
+</div>
+
+<div class="card">
+<div class="switch"><div><b>Remove Background</b><div class="small">Pisahkan objek dari latar otomatis</div></div><input id="rembg" type="checkbox" checked></div>
+<div class="switch"><div><b>PBR Texture</b><div class="small">Lebih bagus, tetapi butuh VRAM lebih besar</div></div><input id="texture" type="checkbox"></div>
+<div class="switch"><div><b>Roblox target faces</b><div class="small">Dikirim sebagai target optimisasi jika backend mendukungnya</div></div><input id="faces" type="number" min="1000" max="100000" step="1000" value="10000" style="max-width:110px"></div>
+<div class="note small">V1 fokus Image → 3D. Untuk GPU terbatas, matikan PBR Texture dulu.</div>
+</div>
+
+<button class="btn primary" id="generate" style="width:100%;padding:16px;font-size:15px" disabled>GENERATE 3D</button>
+
+<div class="card hidden" id="jobCard">
+<div class="status"><span class="dot ok" id="jobDot"></span><div><b id="jobTitle">Preparing…</b><div class="small" id="jobText">Menyiapkan job</div></div></div>
+<div class="progress"><div class="bar" id="bar"></div></div>
+</div>
+
+<div class="card hidden" id="resultCard"><div class="result"><b>3D READY</b><p class="small">GLB selesai dibuat oleh GPU sendiri.</p><div><span class="tag">GLB</span><span class="tag">Self-hosted</span><span class="tag">No credits</span></div><button class="btn primary" id="download" style="width:100%;margin-top:14px">SAVE / SHARE GLB</button></div></div>
+
+<div class="footer">KAI 3D FREE · Personal build v1.0</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);let selected=null,lastBlob=null,lastName='kai3d-model.glb',pollTimer=null;
+const server=$('server');server.value=localStorage.getItem('kai3d_server')||'';
+function base(){return server.value.trim().replace(/\/+$/,'')}
+function setServer(ok,msg){$('serverDot').className='dot '+(ok?'ok':'bad');$('serverText').textContent=msg;$('generate').disabled=!(ok&&selected)}
+async function testServer(){try{localStorage.setItem('kai3d_server',base());let r=await fetch(base()+'/health');if(!r.ok)throw new Error('HTTP '+r.status);let j=await r.json();setServer(true,'Connected · '+(j.engine||j.status||'KAI 3D Bridge'));}catch(e){setServer(false,'Tidak terhubung · '+e.message)}}
+$('testBtn').onclick=testServer;server.addEventListener('change',()=>localStorage.setItem('kai3d_server',base()));
+$('file').onchange=async e=>{selected=e.target.files[0];if(!selected)return;let u=URL.createObjectURL(selected);$('preview').src=u;$('preview').classList.remove('hidden');$('dropTitle').textContent=selected.name;await testServer()};
+function fileToDataURL(f){return new Promise((res,rej)=>{let r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
+function setJob(title,text,pct){$('jobCard').classList.remove('hidden');$('jobTitle').textContent=title;$('jobText').textContent=text;$('bar').style.width=pct+'%'}
+function stopPoll(){if(pollTimer){clearTimeout(pollTimer);pollTimer=null}}
+async function poll(id){try{let r=await fetch(base()+'/jobs/'+id);let j=await r.json();if(!r.ok)throw new Error(j.detail||j.message||'Status error');if(j.status==='completed'){setJob('3D selesai','Mengambil file GLB…',95);let d=await fetch(base()+'/jobs/'+id+'/download');if(!d.ok)throw new Error('Download gagal');lastBlob=await d.blob();lastName='kai3d-'+id.slice(0,8)+'.glb';setJob('3D READY','Selesai · '+Math.max(1,Math.round(lastBlob.size/1024/1024))+' MB',100);$('resultCard').classList.remove('hidden');$('generate').disabled=false;return}if(j.status==='error')throw new Error(j.message||'Generation failed');let pct=j.status==='generating'?55:25;setJob(j.status==='generating'?'Generating 3D…':'Queued…',j.message||'GPU sedang bekerja',pct);pollTimer=setTimeout(()=>poll(id),3500)}catch(e){setJob('ERROR',e.message,100);$('jobDot').className='dot bad';$('generate').disabled=false}}
+$('generate').onclick=async()=>{if(!selected)return;stopPoll();lastBlob=null;$('resultCard').classList.add('hidden');$('generate').disabled=true;$('jobDot').className='dot ok';setJob('Uploading…','Mengirim reference image ke GPU',12);try{let image=await fileToDataURL(selected);let payload={image,remove_background:$('rembg').checked,texture:$('texture').checked,face_count:Number($('faces').value)||10000,type:'glb'};let r=await fetch(base()+'/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});let j=await r.json();if(!r.ok||!j.id)throw new Error(j.detail||j.message||'Job tidak dibuat');setJob('Queued','Job '+j.id.slice(0,8),25);poll(j.id)}catch(e){setJob('ERROR',e.message,100);$('jobDot').className='dot bad';$('generate').disabled=false}}
+$('download').onclick=async()=>{if(!lastBlob)return;let file=new File([lastBlob],lastName,{type:'model/gltf-binary'});try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:lastName});return}}catch(e){}let u=URL.createObjectURL(lastBlob),a=document.createElement('a');a.href=u;a.download=lastName;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),10000)};
+if(server.value)testServer();
+</script></body></html>

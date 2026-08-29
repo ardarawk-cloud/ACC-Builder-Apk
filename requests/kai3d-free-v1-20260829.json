@@ -1,0 +1,7 @@
+{
+  "request_id": "kai3d-free-v1-20260829",
+  "project_id": "kai-3d-free",
+  "project_name": "KAI 3D FREE",
+  "mode": "build_existing",
+  "prompt": "Build existing self-hosted KAI 3D FREE personal Android client. Do not call a paid AI provider."
+}
