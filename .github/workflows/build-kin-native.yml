@@ -31,18 +31,25 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android platform
+      - name: Install Android 16 platform
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
-      - name: Setup Gradle 8.9
+      - name: Setup Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.9"
+          gradle-version: "8.11.1"
 
-      - name: Native-only guard
+      - name: Restore stable KIN dev signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d native/kin/dev-signing/kin-dev.jks.b64 > native/kin/dev-signing/kin-dev.jks
+          echo "93b55ad34eb19945928b9814b50f15e12892aa7b8688a02e55c5ac4eacba2a79  native/kin/dev-signing/kin-dev.jks" | sha256sum -c -
+
+      - name: KIN release-direction guard
         shell: bash
         run: |
           set -euo pipefail
@@ -50,29 +57,43 @@ jobs:
           test -f native/kin/app/src/main/java/com/kin/app/ui/KinApp.kt
           test -f native/kin/app/src/main/java/com/kin/app/ui/AuthFlow.kt
           test -f native/kin/app/src/main/AndroidManifest.xml
+          grep -q 'applicationId = "com.ardacore.kin"' native/kin/app/build.gradle.kts
+          grep -q 'targetSdk = 36' native/kin/app/build.gradle.kts
+          grep -q 'compileSdk = 36' native/kin/app/build.gradle.kts
           if grep -R "android.webkit.WebView\|<WebView" -n native/kin/app/src/main; then
-            echo "WebView usage is forbidden in the KIN native shell."
+            echo "WebView usage is forbidden in the KIN native app."
             exit 1
           fi
 
-      - name: Build KIN debug APK
+      - name: Build updateable KIN dev APK
         shell: bash
         working-directory: native/kin
         run: |
           set -euo pipefail
-          gradle --no-daemon :app:assembleDebug --stacktrace
+          gradle --no-daemon :app:assembleDebug --stacktrace \
+            -PKIN_VERSION_CODE=${{ github.run_number }} \
+            -PKIN_VERSION_NAME=0.3.${{ github.run_number }}
+
+      - name: Verify APK signing and package
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=native/kin/app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK"
+          apksigner verify --verbose --print-certs "$APK"
+          aapt dump badging "$APK" | head -n 5
 
       - name: Stage APK
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp native/kin/app/build/outputs/apk/debug/app-debug.apk dist/KIN-Phase0-v0.2-auth-debug.apk
-          sha256sum dist/KIN-Phase0-v0.2-auth-debug.apk
+          cp native/kin/app/build/outputs/apk/debug/app-debug.apk dist/KIN-Dev-v0.3.${{ github.run_number }}.apk
+          sha256sum dist/KIN-Dev-v0.3.${{ github.run_number }}.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: KIN-Phase0-v0.2-auth
-          path: dist/KIN-Phase0-v0.2-auth-debug.apk
+          name: KIN-Dev-v0.3.${{ github.run_number }}
+          path: dist/KIN-Dev-v0.3.${{ github.run_number }}.apk
           retention-days: 30
