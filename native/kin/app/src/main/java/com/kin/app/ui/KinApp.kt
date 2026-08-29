@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -43,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kin.app.KinAppGraph
 import com.kin.app.data.KinCircleEntity
 import com.kin.app.data.KinPersonWithCircles
+import com.kin.app.data.KinProfileEntity
 import com.kin.app.data.KinRelationshipRepository
 import com.kin.app.session.KinSession
 import kotlinx.coroutines.launch
@@ -53,6 +56,14 @@ enum class KinRoot(val label: String, val symbol: String) {
     CREATE("+", "+"),
     CHAT("CHAT", "✉"),
     ME("ME", "●"),
+}
+
+private enum class MeRoute {
+    ROOT,
+    RELATIONSHIPS,
+    CUSTOMIZE,
+    GUESTBOOK,
+    REMIX,
 }
 
 private val kinColors = lightColorScheme(
@@ -204,15 +215,42 @@ private fun ChatScreen(repository: KinRelationshipRepository) {
 @Composable
 private fun MeScreen(graph: KinAppGraph, session: KinSession) {
     val profile by graph.profileRepository.observeProfile().collectAsStateWithLifecycle(initialValue = null)
-    var managingPeople by rememberSaveable { mutableStateOf(false) }
+    var route by rememberSaveable { mutableStateOf(MeRoute.ROOT) }
     val scope = rememberCoroutineScope()
 
-    if (managingPeople) {
-        RelationshipManagerScreen(
-            repository = graph.relationshipRepository,
-            onBack = { managingPeople = false },
-        )
-        return
+    when (route) {
+        MeRoute.RELATIONSHIPS -> {
+            RelationshipManagerScreen(
+                repository = graph.relationshipRepository,
+                onBack = { route = MeRoute.ROOT },
+            )
+            return
+        }
+
+        MeRoute.CUSTOMIZE -> {
+            CustomizeSpaceScreen(
+                profile = profile,
+                graph = graph,
+                onBack = { route = MeRoute.ROOT },
+            )
+            return
+        }
+
+        MeRoute.GUESTBOOK -> {
+            GuestbookScreen(onBack = { route = MeRoute.ROOT })
+            return
+        }
+
+        MeRoute.REMIX -> {
+            RemixSkinScreen(
+                profile = profile,
+                graph = graph,
+                onBack = { route = MeRoute.ROOT },
+            )
+            return
+        }
+
+        MeRoute.ROOT -> Unit
     }
 
     ScreenColumn("My Space", "Your profile should feel like your own room on the internet.") {
@@ -229,16 +267,159 @@ private fun MeScreen(graph: KinAppGraph, session: KinSession) {
                 Text("Skin: ${profile?.skinId ?: "kin-original"}")
             }
         }
-        Button(onClick = { managingPeople = true }, modifier = Modifier.fillMaxWidth()) {
+
+        Button(onClick = { route = MeRoute.RELATIONSHIPS }, modifier = Modifier.fillMaxWidth()) {
             Text("Manage Circles & Private Notes")
         }
-        SimpleAction("Customize Space", "Skin, background, cards, font and profile layout")
-        SimpleAction("Guestbook", "Modern profile messages from your people")
-        SimpleAction("Remix Skin", "Reuse a skin structure and make it yours")
+
+        SimpleAction(
+            title = "Customize Space",
+            description = "Skin, background, cards, font and profile layout",
+            onClick = { route = MeRoute.CUSTOMIZE },
+        )
+        SimpleAction(
+            title = "Guestbook",
+            description = "Modern profile messages from your people",
+            onClick = { route = MeRoute.GUESTBOOK },
+        )
+        SimpleAction(
+            title = "Remix Skin",
+            description = "Reuse a skin structure and make it yours",
+            onClick = { route = MeRoute.REMIX },
+        )
+
         OutlinedButton(
             onClick = { scope.launch { graph.sessionStore.signOut() } },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Log out") }
+
+        Spacer(Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun CustomizeSpaceScreen(
+    profile: KinProfileEntity?,
+    graph: KinAppGraph,
+    onBack: () -> Unit,
+) {
+    var selectedSkin by rememberSaveable { mutableStateOf(profile?.skinId ?: "kin-original") }
+    var bio by rememberSaveable { mutableStateOf(profile?.bio.orEmpty()) }
+    var savedMessage by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(profile?.skinId, profile?.bio) {
+        profile?.let {
+            selectedSkin = it.skinId
+            bio = it.bio
+        }
+    }
+
+    ScreenColumn("Customize Space", "Change the parts of your profile that already have permanent storage.") {
+        OutlinedButton(onClick = onBack) { Text("← My Space") }
+
+        Text("Skin", fontWeight = FontWeight.Bold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("kin-original" to "KIN", "midnight" to "Midnight", "y2k" to "Y2K").forEach { (id, label) ->
+                FilterChip(
+                    selected = selectedSkin == id,
+                    onClick = { selectedSkin = id; savedMessage = "" },
+                    label = { Text(label) },
+                )
+            }
+        }
+
+        OutlinedTextField(
+            value = bio,
+            onValueChange = { bio = it.take(160); savedMessage = "" },
+            label = { Text("Short bio") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3,
+        )
+
+        Button(
+            onClick = {
+                val current = profile ?: return@Button
+                scope.launch {
+                    graph.profileRepository.saveProfile(
+                        current.copy(
+                            bio = bio.trim(),
+                            skinId = selectedSkin,
+                        ),
+                    )
+                    savedMessage = "Saved"
+                }
+            },
+            enabled = profile != null,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Save changes") }
+
+        if (savedMessage.isNotBlank()) {
+            Text(savedMessage, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        }
+
+        SimpleAction("Background", "Theme engine slot prepared for the next visual customization slice.")
+        SimpleAction("Cards & font", "These will extend the same profile theme model instead of replacing this screen.")
+        SimpleAction("Profile layout", "Module ordering will live here when My Space modules are connected.")
+    }
+}
+
+@Composable
+private fun GuestbookScreen(onBack: () -> Unit) {
+    ScreenColumn("Guestbook", "A dedicated place for messages left on your profile.") {
+        OutlinedButton(onClick = onBack) { Text("← My Space") }
+        SimpleAction("No guestbook messages yet", "The screen route is active. Social messages will populate here once connection sync is online.")
+        Text(
+            "Guestbook privacy will use the same Friends / Circle controls as the rest of KIN.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+@Composable
+private fun RemixSkinScreen(
+    profile: KinProfileEntity?,
+    graph: KinAppGraph,
+    onBack: () -> Unit,
+) {
+    var remixSkin by rememberSaveable { mutableStateOf(profile?.skinId ?: "kin-original") }
+    var savedMessage by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(profile?.skinId) {
+        profile?.let { remixSkin = it.skinId }
+    }
+
+    ScreenColumn("Remix Skin", "Start from an existing skin structure, then make it yours.") {
+        OutlinedButton(onClick = onBack) { Text("← My Space") }
+
+        listOf(
+            "kin-original" to "KIN Original",
+            "midnight" to "Midnight",
+            "y2k" to "Y2K",
+        ).forEach { (id, label) ->
+            SimpleAction(
+                title = if (remixSkin == id) "✓ $label" else label,
+                description = "Use this as your remix base",
+                onClick = { remixSkin = id; savedMessage = "" },
+            )
+        }
+
+        Button(
+            onClick = {
+                val current = profile ?: return@Button
+                scope.launch {
+                    graph.profileRepository.saveProfile(current.copy(skinId = remixSkin))
+                    savedMessage = "Remix applied"
+                }
+            },
+            enabled = profile != null,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Apply remix") }
+
+        if (savedMessage.isNotBlank()) {
+            Text(savedMessage, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
@@ -329,6 +510,7 @@ private fun ScreenColumn(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -340,15 +522,35 @@ private fun ScreenColumn(
 }
 
 @Composable
-private fun SimpleAction(title: String, description: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(title, fontWeight = FontWeight.Bold)
-            Text(description, style = MaterialTheme.typography.bodyMedium)
+private fun SimpleAction(
+    title: String,
+    description: String,
+    onClick: (() -> Unit)? = null,
+) {
+    if (onClick == null) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        ) {
+            SimpleActionContent(title, description)
         }
+    } else {
+        Card(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        ) {
+            SimpleActionContent(title, description)
+        }
+    }
+}
+
+@Composable
+private fun SimpleActionContent(title: String, description: String) {
+    Column(Modifier.padding(16.dp)) {
+        Text(title, fontWeight = FontWeight.Bold)
+        Text(description, style = MaterialTheme.typography.bodyMedium)
     }
 }
