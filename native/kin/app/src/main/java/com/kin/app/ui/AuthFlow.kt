@@ -72,6 +72,7 @@ fun KinEntry() {
         ) {
             when {
                 session.signedIn && !session.onboardingComplete -> ProfileOnboardingScreen(
+                    session = session,
                     profileRepository = graph.profileRepository,
                     relationshipRepository = graph.relationshipRepository,
                     sessionStore = graph.sessionStore,
@@ -223,6 +224,7 @@ private fun RegisterScreen(
 
 @Composable
 private fun ProfileOnboardingScreen(
+    session: KinSession,
     profileRepository: KinProfileRepository,
     relationshipRepository: KinRelationshipRepository,
     sessionStore: KinSessionStore,
@@ -233,10 +235,19 @@ private fun ProfileOnboardingScreen(
     var saving by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-        profile = profileRepository.observeProfile().first()
-        bio = profile?.bio.orEmpty()
-        skinId = profile?.skinId ?: "kin-original"
+    LaunchedEffect(session.displayName, session.username, session.email) {
+        val storedProfile = profileRepository.observeProfile().first()
+        val resolvedProfile = storedProfile ?: KinProfileEntity(
+            displayName = session.displayName.ifBlank { "KIN User" },
+            username = session.username.ifBlank { "kinuser" },
+            email = session.email,
+        )
+        if (storedProfile == null) {
+            profileRepository.saveProfile(resolvedProfile)
+        }
+        profile = resolvedProfile
+        bio = resolvedProfile.bio
+        skinId = resolvedProfile.skinId
     }
 
     Column(
@@ -247,7 +258,10 @@ private fun ProfileOnboardingScreen(
     ) {
         Text("Make it yours", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text("Set up your space once. You can change everything later.")
-        Text("@${profile?.username.orEmpty()}", style = MaterialTheme.typography.titleMedium)
+        Text(
+            profile?.username?.takeIf { it.isNotBlank() }?.let { "@$it" } ?: "Preparing your profile…",
+            style = MaterialTheme.typography.titleMedium,
+        )
         OutlinedTextField(
             value = bio,
             onValueChange = { bio = it.take(160) },
