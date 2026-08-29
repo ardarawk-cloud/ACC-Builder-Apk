@@ -12,6 +12,16 @@ class LocalKinProfileRepository(private val dao: KinDao) : KinProfileRepository 
     override suspend fun saveProfile(profile: KinProfileEntity) = dao.upsertProfile(profile)
 }
 
+interface KinPostRepository {
+    fun observePosts(): Flow<List<KinPostEntity>>
+    suspend fun savePost(post: KinPostEntity)
+}
+
+class LocalKinPostRepository(private val dao: KinDao) : KinPostRepository {
+    override fun observePosts(): Flow<List<KinPostEntity>> = dao.observePosts()
+    override suspend fun savePost(post: KinPostEntity) = dao.upsertPost(post)
+}
+
 interface KinRelationshipRepository {
     fun observeCircles(): Flow<List<KinCircleEntity>>
     fun observePeople(): Flow<List<KinPersonWithCircles>>
@@ -37,17 +47,11 @@ class LocalKinRelationshipRepository(private val dao: KinDao) : KinRelationshipR
             ),
         )
 
-        val starterPeople = listOf(
-            Triple(KinPersonEntity("maya", "Maya", "@maya", "Met through studio project"), listOf("work", "close-friends"), Unit),
-            Triple(KinPersonEntity("raka", "Raka", "@raka", "Usually online at night"), listOf("gaming"), Unit),
-            Triple(KinPersonEntity("nadia", "Nadia", "@nadia", "Family circle"), listOf("family"), Unit),
-        )
-        starterPeople.forEach { (person, circleIds, _) ->
-            dao.upsertPerson(person)
-            dao.clearPersonCircles(person.id)
-            circleIds.forEach { circleId ->
-                dao.linkPersonCircle(KinPersonCircleCrossRef(person.id, circleId))
-            }
+        // v0.3.35 and earlier seeded three fake people for UI demos.
+        // Remove them once so real social screens never look populated by fake friends.
+        listOf("maya", "raka", "nadia").forEach { demoId ->
+            dao.clearPersonCircles(demoId)
+            dao.deletePerson(demoId)
         }
     }
 
