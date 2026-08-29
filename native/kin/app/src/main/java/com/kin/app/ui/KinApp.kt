@@ -28,6 +28,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kin.app.KinAppearance
 import com.kin.app.KinAppGraph
 import com.kin.app.data.KinCircleEntity
 import com.kin.app.data.KinPersonWithCircles
@@ -66,7 +68,7 @@ private enum class MeRoute {
     REMIX,
 }
 
-private val kinColors = lightColorScheme(
+private fun kinLightColors() = lightColorScheme(
     primary = Color(0xFF7C5CFC),
     secondary = Color(0xFFFF7FA6),
     tertiary = Color(0xFF4FB7A8),
@@ -74,15 +76,39 @@ private val kinColors = lightColorScheme(
     background = Color(0xFFF8F5FF),
 )
 
+private fun kinY2kColors() = lightColorScheme(
+    primary = Color(0xFFB32FA6),
+    secondary = Color(0xFF5A66FF),
+    tertiary = Color(0xFF00A99D),
+    surface = Color(0xFFFFF5FC),
+    background = Color(0xFFFFF0FA),
+)
+
+private fun kinMidnightColors() = darkColorScheme(
+    primary = Color(0xFFB6A5FF),
+    secondary = Color(0xFFFF9CC0),
+    tertiary = Color(0xFF79D9CA),
+    surface = Color(0xFF17151C),
+    background = Color(0xFF0E0D12),
+)
+
 @Composable
 fun KinApp(graph: KinAppGraph, session: KinSession) {
     var selected by rememberSaveable { mutableStateOf(KinRoot.HOME) }
+    val profile by graph.profileRepository.observeProfile().collectAsStateWithLifecycle(initialValue = null)
+    val appearance by graph.appearanceStore.appearance.collectAsStateWithLifecycle(initialValue = KinAppearance())
 
     LaunchedEffect(Unit) {
         graph.relationshipRepository.ensureStarterData()
     }
 
-    MaterialTheme(colorScheme = kinColors) {
+    val colorScheme = when {
+        profile?.skinId == "midnight" || appearance.background == "Midnight" -> kinMidnightColors()
+        profile?.skinId == "y2k" || appearance.background == "Y2K" -> kinY2kColors()
+        else -> kinLightColors()
+    }
+
+    MaterialTheme(colorScheme = colorScheme) {
         Scaffold(
             topBar = { KinHeader(selected) },
             bottomBar = {
@@ -137,6 +163,23 @@ private fun KinHeader(selected: KinRoot) {
 @Composable
 private fun HomeScreen(repository: KinRelationshipRepository) {
     val people by repository.observePeople().collectAsStateWithLifecycle(initialValue = emptyList())
+    var selectedPersonId by rememberSaveable { mutableStateOf("") }
+    val selectedPerson = people.firstOrNull { it.person.id == selectedPersonId }
+
+    if (selectedPerson != null) {
+        ScreenColumn("${selectedPerson.person.displayName}'s Space", "Relationship context stays private to you.") {
+            OutlinedButton(onClick = { selectedPersonId = "" }) { Text("← Home") }
+            Text(selectedPerson.person.handle, style = MaterialTheme.typography.titleMedium)
+            selectedPerson.circles.forEach { circle ->
+                SimpleAction(circle.name, "Your private relationship context for this person", onClick = {})
+            }
+            if (selectedPerson.person.privateNote.isNotBlank()) {
+                SimpleAction("Private note", selectedPerson.person.privateNote, onClick = {})
+            }
+            Text("Profile posts and albums will sync here when remote accounts are connected.")
+        }
+        return
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -149,16 +192,25 @@ private fun HomeScreen(repository: KinRelationshipRepository) {
             Spacer(Modifier.height(8.dp))
         }
         if (people.isEmpty()) {
-            item { SimpleAction("Your people will appear here", "Add connections and give them relationship context with Circles.") }
+            item {
+                SimpleAction(
+                    "Your people will appear here",
+                    "Add connections and give them relationship context with Circles.",
+                    onClick = {},
+                )
+            }
         } else {
-            items(people, key = { it.person.id }) { person -> PersonMomentCard(person) }
+            items(people, key = { it.person.id }) { person ->
+                PersonMomentCard(person, onClick = { selectedPersonId = person.person.id })
+            }
         }
     }
 }
 
 @Composable
-private fun PersonMomentCard(person: KinPersonWithCircles) {
+private fun PersonMomentCard(person: KinPersonWithCircles, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -169,45 +221,167 @@ private fun PersonMomentCard(person: KinPersonWithCircles) {
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 person.circles.take(2).forEach { circle ->
-                    AssistChip(onClick = {}, label = { Text(circle.name) })
+                    AssistChip(onClick = onClick, label = { Text(circle.name) })
                 }
             }
             Spacer(Modifier.height(10.dp))
             Text("Shared a moment", style = MaterialTheme.typography.labelLarge)
-            Text("Small updates from people you actually know belong here.")
+            Text("Tap to open this person's KIN space.")
         }
     }
 }
 
 @Composable
 private fun MomentScreen() {
-    ScreenColumn("Moment", "Share what is happening without turning everything into a performance.") {
-        SimpleAction("Feeling", "Happy, tired, excited, chill or your own mood")
-        SimpleAction("Listening", "Share what you are listening to")
-        SimpleAction("At", "Optional location check-in")
-        SimpleAction("With", "Tag people you are spending time with")
-        SimpleAction("Thought", "A short text update")
-        SimpleAction("Photo", "A quick visual moment")
+    var kind by rememberSaveable { mutableStateOf("") }
+    var value by rememberSaveable { mutableStateOf("") }
+    var audience by rememberSaveable { mutableStateOf("Friends") }
+    var result by remember { mutableStateOf("") }
+
+    if (kind.isNotBlank()) {
+        ScreenColumn(kind, "Create this Moment and choose who can see it.") {
+            OutlinedButton(onClick = { kind = ""; value = ""; result = "" }) { Text("← Moment") }
+            OutlinedTextField(
+                value = value,
+                onValueChange = { value = it.take(280); result = "" },
+                label = { Text(momentFieldLabel(kind)) },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = if (kind == "Thought") 4 else 2,
+            )
+            Text("Audience", fontWeight = FontWeight.Bold)
+            AudiencePicker(selected = audience, onSelected = { audience = it })
+            Button(
+                onClick = { result = if (value.isBlank()) "Add something first" else "Moment saved locally for $audience" },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Share Moment") }
+            if (result.isNotBlank()) Text(result, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        }
+        return
     }
+
+    ScreenColumn("Moment", "Share what is happening without turning everything into a performance.") {
+        SimpleAction("Feeling", "Happy, tired, excited, chill or your own mood", onClick = { kind = "Feeling" })
+        SimpleAction("Listening", "Share what you are listening to", onClick = { kind = "Listening" })
+        SimpleAction("At", "Optional location check-in", onClick = { kind = "At" })
+        SimpleAction("With", "Tag people you are spending time with", onClick = { kind = "With" })
+        SimpleAction("Thought", "A short text update", onClick = { kind = "Thought" })
+        SimpleAction("Photo", "Open a photo Moment draft", onClick = { kind = "Photo" })
+    }
+}
+
+private fun momentFieldLabel(kind: String): String = when (kind) {
+    "Feeling" -> "How are you feeling?"
+    "Listening" -> "What are you listening to?"
+    "At" -> "Where are you?"
+    "With" -> "Who are you with?"
+    "Photo" -> "Photo caption"
+    else -> "What's on your mind?"
 }
 
 @Composable
 private fun CreateScreen() {
+    var mode by rememberSaveable { mutableStateOf("") }
+    var text by rememberSaveable { mutableStateOf("") }
+    var audience by rememberSaveable { mutableStateOf("Friends") }
+    var result by remember { mutableStateOf("") }
+
+    if (mode.isNotBlank()) {
+        ScreenColumn(if (mode == "post") "Create Post" else "Create Moment", "Draft it here, then choose the audience.") {
+            OutlinedButton(onClick = { mode = ""; text = ""; result = "" }) { Text("← Create") }
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it.take(1000); result = "" },
+                label = { Text(if (mode == "post") "Write a post" else "Write a moment") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 5,
+            )
+            Text("Audience", fontWeight = FontWeight.Bold)
+            AudiencePicker(selected = audience, onSelected = { audience = it })
+            Button(
+                onClick = { result = if (text.isBlank()) "Write something first" else "Draft saved locally for $audience" },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(if (mode == "post") "Post" else "Share Moment") }
+            if (result.isNotBlank()) Text(result, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        }
+        return
+    }
+
     ScreenColumn("Create", "One button for posting. Audience stays under your control.") {
-        Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Create Post") }
-        Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Create Moment") }
+        Button(onClick = { mode = "post" }, modifier = Modifier.fillMaxWidth()) { Text("Create Post") }
+        Button(onClick = { mode = "moment" }, modifier = Modifier.fillMaxWidth()) { Text("Create Moment") }
         Spacer(Modifier.height(6.dp))
         Text("Audience: Public · Friends · Circle · Only Me", style = MaterialTheme.typography.bodyMedium)
     }
 }
 
 @Composable
+private fun AudiencePicker(selected: String, onSelected: (String) -> Unit) {
+    listOf("Public", "Friends", "Circle", "Only Me").chunked(2).forEach { row ->
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { option ->
+                FilterChip(
+                    selected = selected == option,
+                    onClick = { onSelected(option) },
+                    label = { Text(option) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ChatScreen(repository: KinRelationshipRepository) {
     val people by repository.observePeople().collectAsStateWithLifecycle(initialValue = emptyList())
+    var selectedPersonId by rememberSaveable { mutableStateOf("") }
+    var message by rememberSaveable { mutableStateOf("") }
+    var lastSent by remember { mutableStateOf("") }
+    val selectedPerson = people.firstOrNull { it.person.id == selectedPersonId }
+
+    if (selectedPerson != null) {
+        val context = selectedPerson.circles.joinToString(" · ") { it.name }.ifBlank { "Friend" }
+        ScreenColumn(selectedPerson.person.displayName, context) {
+            OutlinedButton(onClick = { selectedPersonId = ""; message = ""; lastSent = "" }) { Text("← Chat") }
+            if (lastSent.isNotBlank()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("You", fontWeight = FontWeight.Bold)
+                        Text(lastSent)
+                    }
+                }
+            }
+            OutlinedTextField(
+                value = message,
+                onValueChange = { message = it.take(1000) },
+                label = { Text("Message") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+            )
+            Button(
+                onClick = {
+                    if (message.isNotBlank()) {
+                        lastSent = message.trim()
+                        message = ""
+                    }
+                },
+                enabled = message.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Send") }
+            Text("Messages are local preview only until remote chat sync is connected.")
+        }
+        return
+    }
+
     ScreenColumn("Chat", "Simple private conversations, with relationship context visible only to you.") {
         people.take(5).forEach { person ->
             val context = person.circles.joinToString(" · ") { it.name }.ifBlank { "Friend" }
-            SimpleAction("${person.person.displayName} · $context", "Conversation preview")
+            SimpleAction(
+                "${person.person.displayName} · $context",
+                "Tap to open conversation",
+                onClick = { selectedPersonId = person.person.id },
+            )
         }
     }
 }
@@ -303,8 +477,13 @@ private fun CustomizeSpaceScreen(
     graph: KinAppGraph,
     onBack: () -> Unit,
 ) {
+    val storedAppearance by graph.appearanceStore.appearance.collectAsStateWithLifecycle(initialValue = KinAppearance())
     var selectedSkin by rememberSaveable { mutableStateOf(profile?.skinId ?: "kin-original") }
     var bio by rememberSaveable { mutableStateOf(profile?.bio.orEmpty()) }
+    var background by rememberSaveable { mutableStateOf(storedAppearance.background) }
+    var cards by rememberSaveable { mutableStateOf(storedAppearance.cards) }
+    var font by rememberSaveable { mutableStateOf(storedAppearance.font) }
+    var layout by rememberSaveable { mutableStateOf(storedAppearance.layout) }
     var savedMessage by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
@@ -315,19 +494,34 @@ private fun CustomizeSpaceScreen(
         }
     }
 
-    ScreenColumn("Customize Space", "Change the parts of your profile that already have permanent storage.") {
+    LaunchedEffect(storedAppearance) {
+        background = storedAppearance.background
+        cards = storedAppearance.cards
+        font = storedAppearance.font
+        layout = storedAppearance.layout
+    }
+
+    ScreenColumn("Customize Space", "Every visible option here is interactive and saved.") {
         OutlinedButton(onClick = onBack) { Text("← My Space") }
 
         Text("Skin", fontWeight = FontWeight.Bold)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("kin-original" to "KIN", "midnight" to "Midnight", "y2k" to "Y2K").forEach { (id, label) ->
-                FilterChip(
-                    selected = selectedSkin == id,
-                    onClick = { selectedSkin = id; savedMessage = "" },
-                    label = { Text(label) },
-                )
-            }
-        }
+        ChoiceRow(
+            options = listOf("KIN", "Midnight", "Y2K"),
+            selected = when (selectedSkin) {
+                "midnight" -> "Midnight"
+                "y2k" -> "Y2K"
+                else -> "KIN"
+            },
+            onSelected = {
+                selectedSkin = when (it) {
+                    "Midnight" -> "midnight"
+                    "Y2K" -> "y2k"
+                    else -> "kin-original"
+                }
+                background = it
+                savedMessage = ""
+            },
+        )
 
         OutlinedTextField(
             value = bio,
@@ -337,6 +531,18 @@ private fun CustomizeSpaceScreen(
             minLines = 3,
         )
 
+        Text("Background", fontWeight = FontWeight.Bold)
+        ChoiceRow(listOf("Soft", "Midnight", "Y2K"), background) { background = it; savedMessage = "" }
+
+        Text("Cards", fontWeight = FontWeight.Bold)
+        ChoiceRow(listOf("Rounded", "Classic", "Compact"), cards) { cards = it; savedMessage = "" }
+
+        Text("Font", fontWeight = FontWeight.Bold)
+        ChoiceRow(listOf("Clean", "Serif", "Mono"), font) { font = it; savedMessage = "" }
+
+        Text("Profile layout", fontWeight = FontWeight.Bold)
+        ChoiceRow(listOf("Classic", "Compact", "Album first"), layout) { layout = it; savedMessage = "" }
+
         Button(
             onClick = {
                 val current = profile ?: return@Button
@@ -345,6 +551,14 @@ private fun CustomizeSpaceScreen(
                         current.copy(
                             bio = bio.trim(),
                             skinId = selectedSkin,
+                        ),
+                    )
+                    graph.appearanceStore.save(
+                        KinAppearance(
+                            background = background,
+                            cards = cards,
+                            font = font,
+                            layout = layout,
                         ),
                     )
                     savedMessage = "Saved"
@@ -357,22 +571,62 @@ private fun CustomizeSpaceScreen(
         if (savedMessage.isNotBlank()) {
             Text(savedMessage, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         }
+    }
+}
 
-        SimpleAction("Background", "Theme engine slot prepared for the next visual customization slice.")
-        SimpleAction("Cards & font", "These will extend the same profile theme model instead of replacing this screen.")
-        SimpleAction("Profile layout", "Module ordering will live here when My Space modules are connected.")
+@Composable
+private fun ChoiceRow(options: List<String>, selected: String, onSelected: (String) -> Unit) {
+    options.chunked(3).forEach { row ->
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { option ->
+                FilterChip(
+                    selected = selected == option,
+                    onClick = { onSelected(option) },
+                    label = { Text(option) },
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun GuestbookScreen(onBack: () -> Unit) {
+    var message by rememberSaveable { mutableStateOf("") }
+    var savedMessage by rememberSaveable { mutableStateOf("") }
+
     ScreenColumn("Guestbook", "A dedicated place for messages left on your profile.") {
         OutlinedButton(onClick = onBack) { Text("← My Space") }
-        SimpleAction("No guestbook messages yet", "The screen route is active. Social messages will populate here once connection sync is online.")
-        Text(
-            "Guestbook privacy will use the same Friends / Circle controls as the rest of KIN.",
-            style = MaterialTheme.typography.bodyMedium,
+        if (savedMessage.isNotBlank()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Guestbook preview", fontWeight = FontWeight.Bold)
+                    Text(savedMessage)
+                }
+            }
+        } else {
+            Text("No guestbook messages yet.")
+        }
+        OutlinedTextField(
+            value = message,
+            onValueChange = { message = it.take(300) },
+            label = { Text("Leave a test message") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3,
         )
+        Button(
+            onClick = {
+                if (message.isNotBlank()) {
+                    savedMessage = message.trim()
+                    message = ""
+                }
+            },
+            enabled = message.isNotBlank(),
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Add to Guestbook") }
+        Text("This is local preview data until social sync is online.")
     }
 }
 
@@ -400,7 +654,7 @@ private fun RemixSkinScreen(
         ).forEach { (id, label) ->
             SimpleAction(
                 title = if (remixSkin == id) "✓ $label" else label,
-                description = "Use this as your remix base",
+                description = "Tap to use this as your remix base",
                 onClick = { remixSkin = id; savedMessage = "" },
             )
         }
@@ -410,6 +664,12 @@ private fun RemixSkinScreen(
                 val current = profile ?: return@Button
                 scope.launch {
                     graph.profileRepository.saveProfile(current.copy(skinId = remixSkin))
+                    val appearance = when (remixSkin) {
+                        "midnight" -> KinAppearance("Midnight", "Rounded", "Clean", "Classic")
+                        "y2k" -> KinAppearance("Y2K", "Rounded", "Mono", "Classic")
+                        else -> KinAppearance("Soft", "Rounded", "Clean", "Classic")
+                    }
+                    graph.appearanceStore.save(appearance)
                     savedMessage = "Remix applied"
                 }
             },
@@ -455,6 +715,7 @@ private fun RelationshipCard(
     repository: KinRelationshipRepository,
 ) {
     var note by remember(person.person.id, person.person.privateNote) { mutableStateOf(person.person.privateNote) }
+    var saved by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val selectedIds = person.circles.map { it.id }.toSet()
 
@@ -487,16 +748,22 @@ private fun RelationshipCard(
             }
             OutlinedTextField(
                 value = note,
-                onValueChange = { note = it.take(500) },
+                onValueChange = { note = it.take(500); saved = "" },
                 label = { Text("Private note") },
                 supportingText = { Text("Only you can see this") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
             )
             Button(
-                onClick = { scope.launch { repository.savePrivateNote(person.person.id, note.trim()) } },
+                onClick = {
+                    scope.launch {
+                        repository.savePrivateNote(person.person.id, note.trim())
+                        saved = "Saved"
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Save private note") }
+            if (saved.isNotBlank()) Text(saved, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -518,6 +785,7 @@ private fun ScreenColumn(
         Text(subtitle)
         Spacer(Modifier.height(4.dp))
         content()
+        Spacer(Modifier.height(16.dp))
     }
 }
 
