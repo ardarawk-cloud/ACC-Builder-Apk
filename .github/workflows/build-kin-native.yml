@@ -7,6 +7,7 @@ on:
     paths:
       - "native/kin/**"
       - ".github/workflows/build-kin-native.yml"
+      - "kin-api-base-url.txt"
       - "kin-native.trigger"
   workflow_dispatch:
 
@@ -73,6 +74,26 @@ jobs:
             exit 1
           fi
 
+      - name: Resolve KIN API base URL
+        id: api
+        shell: bash
+        run: |
+          set -euo pipefail
+          API_BASE_URL=""
+          if [[ -f kin-api-base-url.txt ]]; then
+            API_BASE_URL="$(tr -d '\r\n' < kin-api-base-url.txt)"
+          fi
+          if [[ -n "$API_BASE_URL" && "$API_BASE_URL" != https://* ]]; then
+            echo "KIN_API_BASE_URL must use HTTPS when configured."
+            exit 1
+          fi
+          echo "url=$API_BASE_URL" >> "$GITHUB_OUTPUT"
+          if [[ -n "$API_BASE_URL" ]]; then
+            echo "KIN remote API: configured"
+          else
+            echo "KIN remote API: local-only build"
+          fi
+
       - name: Build updateable KIN dev APK
         shell: bash
         working-directory: native/kin
@@ -80,7 +101,8 @@ jobs:
           set -euo pipefail
           gradle --no-daemon :app:assembleDebug --stacktrace \
             -PKIN_VERSION_CODE=${{ github.run_number }} \
-            -PKIN_VERSION_NAME=0.3.${{ github.run_number }}
+            -PKIN_VERSION_NAME=0.3.${{ github.run_number }} \
+            -PKIN_API_BASE_URL="${{ steps.api.outputs.url }}"
 
       - name: Verify APK signing and package
         shell: bash
