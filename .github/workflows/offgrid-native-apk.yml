@@ -50,16 +50,16 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp native/offgrid/app/build/outputs/apk/debug/app-debug.apk dist/OFFGRID-v0.1.4-phase1-branding.apk
-          sha256sum dist/OFFGRID-v0.1.4-phase1-branding.apk | tee dist/OFFGRID-v0.1.4-phase1-branding.sha256
+          cp native/offgrid/app/build/outputs/apk/debug/app-debug.apk dist/OFFGRID-v0.2.0-phase2-mesh.apk
+          sha256sum dist/OFFGRID-v0.2.0-phase2-mesh.apk | tee dist/OFFGRID-v0.2.0-phase2-mesh.sha256
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OFFGRID-v0.1.4-phase1-branding
+          name: OFFGRID-v0.2.0-phase2-mesh
           path: |
-            dist/OFFGRID-v0.1.4-phase1-branding.apk
-            dist/OFFGRID-v0.1.4-phase1-branding.sha256
+            dist/OFFGRID-v0.2.0-phase2-mesh.apk
+            dist/OFFGRID-v0.2.0-phase2-mesh.sha256
           retention-days: 30
 
       - name: Publish APK release
@@ -67,12 +67,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          TAG="offgrid-phase1-branding-${GITHUB_RUN_NUMBER}"
+          TAG="offgrid-phase2-mesh-${GITHUB_RUN_NUMBER}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/OFFGRID-v0.1.4-phase1-branding.apk dist/OFFGRID-v0.1.4-phase1-branding.sha256 --clobber
+            gh release upload "$TAG" dist/OFFGRID-v0.2.0-phase2-mesh.apk dist/OFFGRID-v0.2.0-phase2-mesh.sha256 --clobber
           else
-            gh release create "$TAG" dist/OFFGRID-v0.1.4-phase1-branding.apk dist/OFFGRID-v0.1.4-phase1-branding.sha256 \
-              --title "OFFGRID Phase 1.4 Branding APK" \
-              --notes "Phase 1.3 signed identity, reconnect stabilization, persistent local history and encrypted BLE chat, now with the new OFFGRID launcher branding. Dev-signed and update-compatible with prior OFFGRID Phase 1 dev builds." \
+            gh release create "$TAG" dist/OFFGRID-v0.2.0-phase2-mesh.apk dist/OFFGRID-v0.2.0-phase2-mesh.sha256 \
+              --title "OFFGRID Phase 2 Store & Forward Mesh MVP" \
+              --notes "Three-phone mesh MVP: encrypted mesh group key, persistent store-and-forward queue, dedupe, TTL/hop limit, per-peer sync tracking and automatic relay sync over the verified Phase 1 BLE secure session. Keeps Phase 1 direct encrypted chat, local history, signed identity verification, reconnect stabilization and OFFGRID launcher branding." \
               --target "$GITHUB_SHA"
           fi
