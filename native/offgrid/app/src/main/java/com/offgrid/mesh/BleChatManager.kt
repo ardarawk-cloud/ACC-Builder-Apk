@@ -40,7 +40,7 @@ class BleChatManager(
     private val context: Context,
     private val localDeviceId: String,
     private val onState: (String) -> Unit,
-    private val onSecurePeer: (SecurePeer) -> Unit,
+    private val onSecurePeer: (SecurePeer) -> Boolean,
     private val onIncomingMessage: (String, String) -> Unit,
     private val onDelivered: (String) -> Unit
 ) {
@@ -221,25 +221,43 @@ class BleChatManager(
         if (!verifyIdentity(remoteIdentity, body.toByteArray(Charsets.UTF_8), signatureBytes)) {
             onState("Identity signature rejected · connection blocked")
             sessionKey = null
+            blockCurrentConnection()
             return
         }
 
         val localPair = localEphemeralKeyPair ?: return
         sessionKey = deriveSessionKey(localPair, remoteEphemeral, remoteIdentity)
         remoteDeviceId = deviceId
-        reconnectAttempt = 0
         val fingerprint = identityFingerprint(remoteIdentity)
         val safetyCode = safetyCode(identityKeyPair.public.encoded, remoteIdentity)
-        onState("Secure BLE session ready · signed identity")
-        onSecurePeer(
-            SecurePeer(
-                deviceId = deviceId,
-                identityFingerprint = fingerprint,
-                safetyCode = safetyCode,
-                address = activeRemote?.let { safeAddress(it) }.orEmpty()
-            )
+        val peer = SecurePeer(
+            deviceId = deviceId,
+            identityFingerprint = fingerprint,
+            safetyCode = safetyCode,
+            address = activeRemote?.let { safeAddress(it) }.orEmpty()
         )
+
+        if (!onSecurePeer(peer)) {
+            sessionKey = null
+            onState("Known peer identity changed · connection blocked")
+            blockCurrentConnection()
+            return
+        }
+
+        reconnectAttempt = 0
+        onState("Secure BLE session ready · signed identity")
         if (!helloSent) sendHello()
+    }
+
+    private fun blockCurrentConnection() {
+        reconnectEnabled = false
+        reconnectTarget = null
+        reconnectHandler.removeCallbacksAndMessages(null)
+        when (role) {
+            Role.CLIENT -> runCatching { clientGatt?.disconnect() }
+            Role.SERVER -> activeRemote?.let { runCatching { gattServer?.cancelConnection(it) } }
+            Role.NONE -> Unit
+        }
     }
 
     private fun sendFrame(frame: String) {
