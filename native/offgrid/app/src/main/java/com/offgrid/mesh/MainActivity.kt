@@ -27,6 +27,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 class MainActivity : Activity() {
 
@@ -34,6 +35,16 @@ class MainActivity : Activity() {
     private lateinit var statusView: TextView
     private lateinit var peersContainer: LinearLayout
     private lateinit var myIdView: TextView
+
+    private lateinit var meshStatusView: TextView
+    private lateinit var meshNameInput: EditText
+    private lateinit var meshCodeInput: EditText
+    private lateinit var meshJoinButton: Button
+    private lateinit var meshLog: TextView
+    private lateinit var meshScroll: ScrollView
+    private lateinit var meshMessageInput: EditText
+    private lateinit var meshSendButton: Button
+
     private lateinit var chatPanel: LinearLayout
     private lateinit var chatTitle: TextView
     private lateinit var identityView: TextView
@@ -44,17 +55,22 @@ class MainActivity : Activity() {
     private lateinit var composerBar: LinearLayout
     private lateinit var messageInput: EditText
     private lateinit var sendButton: Button
+
     private lateinit var chatManager: BleChatManager
     private lateinit var chatStore: ChatStore
+    private lateinit var meshStore: MeshStore
 
     private var running = false
-    private var activePeerId: String? = null
+    @Volatile private var activePeerId: String? = null
     private var activePeerFingerprint: String? = null
     private var activeSafetyCode: String? = null
     private var activePeerVerified = false
-    private var activeIdentityChanged = false
+    @Volatile private var activeIdentityChanged = false
+
     private val peers = linkedMapOf<String, PeerInfo>()
     private val messages = mutableListOf<ChatEntry>()
+    private val meshTransportAcks = ConcurrentHashMap<String, MeshTransit>()
+    private val meshInFlight = ConcurrentHashMap.newKeySet<String>()
     private val localId by lazy { deviceId() }
 
     private val bluetoothManager by lazy { getSystemService(BluetoothManager::class.java) }
@@ -88,7 +104,9 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         chatStore = ChatStore(this)
+        meshStore = MeshStore(this, localId)
         buildUi()
+
         chatManager = BleChatManager(
             context = this,
             localDeviceId = localId,
@@ -102,41 +120,28 @@ class MainActivity : Activity() {
                 val restored = chatStore.loadMessages(peer.deviceId).map {
                     ChatEntry(it.id, it.mine, it.text, it.delivered, it.createdAt)
                 }
-                runOnUiThread { applySecurePeer(peer, check, restored) }
-                check.state != ChatStore.IdentityState.CHANGED
-            },
-            onIncomingMessage = { id, text ->
+                val accepted = check.state != ChatStore.IdentityState.CHANGED
+                if (accepted) activePeerId = peer.deviceId
                 runOnUiThread {
-                    if (activeIdentityChanged) return@runOnUiThread
-                    val peerId = activePeerId ?: return@runOnUiThread
-                    if (messages.none { it.id == id }) {
-                        val createdAt = System.currentTimeMillis()
-                        messages += ChatEntry(id, false, text, true, createdAt)
-                        chatStore.saveMessage(
-                            ChatStore.StoredMessage(id, peerId, false, text, true, createdAt)
-                        )
-                        renderChat()
-                    }
+                    applySecurePeer(peer, check, restored)
+                    if (accepted) syncMeshWithPeer(peer.deviceId)
                 }
+                accepted
             },
-            onDelivered = { id ->
-                runOnUiThread {
-                    val index = messages.indexOfFirst { it.id == id }
-                    if (index >= 0) {
-                        messages[index] = messages[index].copy(delivered = true)
-                        chatStore.markDelivered(id)
-                        renderChat()
-                    }
-                }
-            }
+            onIncomingMessage = { id, text -> handleIncomingTransportMessage(id, text) },
+            onDelivered = { id -> handleTransportDelivered(id) }
         )
+
         myIdView.text = "This device: $localId\nIdentity: ${chatManager.localIdentityFingerprint()}"
+        meshStore.currentGroup()?.let { meshNameInput.setText(it.name) }
+        renderMesh()
     }
 
     override fun onDestroy() {
         stopDiscovery()
         chatManager.close()
         chatStore.close()
+        meshStore.close()
         super.onDestroy()
     }
 
@@ -166,7 +171,7 @@ class MainActivity : Activity() {
             textSize = 34f
         })
         content.addView(TextView(this).apply {
-            text = "Phase 1.3 · Signed identity + reconnect stabilization"
+            text = "Phase 2.0 · Store & Forward Mesh"
             textSize = 16f
         })
 
@@ -198,12 +203,81 @@ class MainActivity : Activity() {
         content.addView(buttonRow)
 
         content.addView(TextView(this).apply {
+            text = "MESH GROUP · 3 PHONE TEST"
+            textSize = 20f
+            setPadding(0, dp(18), 0, dp(4))
+        })
+        content.addView(TextView(this).apply {
+            text = "Use the SAME group name + group code on all 3 phones. The code never travels in relay packets."
+            textSize = 13f
+            setPadding(0, 0, 0, dp(6))
+        })
+
+        meshNameInput = EditText(this).apply {
+            hint = "Group name · example: TEST TEAM"
+            maxLines = 1
+        }
+        content.addView(meshNameInput)
+
+        meshCodeInput = EditText(this).apply {
+            hint = "Group code · minimum 6 characters"
+            maxLines = 1
+        }
+        content.addView(meshCodeInput)
+
+        meshJoinButton = Button(this).apply {
+            text = "JOIN / SAVE MESH GROUP"
+            isAllCaps = false
+            setOnClickListener { joinMeshGroup() }
+        }
+        content.addView(meshJoinButton)
+
+        meshStatusView = TextView(this).apply {
+            textSize = 14f
+            setPadding(0, dp(6), 0, dp(6))
+        }
+        content.addView(meshStatusView)
+
+        meshLog = TextView(this).apply {
+            textSize = 15f
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+        }
+        meshScroll = ScrollView(this).apply { addView(meshLog) }
+        content.addView(
+            meshScroll,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(180))
+        )
+
+        val meshComposer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(5), 0, dp(4))
+        }
+        meshMessageInput = EditText(this).apply {
+            hint = "Mesh group message"
+            maxLines = 3
+            minLines = 1
+        }
+        meshComposer.addView(
+            meshMessageInput,
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        meshSendButton = Button(this).apply {
+            text = "MESH SEND"
+            isAllCaps = false
+            isEnabled = false
+            setOnClickListener { sendMeshMessage() }
+        }
+        meshComposer.addView(meshSendButton)
+        content.addView(meshComposer)
+
+        content.addView(TextView(this).apply {
             text = "Nearby OFFGRID nodes"
             textSize = 20f
             setPadding(0, dp(16), 0, dp(3))
         })
         content.addView(TextView(this).apply {
-            text = "Known peers keep local history. Verified peers also remember their cryptographic identity."
+            text = "For relay test: connect A→B, send MESH message, then on B tap C. Stored mesh packets sync automatically."
             textSize = 13f
             setPadding(0, 0, 0, dp(6))
         })
@@ -219,12 +293,12 @@ class MainActivity : Activity() {
             setPadding(0, dp(16), 0, 0)
         }
         chatTitle = TextView(this).apply {
-            text = "Encrypted chat"
+            text = "Encrypted direct chat"
             textSize = 20f
         }
         chatPanel.addView(chatTitle)
         chatPanel.addView(TextView(this).apply {
-            text = "Ephemeral ECDH + AES-GCM · persistent identity key signs every handshake."
+            text = "Direct chat: signed ephemeral ECDH + AES-GCM. Mesh payloads use a separate group key."
             textSize = 12f
             setPadding(0, dp(3), 0, dp(5))
         })
@@ -245,13 +319,11 @@ class MainActivity : Activity() {
         chatPanel.addView(verifyButton)
 
         chatLog = TextView(this).apply {
-            text = "Secure handshake ready. Send a message."
+            text = "Secure handshake ready. Send a direct message."
             textSize = 15f
             setPadding(dp(10), dp(8), dp(10), dp(8))
         }
-        chatScroll = ScrollView(this).apply {
-            addView(chatLog)
-        }
+        chatScroll = ScrollView(this).apply { addView(chatLog) }
         chatPanel.addView(
             chatScroll,
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(150))
@@ -265,7 +337,7 @@ class MainActivity : Activity() {
             setPadding(dp(12), dp(8), dp(12), dp(8))
         }
         messageInput = EditText(this).apply {
-            hint = "Offline message"
+            hint = "Direct offline message"
             maxLines = 3
             minLines = 1
         }
@@ -288,6 +360,169 @@ class MainActivity : Activity() {
         renderPeers()
     }
 
+    private fun joinMeshGroup() {
+        val name = meshNameInput.text.toString().trim()
+        val code = meshCodeInput.text.toString().trim()
+        if (name.isBlank() || code.length < 6) {
+            meshStatusView.text = "Enter a group name and a group code of at least 6 characters."
+            return
+        }
+        val config = runCatching { meshStore.configureGroup(name, code) }.getOrNull()
+        if (config == null) {
+            meshStatusView.text = "Could not configure mesh group."
+            return
+        }
+        meshCodeInput.setText("")
+        renderMesh()
+        meshStatusView.text = "✓ Joined ${config.name} · Group ID ${config.groupId}\nPut the SAME name + code on the other phones."
+    }
+
+    private fun sendMeshMessage() {
+        val text = meshMessageInput.text.toString().trim()
+        if (text.isBlank()) return
+        val envelope = runCatching { meshStore.createMessage(text) }.getOrNull()
+        if (envelope == null) {
+            meshStatusView.text = "Join a mesh group first. Message limit is 600 characters."
+            return
+        }
+        meshMessageInput.setText("")
+        renderMesh()
+        val peerId = activePeerId
+        if (peerId != null && chatManager.isSecure() && !activeIdentityChanged) {
+            syncMeshWithPeer(peerId)
+        } else {
+            meshStatusView.text = "Queued locally · connect to any OFFGRID peer to carry this encrypted message."
+        }
+    }
+
+    private fun syncMeshWithPeer(peerId: String) {
+        if (!chatManager.isSecure() || activeIdentityChanged || activePeerId != peerId) return
+        val pending = runCatching { meshStore.pendingForPeer(peerId) }.getOrDefault(emptyList())
+        var sent = 0
+        pending.forEach { envelope ->
+            val inFlightKey = "$peerId|${envelope.id}"
+            if (!meshInFlight.add(inFlightKey)) return@forEach
+            val transportId = chatManager.sendText(meshWire(envelope))
+            if (transportId == null) {
+                meshInFlight.remove(inFlightKey)
+                return@forEach
+            }
+            meshTransportAcks[transportId] = MeshTransit(peerId, envelope.id)
+            sent += 1
+        }
+        renderMesh()
+        meshStatusView.text = when {
+            sent > 0 -> "Mesh sync: sending $sent encrypted packet(s) to OFFGRID-${peerId.takeLast(6)}."
+            pending.isEmpty() -> meshGroupSummary("Mesh sync complete · nothing new for this peer.")
+            else -> meshGroupSummary("Mesh packets already in flight.")
+        }
+    }
+
+    private fun handleIncomingTransportMessage(transportId: String, text: String) {
+        val envelope = parseMeshWire(text)
+        if (envelope != null) {
+            val fromPeer = activePeerId ?: return
+            val result = runCatching { meshStore.receiveEnvelope(envelope, fromPeer) }.getOrNull() ?: return
+            runOnUiThread {
+                renderMesh()
+                meshStatusView.text = if (result.isNew) {
+                    "✓ Mesh packet stored from OFFGRID-${fromPeer.takeLast(6)} · hop ${envelope.hopCount + 1}/${envelope.maxHops}."
+                } else {
+                    meshGroupSummary("Mesh duplicate/expired packet ignored safely.")
+                }
+            }
+            return
+        }
+
+        runOnUiThread {
+            if (activeIdentityChanged) return@runOnUiThread
+            val peerId = activePeerId ?: return@runOnUiThread
+            if (messages.none { it.id == transportId }) {
+                val createdAt = System.currentTimeMillis()
+                messages += ChatEntry(transportId, false, text, true, createdAt)
+                chatStore.saveMessage(
+                    ChatStore.StoredMessage(transportId, peerId, false, text, true, createdAt)
+                )
+                renderChat()
+            }
+        }
+    }
+
+    private fun handleTransportDelivered(transportId: String) {
+        val meshTransit = meshTransportAcks.remove(transportId)
+        if (meshTransit != null) {
+            meshInFlight.remove("${meshTransit.peerId}|${meshTransit.messageId}")
+            runCatching { meshStore.markAck(meshTransit.peerId, meshTransit.messageId) }
+            runOnUiThread {
+                renderMesh()
+                meshStatusView.text = "✓ Mesh packet copied to OFFGRID-${meshTransit.peerId.takeLast(6)} · stored for onward relay."
+            }
+            return
+        }
+
+        runOnUiThread {
+            val index = messages.indexOfFirst { it.id == transportId }
+            if (index >= 0) {
+                messages[index] = messages[index].copy(delivered = true)
+                chatStore.markDelivered(transportId)
+                renderChat()
+            }
+        }
+    }
+
+    private fun meshWire(e: MeshStore.Envelope): String =
+        "$MESH_WIRE|${e.id}|${e.groupId}|${e.senderId}|${e.createdAt}|${e.expiresAt}|${e.hopCount}|${e.maxHops}|${e.cipherText}"
+
+    private fun parseMeshWire(text: String): MeshStore.Envelope? {
+        if (!text.startsWith("$MESH_WIRE|")) return null
+        val parts = text.split('|', limit = 9)
+        if (parts.size != 9 || parts[0] != MESH_WIRE) return null
+        return MeshStore.Envelope(
+            id = parts[1],
+            groupId = parts[2],
+            senderId = parts[3],
+            createdAt = parts[4].toLongOrNull() ?: return null,
+            expiresAt = parts[5].toLongOrNull() ?: return null,
+            hopCount = parts[6].toIntOrNull() ?: return null,
+            maxHops = parts[7].toIntOrNull() ?: return null,
+            cipherText = parts[8]
+        )
+    }
+
+    private fun renderMesh() {
+        val config = runCatching { meshStore.currentGroup() }.getOrNull()
+        meshSendButton.isEnabled = config != null
+        if (config == null) {
+            meshStatusView.text = "No mesh group yet. Create the same group on all 3 phones."
+            meshLog.text = "Mesh messages will appear here."
+            return
+        }
+
+        val stored = runCatching { meshStore.queueCount() }.getOrDefault(0)
+        val readable = runCatching { meshStore.readableMessages() }.getOrDefault(emptyList())
+        meshStatusView.text = "Group: ${config.name} · ID ${config.groupId}\nStored relay packets: $stored"
+        meshLog.text = if (readable.isEmpty()) {
+            "Group ready. Send a MESH message, then connect through another phone."
+        } else {
+            readable.joinToString("\n\n") { msg ->
+                val who = if (msg.mine) "You" else "OFFGRID-${msg.senderId.takeLast(6)}"
+                val route = if (msg.mine) {
+                    "origin · synced to ${msg.syncedPeers} peer(s)"
+                } else {
+                    "received at hop ${msg.hopCount}"
+                }
+                "$who: ${msg.text}\nMesh: $route"
+            }
+        }
+        meshScroll.post { meshScroll.fullScroll(View.FOCUS_DOWN) }
+    }
+
+    private fun meshGroupSummary(prefix: String): String {
+        val config = runCatching { meshStore.currentGroup() }.getOrNull() ?: return prefix
+        val stored = runCatching { meshStore.queueCount() }.getOrDefault(0)
+        return "$prefix\n${config.name} · ${config.groupId} · stored $stored"
+    }
+
     private fun applySecurePeer(
         peer: BleChatManager.SecurePeer,
         check: ChatStore.PeerIdentityCheck,
@@ -298,10 +533,12 @@ class MainActivity : Activity() {
         activeSafetyCode = peer.safetyCode
         activePeerVerified = check.verified
         activeIdentityChanged = check.state == ChatStore.IdentityState.CHANGED
+        meshTransportAcks.clear()
+        meshInFlight.clear()
 
         messages.clear()
         messages += restored
-        chatTitle.text = "Encrypted chat · OFFGRID-${peer.deviceId.takeLast(6)}"
+        chatTitle.text = "Encrypted direct chat · OFFGRID-${peer.deviceId.takeLast(6)}"
         chatPanel.visibility = View.VISIBLE
         renderIdentityPanel()
         renderChat()
@@ -309,15 +546,15 @@ class MainActivity : Activity() {
         if (activeIdentityChanged) {
             composerBar.visibility = View.GONE
             sendButton.isEnabled = false
-            setStatus("IDENTITY CHANGED · encrypted chat blocked")
+            setStatus("IDENTITY CHANGED · direct chat and mesh sync blocked")
         } else {
             composerBar.visibility = View.VISIBLE
             sendButton.isEnabled = true
             setStatus(
                 when {
-                    activePeerVerified -> "Secure session ready · verified peer · ${messages.size} local messages"
-                    messages.isEmpty() -> "Secure session ready · identity not verified yet"
-                    else -> "Secure session ready · ${messages.size} local messages restored · identity unverified"
+                    activePeerVerified -> "Secure session ready · verified peer · mesh sync available"
+                    messages.isEmpty() -> "Secure session ready · identity not verified yet · mesh sync available"
+                    else -> "Secure session ready · ${messages.size} local direct messages restored"
                 }
             )
         }
@@ -330,7 +567,7 @@ class MainActivity : Activity() {
         val safety = activeSafetyCode ?: "----"
         identityView.text = when {
             activeIdentityChanged -> {
-                "⚠ IDENTITY CHANGED\nPeer fingerprint: $fingerprint\nThe saved identity for this OFFGRID ID is different. Chat is blocked."
+                "⚠ IDENTITY CHANGED\nPeer fingerprint: $fingerprint\nThe saved identity for this OFFGRID ID is different. Connection is blocked."
             }
             activePeerVerified -> {
                 "✓ VERIFIED IDENTITY\nSafety code: $safety\nPeer fingerprint: $fingerprint\nIdentity matches the one you previously verified."
@@ -388,7 +625,7 @@ class MainActivity : Activity() {
 
     private fun renderChat() {
         chatLog.text = if (messages.isEmpty()) {
-            "Secure handshake ready. Send a message."
+            "Secure handshake ready. Send a direct message."
         } else {
             messages.joinToString("\n\n") { msg ->
                 if (msg.mine) {
@@ -492,6 +729,9 @@ class MainActivity : Activity() {
         activeSafetyCode = null
         activePeerVerified = false
         activeIdentityChanged = false
+        meshTransportAcks.clear()
+        meshInFlight.clear()
+
         val knownPeer = chatStore.peerForAddress(peer.address)
         chatPanel.visibility = View.VISIBLE
         composerBar.visibility = View.GONE
@@ -517,7 +757,7 @@ class MainActivity : Activity() {
             adapter?.bluetoothLeAdvertiser?.stopAdvertising(advertiseCallback)
         }
         running = false
-        setStatus(if (chatManager.isSecure()) "Discovery stopped · chat connection remains active" else "Discovery stopped")
+        setStatus(if (chatManager.isSecure()) "Discovery stopped · active connection remains" else "Discovery stopped")
     }
 
     private fun hasBluetoothPermissions(): Boolean {
@@ -545,7 +785,7 @@ class MainActivity : Activity() {
 
         if (peers.isEmpty()) {
             peersContainer.addView(TextView(this).apply {
-                text = "No OFFGRID nodes detected yet.\nInstall OFFGRID on another Android phone, turn Bluetooth on, then START DISCOVERY on both."
+                text = "No OFFGRID nodes detected yet.\nTurn Bluetooth on and START DISCOVERY on the other phones."
                 textSize = 15f
             })
             return
@@ -556,10 +796,10 @@ class MainActivity : Activity() {
             peersContainer.addView(Button(this).apply {
                 text = when {
                     knownPeer?.verified == true -> {
-                        "OFFGRID-${knownPeer.peerId.takeLast(6)}   ·   ${peer.rssi} dBm\n✓ VERIFIED PEER · TAP TO RECONNECT"
+                        "OFFGRID-${knownPeer.peerId.takeLast(6)}   ·   ${peer.rssi} dBm\n✓ VERIFIED PEER · TAP TO CONNECT"
                     }
                     knownPeer != null -> {
-                        "OFFGRID-${knownPeer.peerId.takeLast(6)}   ·   ${peer.rssi} dBm\nKNOWN PEER · TAP TO RECONNECT"
+                        "OFFGRID-${knownPeer.peerId.takeLast(6)}   ·   ${peer.rssi} dBm\nKNOWN PEER · TAP TO CONNECT"
                     }
                     else -> {
                         "OFFGRID-${peer.id.takeLast(6)}   ·   ${peer.rssi} dBm\nTAP TO CONNECT"
@@ -593,8 +833,11 @@ class MainActivity : Activity() {
         val createdAt: Long
     )
 
+    private data class MeshTransit(val peerId: String, val messageId: String)
+
     companion object {
         private const val REQUEST_BLUETOOTH = 1001
         private const val PEER_TIMEOUT_MS = 20_000L
+        private const val MESH_WIRE = "@OGM1"
     }
 }
