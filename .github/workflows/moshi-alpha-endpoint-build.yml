@@ -1,0 +1,97 @@
+name: MOSHI Endpoint Alpha APK
+
+on:
+  push:
+    branches: [feat/moshi-relay-builder]
+    paths:
+      - 'moshi-relay/moshi-alpha-endpoint.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout relay config
+        uses: actions/checkout@v4
+        with:
+          path: relay
+
+      - name: Read and validate endpoint
+        id: endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE="$GITHUB_WORKSPACE/relay/moshi-relay/moshi-alpha-endpoint.txt"
+          test -f "$FILE" || { echo 'Endpoint trigger file missing'; exit 1; }
+          API_BASE_URL="$(tr -d '\r\n' < "$FILE")"
+          case "$API_BASE_URL" in
+            https://*) ;;
+            *) echo 'MOSHI endpoint must start with https://' >&2; exit 2 ;;
+          esac
+          [[ "$API_BASE_URL" != *'.invalid'* ]] || { echo 'Invalid endpoint'; exit 3; }
+          [[ ! "$API_BASE_URL" =~ [[:space:]] ]] || { echo 'Endpoint contains whitespace'; exit 4; }
+          echo "api_base_url=$API_BASE_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout verified MOSHI Alpha source
+        uses: actions/checkout@v4
+        with:
+          repository: balinightlife666-web/ACC-Android-Builder
+          ref: 48c2de1c5cdc444d146923684d0459b4069ccdfe
+          path: source
+          persist-credentials: false
+
+      - name: Verify MOSHI source lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git -C source rev-parse HEAD)"
+          test "$actual" = '48c2de1c5cdc444d146923684d0459b4069ccdfe' || { echo "Source SHA mismatch: $actual"; exit 5; }
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle 8.10.2
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Build endpoint-pinned MOSHI APK
+        working-directory: source/projects/moshi/android
+        env:
+          API_BASE_URL: ${{ steps.endpoint.outputs.api_base_url }}
+        run: gradle :app:assembleDebug --stacktrace -PMOSHI_API_BASE_URL="$API_BASE_URL"
+
+      - name: Stage Alpha APK and receipt
+        env:
+          API_BASE_URL: ${{ steps.endpoint.outputs.api_base_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp source/projects/moshi/android/app/build/outputs/apk/debug/app-debug.apk dist/MOSHI-alpha-v0.1.apk
+          sha256sum dist/MOSHI-alpha-v0.1.apk | tee dist/MOSHI-alpha-v0.1.sha256
+          {
+            echo 'product=MOSHI'
+            echo 'channel=internal-alpha-v0.1'
+            echo 'source_commit=48c2de1c5cdc444d146923684d0459b4069ccdfe'
+            echo "relay_commit=$GITHUB_SHA"
+            echo "api_base_url=$API_BASE_URL"
+            echo 'stable_signing=false'
+          } > dist/MOSHI-alpha-v0.1-build.txt
+
+      - name: Upload endpoint-pinned APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MOSHI-alpha-v0.1-endpoint-pinned
+          path: dist/
+          retention-days: 14
