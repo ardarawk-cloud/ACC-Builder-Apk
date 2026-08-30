@@ -11,3 +11,8 @@ Target gate:
 - No internet or central server required.
 
 Security note: Phase 1 encrypts the BLE session end-to-end, but peer identity is not yet authenticated against an active MITM. QR/fingerprint verification is a later gate.
+
+Build/signing note:
+- Physical-device Phase 1+ alpha uses package `com.offgrid.mesh.dev` and a stable development-only signer.
+- The dev signer is intentionally not a production trust anchor.
+- Production/Play signing must use a private release key.
