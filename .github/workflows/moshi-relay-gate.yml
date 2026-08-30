@@ -1,0 +1,89 @@
+name: MOSHI Alpha Relay Gate
+
+on:
+  push:
+    branches: [feat/moshi-relay-builder]
+    paths:
+      - '.github/workflows/moshi-relay-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout MOSHI source
+        uses: actions/checkout@v4
+        with:
+          repository: balinightlife666-web/ACC-Android-Builder
+          ref: 1f2414d32aa601c1a49a8ac0a152a35dcac62544
+          token: ${{ secrets.MOSHI_SOURCE_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install backend dependencies
+        working-directory: source/projects/moshi/backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Backend pytest
+        working-directory: source/projects/moshi/backend
+        run: pytest -q
+
+      - name: Validate Alpha Compose
+        working-directory: source/projects/moshi
+        env:
+          MOSHI_POSTGRES_PASSWORD: ci-postgres-password
+          MOSHI_JWT_SECRET: ci-only-jwt-secret-with-more-than-32-characters
+        run: docker compose -f docker-compose.alpha.yml config >/dev/null
+
+      - name: Build backend container
+        working-directory: source/projects/moshi/backend
+        run: docker build -t moshi-api:relay-ci .
+
+  android:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout MOSHI source
+        uses: actions/checkout@v4
+        with:
+          repository: balinightlife666-web/ACC-Android-Builder
+          ref: 1f2414d32aa601c1a49a8ac0a152a35dcac62544
+          token: ${{ secrets.MOSHI_SOURCE_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle 8.10.2
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Build MOSHI debug APK
+        working-directory: source/projects/moshi/android
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Upload MOSHI gate APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MOSHI-alpha-relay-gate
+          path: source/projects/moshi/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
