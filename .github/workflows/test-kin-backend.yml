@@ -30,6 +30,7 @@ jobs:
     env:
       KIN_ENVIRONMENT: test
       KIN_JWT_SECRET: ci-test-secret-not-for-production
+      PYTHONPATH: ${{ github.workspace }}/kin/backend
 
     steps:
       - name: Checkout source
