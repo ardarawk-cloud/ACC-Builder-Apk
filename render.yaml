@@ -6,6 +6,7 @@ services:
     rootDir: kin/backend
     dockerfilePath: ./Dockerfile
     dockerContext: .
+    dockerCommand: sh -c 'uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-10000}"'
     healthCheckPath: /health
     envVars:
       - key: KIN_ENVIRONMENT
