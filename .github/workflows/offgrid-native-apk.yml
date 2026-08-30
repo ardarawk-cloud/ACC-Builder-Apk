@@ -42,7 +42,7 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Build native Phase 1 APK
+      - name: Build native OFFGRID APK
         working-directory: native/offgrid
         run: gradle --no-daemon :app:assembleDebug --stacktrace
 
@@ -50,16 +50,16 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp native/offgrid/app/build/outputs/apk/debug/app-debug.apk dist/OFFGRID-v0.1.1-phase1-ui.apk
-          sha256sum dist/OFFGRID-v0.1.1-phase1-ui.apk | tee dist/OFFGRID-v0.1.1-phase1-ui.sha256
+          cp native/offgrid/app/build/outputs/apk/debug/app-debug.apk dist/OFFGRID-v0.1.2-phase1-history.apk
+          sha256sum dist/OFFGRID-v0.1.2-phase1-history.apk | tee dist/OFFGRID-v0.1.2-phase1-history.sha256
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OFFGRID-v0.1.1-phase1-ui
+          name: OFFGRID-v0.1.2-phase1-history
           path: |
-            dist/OFFGRID-v0.1.1-phase1-ui.apk
-            dist/OFFGRID-v0.1.1-phase1-ui.sha256
+            dist/OFFGRID-v0.1.2-phase1-history.apk
+            dist/OFFGRID-v0.1.2-phase1-history.sha256
           retention-days: 30
 
       - name: Publish APK release
@@ -67,12 +67,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          TAG="offgrid-phase1-ui-${GITHUB_RUN_NUMBER}"
+          TAG="offgrid-phase1-history-${GITHUB_RUN_NUMBER}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/OFFGRID-v0.1.1-phase1-ui.apk dist/OFFGRID-v0.1.1-phase1-ui.sha256 --clobber
+            gh release upload "$TAG" dist/OFFGRID-v0.1.2-phase1-history.apk dist/OFFGRID-v0.1.2-phase1-history.sha256 --clobber
           else
-            gh release create "$TAG" dist/OFFGRID-v0.1.1-phase1-ui.apk dist/OFFGRID-v0.1.1-phase1-ui.sha256 \
-              --title "OFFGRID Phase 1 UI Fix APK" \
-              --notes "Phase 1 direct encrypted BLE chat with fixed-bottom message composer and keyboard resize handling. Dev-signed and update-compatible with OFFGRID Phase 1 dev builds." \
+            gh release create "$TAG" dist/OFFGRID-v0.1.2-phase1-history.apk dist/OFFGRID-v0.1.2-phase1-history.sha256 \
+              --title "OFFGRID Phase 1.2 Local History APK" \
+              --notes "Direct encrypted BLE chat with SQLite local chat history, persistent peer identity mapping, known-peer reconnect labels, fixed composer, ECDH session keys, AES-GCM payloads and delivery ACK. Dev-signed and update-compatible with prior Phase 1 dev builds." \
               --target "$GITHUB_SHA"
           fi
