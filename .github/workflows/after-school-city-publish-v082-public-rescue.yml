@@ -1,0 +1,239 @@
+name: After School City Publish V0.8.2 Public Rescue
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/after-school-city-publish-v082-public-rescue.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: after-school-city-live-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SOURCE_REPO: ardarawk-cloud/ACC-Roblox-maps
+      SOURCE_SHA: 398f80859527a09d65eae59474342895fef31949
+      BASE_LIVE_SHA: efa281ac26f847f683e002b6085b49d196c05421
+      QC_RUN_ID: '33303659588'
+      UNIVERSE_ID: '10745359869'
+      PLACE_ID: '121603385909425'
+      EXPECTED_BYTES: '111920'
+      EXPECTED_SHA256: '6f12286e4e9b77bb237124d67349bc4543da683bbcb5c4184afa14a0a3746852'
+      ROBLOX_API_KEY: ${{ secrets.ROCKET_RACOON_PUBLISH }}
+    steps:
+      - name: Checkout publisher repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify canonical V0.8.2 QC receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          receipt='deploy-status/after-school-city-v082-public-rescue-qc.json'
+          test -f "$receipt"
+          [[ "$(jq -r '.status' "$receipt")" == 'QC_PASS' ]] || { echo 'Canonical QC is not PASS'; exit 9; }
+          [[ "$(jq -r '.sourceCommit' "$receipt")" == "$SOURCE_SHA" ]] || { echo 'QC source mismatch'; exit 10; }
+          [[ "$(jq -r '.baseLiveCommit' "$receipt")" == "$BASE_LIVE_SHA" ]] || { echo 'QC base LIVE mismatch'; exit 11; }
+          [[ "$(jq -r '.runId' "$receipt")" == "$QC_RUN_ID" ]] || { echo 'QC run mismatch'; exit 12; }
+          [[ "$(jq -r '.placeBytes' "$receipt")" == "$EXPECTED_BYTES" ]] || { echo 'QC byte mismatch'; exit 13; }
+          [[ "$(jq -r '.placeSha256' "$receipt")" == "$EXPECTED_SHA256" ]] || { echo 'QC SHA mismatch'; exit 14; }
+          echo "QC AUTHORITY PASS run=$QC_RUN_ID source=$SOURCE_SHA"
+
+      - name: Checkout locked public After School City source
+        uses: actions/checkout@v4
+        with:
+          repository: ardarawk-cloud/ACC-Roblox-maps
+          ref: 398f80859527a09d65eae59474342895fef31949
+          path: asc-source
+          fetch-depth: 0
+
+      - name: Verify exact V0.8.2 source and delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${ROBLOX_API_KEY:-}" ]] || { echo 'ROCKET_RACOON_PUBLISH missing'; exit 20; }
+          actual=$(git -C asc-source rev-parse HEAD)
+          [[ "$actual" == "$SOURCE_SHA" ]] || { echo "Source SHA mismatch: $actual"; exit 21; }
+          git -C asc-source cat-file -e "${BASE_LIVE_SHA}^{commit}"
+          mapfile -t files < <(git -C asc-source diff --name-only "$BASE_LIVE_SHA" "$SOURCE_SHA")
+          [[ ${#files[@]} -eq 3 ]] || { printf '%s\n' "${files[@]}"; echo "Unexpected delta count ${#files[@]}"; exit 22; }
+          expected=(
+            'maps/after-school-city/after-school-city.config.lua'
+            'maps/after-school-city/after-school-city.road-sidewalk-intersection-cleanup.server.lua'
+            'maps/after-school-city/default.project.json'
+          )
+          for f in "${expected[@]}"; do printf '%s\n' "${files[@]}" | grep -Fxq "$f" || { echo "Missing expected delta $f"; exit 23; }; done
+          echo "SOURCE LOCK PASS source=$actual delta=3-files"
+
+      - name: Audit V0.8.2 asphalt intersection contract
+        shell: pwsh
+        working-directory: asc-source
+        run: |
+          $ErrorActionPreference='Stop'
+          $map='maps/after-school-city'
+          $fix=Get-Content "$map/after-school-city.road-sidewalk-intersection-cleanup.server.lua" -Raw
+          $world=Get-Content "$map/after-school-city.world.server.lua" -Raw
+          $street=Get-Content "$map/after-school-city.street-life.server.lua" -Raw
+          $v081=Get-Content "$map/after-school-city.road-concrete-strip-cleanup.server.lua" -Raw
+          $config=Get-Content "$map/after-school-city.config.lua" -Raw
+          $project=Get-Content "$map/default.project.json" -Raw
+          $null=$project|ConvertFrom-Json
+          function Need([string]$text,[string]$token,[string]$label){if($text.IndexOf($token,[StringComparison]::Ordinal)-lt 0){throw "V0.8.2 missing contract: $label"}}
+          foreach($token in @(
+            '0.8.2-road-sidewalk-intersection-cleanup-1',
+            'ASC_RoadConcreteStripCleanupPass',
+            'NS_Sidewalk_W', 'NS_Sidewalk_E', 'EW_Sidewalk_N', 'EW_Sidewalk_S',
+            'SidewalkW', 'SidewalkE',
+            'NorthSouthRoad', 'EastWestRoad', 'SchoolSportsRoad', 'SideStreet', 'CrossStreet',
+            'PERPENDICULAR_DOT_MAX = 0.45',
+            'return -part.CFrame.LookVector',
+            'projectedHalfExtent',
+            'SidewalkSegment_',
+            'sidewalk:Destroy()',
+            'ASC_V082Segment',
+            'ASC_V082FailClosed',
+            'ASC_AsphaltIntersectionPriority',
+            'ASC_RoadSidewalkIntersectionCleanupPass'
+          )){Need $fix $token $token}
+          Need $world 'part(roads, "NS_Sidewalk_W", Vector3.new(9, 0.8, 570)' 'legacy NS west sidewalk authority'
+          Need $world 'part(roads, "EW_Sidewalk_N", Vector3.new(600, 0.8, 9)' 'legacy EW north sidewalk authority'
+          Need $street 'part(streetGrid, "SidewalkW", Vector3.new(7, 0.65, 190)' 'legacy side-street sidewalk authority'
+          Need $v081 'ASC_RoadConcreteStripCleanupPass' 'V0.8.1 prerequisite authority'
+          foreach($forbidden in @('MarketplaceService','PromptProductPurchase','ProcessReceipt','DataStoreService','BillboardGui')){
+            if($fix -match [regex]::Escape($forbidden)){throw "Forbidden V0.8.2 scope token: $forbidden"}
+          }
+          if($fix -match 'road:Destroy\(\)' -or $fix -match 'road\.Size\s*=') { throw 'V0.8.2 may not destroy/resize asphalt roads' }
+          foreach($token in @(
+            'Version = "0.8.2-road-sidewalk-intersection-cleanup-1"',
+            'RoadConcreteStripCleanupVersion = "0.8.1-road-concrete-strip-cleanup-1"',
+            'RoadSidewalkIntersectionCleanupVersion = "0.8.2-road-sidewalk-intersection-cleanup-1"',
+            'EnableRoadConcreteStripCleanupPass = true',
+            'EnableRoadSidewalkIntersectionCleanupPass = true',
+            'EnableActivities = false',
+            'EnableEconomy = false',
+            'EnablePersistence = false',
+            'EnablePersonalRoom = false',
+            'EnableClubs = false'
+          )){Need $config $token $token}
+          Need $project 'ASC_RoadConcreteStripCleanup' 'V0.8.1 node'
+          Need $project 'ASC_RoadSidewalkIntersectionCleanup' 'V0.8.2 node'
+          $i81=$project.IndexOf('ASC_RoadConcreteStripCleanup',[StringComparison]::Ordinal)
+          $i82=$project.IndexOf('ASC_RoadSidewalkIntersectionCleanup',[StringComparison]::Ordinal)
+          if($i81 -lt 0 -or $i82 -le $i81){throw 'Rojo ordering invalid: V0.8.2 must follow V0.8.1'}
+          Write-Host 'V0.8.2 CONTRACT PASS asphaltRoads=IMMUTABLE sidewalkIntersections=SPLIT gameplay/economy=OFF'
+
+      - name: Verify LIVE v28 protected source unchanged
+        shell: bash
+        working-directory: asc-source
+        run: |
+          set -euo pipefail
+          for f in \
+            maps/after-school-city/after-school-city.intro.client.lua \
+            maps/after-school-city/after-school-city.world.server.lua \
+            maps/after-school-city/after-school-city.school-life.server.lua \
+            maps/after-school-city/after-school-city.street-life.server.lua \
+            maps/after-school-city/after-school-city.spatial-cleanup.server.lua \
+            maps/after-school-city/after-school-city.layout-correction.server.lua \
+            maps/after-school-city/after-school-city.circulation-sanitize.server.lua \
+            maps/after-school-city/after-school-city.orientation-correction.server.lua \
+            maps/after-school-city/after-school-city.road-centerline-clearance.server.lua \
+            maps/after-school-city/after-school-city.premium-exterior.server.lua \
+            maps/after-school-city/after-school-city.school-interior.server.lua \
+            maps/after-school-city/after-school-city.school-interior-polish.server.lua \
+            maps/after-school-city/after-school-city.school-visual-depth.server.lua \
+            maps/after-school-city/after-school-city.signage-orientation-hotfix.server.lua \
+            maps/after-school-city/after-school-city.school-architectural-cleanup.server.lua \
+            maps/after-school-city/after-school-city.locker-clearance-hotfix.server.lua \
+            maps/after-school-city/after-school-city.exterior-locker-cleanup.server.lua \
+            maps/after-school-city/after-school-city.school-road-visual-defect-cleanup.server.lua \
+            maps/after-school-city/after-school-city.student-row-shop-interiors.server.lua \
+            maps/after-school-city/after-school-city.student-row-interior-sign-finalize.server.lua \
+            maps/after-school-city/after-school-city.road-concrete-strip-cleanup.server.lua; do
+            git diff --quiet "$BASE_LIVE_SHA" "$SOURCE_SHA" -- "$f" || { echo "Protected source changed: $f"; exit 30; }
+          done
+          grep -Fq 'PUTU AZYA PUTRI' maps/after-school-city/after-school-city.intro.client.lua
+          grep -Fq 'BINTANG HARDAJAYA' maps/after-school-city/after-school-city.intro.client.lua
+          grep -Fq 'WITH LOVE, DAD' maps/after-school-city/after-school-city.intro.client.lua
+          echo 'PROTECTED SOURCE PASS v28=UNCHANGED asphaltAuthority=UNCHANGED dedication=UNCHANGED'
+
+      - name: Prepare Rojo 7.7.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/asc-rojo"
+          curl -fsSL 'https://github.com/rojo-rbx/rojo/releases/download/v7.7.0/rojo-7.7.0-linux-x86_64.zip' -o "$RUNNER_TEMP/rojo.zip"
+          unzip -q -o "$RUNNER_TEMP/rojo.zip" -d "$RUNNER_TEMP/asc-rojo"
+          rojo=$(find "$RUNNER_TEMP/asc-rojo" -type f -name rojo | head -n1)
+          [[ -n "$rojo" ]] || exit 40
+          chmod +x "$rojo"
+          version=$("$rojo" --version)
+          [[ "$version" == *'7.7.0'* ]] || { echo "Wrong Rojo: $version"; exit 41; }
+          echo "ROJO_EXE=$rojo" >> "$GITHUB_ENV"
+
+      - name: Build and verify exact V0.8.2 place
+        shell: bash
+        run: |
+          set -euo pipefail
+          place="$RUNNER_TEMP/after-school-city-v082.rbxl"
+          "$ROJO_EXE" build 'asc-source/maps/after-school-city/default.project.json' -o "$place"
+          test -f "$place"
+          bytes=$(stat -c%s "$place")
+          sha=$(sha256sum "$place" | awk '{print $1}')
+          [[ "$bytes" == "$EXPECTED_BYTES" ]] || { echo "Byte mismatch: $bytes expected=$EXPECTED_BYTES"; exit 42; }
+          [[ "$sha" == "$EXPECTED_SHA256" ]] || { echo "SHA256 mismatch: $sha expected=$EXPECTED_SHA256"; exit 43; }
+          echo "PLACE_FILE=$place" >> "$GITHUB_ENV"
+          echo "PLACE_BYTES=$bytes" >> "$GITHUB_ENV"
+          echo "PLACE_SHA256=$sha" >> "$GITHUB_ENV"
+          echo "BUILD EXACT PASS bytes=$bytes sha256=$sha"
+
+      - name: Publish V0.8.2 LIVE to Roblox
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://apis.roblox.com/universes/v1/${UNIVERSE_ID}/places/${PLACE_ID}/versions?versionType=Published"
+          http=$(curl -sS --location -o "$RUNNER_TEMP/asc-publish-response.json" -w '%{http_code}' -X POST "$url" -H "x-api-key: $ROBLOX_API_KEY" -H 'Content-Type: application/octet-stream' --data-binary "@$PLACE_FILE")
+          body=$(cat "$RUNNER_TEMP/asc-publish-response.json")
+          [[ "$http" =~ ^2[0-9][0-9]$ ]] || { echo "HTTP $http: $body"; exit 50; }
+          version=$(jq -r '.versionNumber // empty' "$RUNNER_TEMP/asc-publish-response.json")
+          [[ -n "$version" ]] || { echo "Missing versionNumber: $body"; exit 51; }
+          echo "PUBLISHED_VERSION=$version" >> "$GITHUB_ENV"
+          echo "ROBLOX PUBLISH PASS version=$version"
+
+      - name: Persist LIVE receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p deploy-status
+          jq -n \
+            --arg status 'LIVE_PUBLISHED' \
+            --arg project 'AFTER SCHOOL CITY' \
+            --arg mode 'ROAD_SIDEWALK_INTERSECTION_CLEANUP_V0_8_2' \
+            --arg sourceRepo "$SOURCE_REPO" \
+            --arg sourceCommit "$SOURCE_SHA" \
+            --arg baseLiveCommit "$BASE_LIVE_SHA" \
+            --arg qcRunId "$QC_RUN_ID" \
+            --arg universeId "$UNIVERSE_ID" \
+            --arg placeId "$PLACE_ID" \
+            --arg versionNumber "$PUBLISHED_VERSION" \
+            --arg rojoVersion '7.7.0' \
+            --arg placeBytes "$PLACE_BYTES" \
+            --arg placeSha256 "$PLACE_SHA256" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg publishedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{status:$status,project:$project,mode:$mode,sourceRepo:$sourceRepo,sourceCommit:$sourceCommit,baseLiveCommit:$baseLiveCommit,qcRunId:$qcRunId,universeId:$universeId,placeId:$placeId,versionNumber:($versionNumber|tonumber),rojoVersion:$rojoVersion,placeBytes:($placeBytes|tonumber),placeSha256:$placeSha256,runId:$runId,publishedAt:$publishedAt,note:"V0.8.2 exact QC-locked asphalt-priority sidewalk intersection cleanup; legacy long sidewalks split at perpendicular asphalt crossings; protected LIVE v28 source unchanged."}' \
+            > deploy-status/after-school-city-publish-v082-public-rescue.json
+          cat deploy-status/after-school-city-publish-v082-public-rescue.json
+          git config user.name 'After School City Publish Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add deploy-status/after-school-city-publish-v082-public-rescue.json
+          git commit -m "Record After School City V0.8.2 LIVE publish [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
