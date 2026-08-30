@@ -14,6 +14,10 @@ android {
         targetSdk = 36
         versionCode = providers.gradleProperty("KIN_VERSION_CODE").orNull?.toIntOrNull() ?: 3
         versionName = providers.gradleProperty("KIN_VERSION_NAME").orNull ?: "0.3.0"
+        val apiBaseUrl = providers.gradleProperty("KIN_API_BASE_URL").orNull.orEmpty()
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+        buildConfigField("String", "KIN_API_BASE_URL", "\"$apiBaseUrl\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -57,6 +61,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
