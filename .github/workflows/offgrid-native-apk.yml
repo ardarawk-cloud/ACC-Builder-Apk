@@ -50,16 +50,16 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp native/offgrid/app/build/outputs/apk/debug/app-debug.apk dist/OFFGRID-v0.1.2-phase1-history.apk
-          sha256sum dist/OFFGRID-v0.1.2-phase1-history.apk | tee dist/OFFGRID-v0.1.2-phase1-history.sha256
+          cp native/offgrid/app/build/outputs/apk/debug/app-debug.apk dist/OFFGRID-v0.1.3-phase1-identity.apk
+          sha256sum dist/OFFGRID-v0.1.3-phase1-identity.apk | tee dist/OFFGRID-v0.1.3-phase1-identity.sha256
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OFFGRID-v0.1.2-phase1-history
+          name: OFFGRID-v0.1.3-phase1-identity
           path: |
-            dist/OFFGRID-v0.1.2-phase1-history.apk
-            dist/OFFGRID-v0.1.2-phase1-history.sha256
+            dist/OFFGRID-v0.1.3-phase1-identity.apk
+            dist/OFFGRID-v0.1.3-phase1-identity.sha256
           retention-days: 30
 
       - name: Publish APK release
@@ -67,12 +67,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          TAG="offgrid-phase1-history-${GITHUB_RUN_NUMBER}"
+          TAG="offgrid-phase1-identity-${GITHUB_RUN_NUMBER}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/OFFGRID-v0.1.2-phase1-history.apk dist/OFFGRID-v0.1.2-phase1-history.sha256 --clobber
+            gh release upload "$TAG" dist/OFFGRID-v0.1.3-phase1-identity.apk dist/OFFGRID-v0.1.3-phase1-identity.sha256 --clobber
           else
-            gh release create "$TAG" dist/OFFGRID-v0.1.2-phase1-history.apk dist/OFFGRID-v0.1.2-phase1-history.sha256 \
-              --title "OFFGRID Phase 1.2 Local History APK" \
-              --notes "Direct encrypted BLE chat with SQLite local chat history, persistent peer identity mapping, known-peer reconnect labels, fixed composer, ECDH session keys, AES-GCM payloads and delivery ACK. Dev-signed and update-compatible with prior Phase 1 dev builds." \
+            gh release create "$TAG" dist/OFFGRID-v0.1.3-phase1-identity.apk dist/OFFGRID-v0.1.3-phase1-identity.sha256 \
+              --title "OFFGRID Phase 1.3 Identity Verification APK" \
+              --notes "Encrypted BLE direct chat with persistent Android Keystore identity, signed ephemeral ECDH handshake, pairwise Safety Code verification, verified-peer identity pinning, changed-identity blocking, SQLite local history, delivery ACK and bounded client reconnect retries. Dev-signed and update-compatible with prior Phase 1 dev builds." \
               --target "$GITHUB_SHA"
           fi
