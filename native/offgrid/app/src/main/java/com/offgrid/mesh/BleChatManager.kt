@@ -175,15 +175,14 @@ class BleChatManager(
     private fun sendFrame(frame: String) {
         val bytes = frame.toByteArray(Charsets.UTF_8)
         val frameId = nextFrameId()
-        val chunkSize = PACKET_PAYLOAD_SIZE
-        val total = ((bytes.size + chunkSize - 1) / chunkSize).coerceAtLeast(1)
+        val total = ((bytes.size + PACKET_PAYLOAD_SIZE - 1) / PACKET_PAYLOAD_SIZE).coerceAtLeast(1)
         if (total > 255) {
             onState("Message too large")
             return
         }
         var offset = 0
         for (index in 0 until total) {
-            val count = minOf(chunkSize, bytes.size - offset)
+            val count = minOf(PACKET_PAYLOAD_SIZE, bytes.size - offset)
             val packet = ByteArray(HEADER_SIZE + count)
             packet[0] = MAGIC_1
             packet[1] = MAGIC_2
@@ -332,7 +331,11 @@ class BleChatManager(
             }
         }
 
-        override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray) {
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray
+        ) {
             receivePacket(gatt.device, value)
         }
 
@@ -395,19 +398,6 @@ class BleChatManager(
             if (characteristic.uuid == DATA_UUID) receivePacket(device, value)
         }
 
-        @Suppress("DEPRECATION")
-        override fun onCharacteristicWriteRequest(
-            device: BluetoothDevice,
-            requestId: Int,
-            characteristic: BluetoothGattCharacteristic,
-            preparedWrite: Boolean,
-            responseNeeded: Boolean,
-            offset: Int
-        ) {
-            if (responseNeeded) gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
-            characteristic.value?.let { receivePacket(device, it) }
-        }
-
         override fun onNotificationSent(device: BluetoothDevice, status: Int) {
             serverNotifyInFlight = false
             if (status != BluetoothGatt.GATT_SUCCESS) onState("BLE notify status $status")
@@ -460,7 +450,9 @@ class BleChatManager(
     }
 
     private enum class Role { NONE, CLIENT, SERVER }
-    private class FrameAssembly(val total: Int) { val parts: Array<ByteArray?> = arrayOfNulls(total) }
+    private class FrameAssembly(val total: Int) {
+        val parts: Array<ByteArray?> = arrayOfNulls(total)
+    }
 
     companion object {
         val SERVICE_UUID: UUID = UUID.fromString("9f92b6a8-d601-4db8-a2fc-0ff67f0a6b71")
