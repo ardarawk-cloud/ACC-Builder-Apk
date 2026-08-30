@@ -11,6 +11,12 @@ data class KinRegistration(
     val password: String,
 )
 
+data class KinProfileUpdate(
+    val displayName: String? = null,
+    val bio: String? = null,
+    val skinId: String? = null,
+)
+
 sealed interface KinAuthResult {
     data object Success : KinAuthResult
     data class Error(val message: String) : KinAuthResult
@@ -19,14 +25,17 @@ sealed interface KinAuthResult {
 interface KinAuthRepository {
     suspend fun login(identity: String, password: String): KinAuthResult
     suspend fun register(registration: KinRegistration): KinAuthResult
+    suspend fun restoreSession(): KinAuthResult
+    suspend fun updateProfile(update: KinProfileUpdate): KinAuthResult
+    suspend fun logout(): KinAuthResult
 }
 
 /**
  * Local development implementation.
  *
- * It persists the account/session shape used by the UI now. A remote implementation can replace
- * this class later without changing Welcome/Login/Register/Profile Onboarding screens.
- * Passwords are intentionally NOT persisted in this local preview implementation.
+ * It persists the account/session shape used by the UI now. Remote auth uses the same contract so
+ * Welcome/Login/Register/Profile screens do not need a second implementation. Passwords are
+ * intentionally NOT persisted by this local preview implementation.
  */
 class LocalKinAuthRepository(
     private val dao: KinDao,
@@ -77,6 +86,25 @@ class LocalKinAuthRepository(
             email = registration.email.trim(),
             onboardingComplete = false,
         )
+        return KinAuthResult.Success
+    }
+
+    override suspend fun restoreSession(): KinAuthResult = KinAuthResult.Success
+
+    override suspend fun updateProfile(update: KinProfileUpdate): KinAuthResult {
+        val current = dao.getProfile() ?: return KinAuthResult.Error("Your KIN profile is not ready yet.")
+        dao.upsertProfile(
+            current.copy(
+                displayName = update.displayName?.trim() ?: current.displayName,
+                bio = update.bio?.trim() ?: current.bio,
+                skinId = update.skinId?.trim() ?: current.skinId,
+            ),
+        )
+        return KinAuthResult.Success
+    }
+
+    override suspend fun logout(): KinAuthResult {
+        sessionStore.signOut()
         return KinAuthResult.Success
     }
 }

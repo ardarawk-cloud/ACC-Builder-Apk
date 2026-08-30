@@ -32,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kin.app.KinAppGraph
+import com.kin.app.auth.KinAuthResult
+import com.kin.app.auth.KinProfileUpdate
 import com.kin.app.data.KinCircleEntity
 import com.kin.app.data.KinPersonWithCircles
 import com.kin.app.data.KinProfileEntity
@@ -112,7 +114,7 @@ fun MeScreen(graph: KinAppGraph, session: KinSession) {
         }
 
         OutlinedButton(
-            onClick = { scope.launch { graph.sessionStore.signOut() } },
+            onClick = { scope.launch { graph.authRepository.logout() } },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Log out") }
     }
@@ -126,6 +128,7 @@ private fun CustomizeSpaceScreen(
 ) {
     var bio by rememberSaveable { mutableStateOf(profile?.bio.orEmpty()) }
     var savedMessage by rememberSaveable { mutableStateOf("") }
+    var saveFailed by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(profile?.bio) {
@@ -147,10 +150,18 @@ private fun CustomizeSpaceScreen(
             FilterChip(
                 selected = profile?.skinId == id,
                 onClick = {
-                    val current = profile ?: return@FilterChip
+                    if (profile == null) return@FilterChip
                     scope.launch {
-                        graph.profileRepository.saveProfile(current.copy(skinId = id))
-                        savedMessage = "$label applied"
+                        when (val result = graph.authRepository.updateProfile(KinProfileUpdate(skinId = id))) {
+                            KinAuthResult.Success -> {
+                                savedMessage = "$label applied"
+                                saveFailed = false
+                            }
+                            is KinAuthResult.Error -> {
+                                savedMessage = result.message
+                                saveFailed = true
+                            }
+                        }
                     }
                 },
                 label = { Text(if (profile?.skinId == id) "✓ $label" else label) },
@@ -163,17 +174,25 @@ private fun CustomizeSpaceScreen(
 
         OutlinedTextField(
             value = bio,
-            onValueChange = { bio = it.take(160); savedMessage = "" },
+            onValueChange = { bio = it.take(160); savedMessage = ""; saveFailed = false },
             label = { Text("Short bio") },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
         )
         Button(
             onClick = {
-                val current = profile ?: return@Button
+                if (profile == null) return@Button
                 scope.launch {
-                    graph.profileRepository.saveProfile(current.copy(bio = bio.trim()))
-                    savedMessage = "Bio saved"
+                    when (val result = graph.authRepository.updateProfile(KinProfileUpdate(bio = bio.trim()))) {
+                        KinAuthResult.Success -> {
+                            savedMessage = "Bio saved"
+                            saveFailed = false
+                        }
+                        is KinAuthResult.Error -> {
+                            savedMessage = result.message
+                            saveFailed = true
+                        }
+                    }
                 }
             },
             enabled = profile != null,
@@ -181,7 +200,11 @@ private fun CustomizeSpaceScreen(
         ) { Text("Save bio") }
 
         if (savedMessage.isNotBlank()) {
-            Text(savedMessage, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text(
+                savedMessage,
+                color = if (saveFailed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
         }
 
         Card(

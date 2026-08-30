@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kin.app.KinAppGraph
 import com.kin.app.auth.KinAuthRepository
 import com.kin.app.auth.KinAuthResult
+import com.kin.app.auth.KinProfileUpdate
 import com.kin.app.auth.KinRegistration
 import com.kin.app.data.KinProfileEntity
 import com.kin.app.data.KinProfileRepository
@@ -64,6 +65,12 @@ fun KinEntry() {
     val graph = KinAppGraph.from(LocalContext.current)
     val session by graph.sessionStore.session.collectAsStateWithLifecycle(initialValue = KinSession())
     var route by rememberSaveable { mutableStateOf(AuthRoute.WELCOME) }
+    var sessionChecked by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        graph.authRepository.restoreSession()
+        sessionChecked = true
+    }
 
     MaterialTheme(colorScheme = authColors) {
         Surface(
@@ -71,8 +78,10 @@ fun KinEntry() {
             color = MaterialTheme.colorScheme.background,
         ) {
             when {
+                !sessionChecked -> SessionCheckScreen()
                 session.signedIn && !session.onboardingComplete -> ProfileOnboardingScreen(
                     session = session,
+                    authRepository = graph.authRepository,
                     profileRepository = graph.profileRepository,
                     relationshipRepository = graph.relationshipRepository,
                     sessionStore = graph.sessionStore,
@@ -99,6 +108,19 @@ fun KinEntry() {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SessionCheckScreen() {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(28.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("KIN", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(12.dp))
+        Text("Restoring your space…", style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -225,6 +247,7 @@ private fun RegisterScreen(
 @Composable
 private fun ProfileOnboardingScreen(
     session: KinSession,
+    authRepository: KinAuthRepository,
     profileRepository: KinProfileRepository,
     relationshipRepository: KinRelationshipRepository,
     sessionStore: KinSessionStore,
@@ -233,6 +256,7 @@ private fun ProfileOnboardingScreen(
     var bio by rememberSaveable { mutableStateOf("") }
     var skinId by rememberSaveable { mutableStateOf("kin-original") }
     var saving by remember { mutableStateOf(false) }
+    var saveError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(session.displayName, session.username, session.email) {
@@ -264,7 +288,7 @@ private fun ProfileOnboardingScreen(
         )
         OutlinedTextField(
             value = bio,
-            onValueChange = { bio = it.take(160) },
+            onValueChange = { bio = it.take(160); saveError = null },
             label = { Text("Short bio") },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
@@ -273,21 +297,27 @@ private fun ProfileOnboardingScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("kin-original" to "KIN", "midnight" to "Midnight", "y2k" to "Y2K").forEach { (id, label) ->
                 AssistChip(
-                    onClick = { skinId = id },
+                    onClick = { skinId = id; saveError = null },
                     label = { Text(if (skinId == id) "✓ $label" else label) },
                 )
             }
         }
         Text("Starter Circles are prepared: Close Friends, Family, Work, School, Gaming, Client and Acquaintance.")
+        saveError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.height(8.dp))
         Button(
             onClick = {
-                val current = profile ?: return@Button
+                if (profile == null) return@Button
                 scope.launch {
                     saving = true
-                    profileRepository.saveProfile(current.copy(bio = bio.trim(), skinId = skinId))
-                    relationshipRepository.ensureStarterData()
-                    sessionStore.completeOnboarding()
+                    when (val result = authRepository.updateProfile(KinProfileUpdate(bio = bio.trim(), skinId = skinId))) {
+                        KinAuthResult.Success -> {
+                            relationshipRepository.ensureStarterData()
+                            sessionStore.completeOnboarding()
+                            saveError = null
+                        }
+                        is KinAuthResult.Error -> saveError = result.message
+                    }
                     saving = false
                 }
             },
