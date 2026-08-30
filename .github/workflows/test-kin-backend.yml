@@ -1,0 +1,63 @@
+name: Test KIN Backend
+
+on:
+  push:
+    branches:
+      - feat/kin-foundation-v1
+    paths:
+      - "kin/backend/**"
+      - ".github/workflows/test-kin-backend.yml"
+  pull_request:
+    paths:
+      - "kin/backend/**"
+      - ".github/workflows/test-kin-backend.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: kin-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: kin/backend
+    env:
+      KIN_ENVIRONMENT: test
+      KIN_JWT_SECRET: ci-test-secret-not-for-production
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: kin/backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Compile Python sources
+        run: python -m compileall -q app tests
+
+      - name: Run API integration tests
+        run: pytest -q
+
+      - name: Security contract guard
+        run: |
+          set -euo pipefail
+          grep -q 'password_hash' app/models.py
+          grep -q 'refresh_sessions' app/models.py
+          grep -q 'production' app/config.py
+          if grep -R "dev-only-change-me" -n app | grep -v config.py; then
+            echo "Development secret leaked outside config guard"
+            exit 1
+          fi
