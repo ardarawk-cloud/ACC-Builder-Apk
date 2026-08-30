@@ -14,8 +14,12 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="KIN_", env_file=".env", extra="ignore")
 
     def validate_security(self) -> None:
-        if self.environment.lower() == "production" and self.jwt_secret == "dev-only-change-me":
+        if self.environment.lower() != "production":
+            return
+        if self.jwt_secret == "dev-only-change-me":
             raise RuntimeError("KIN_JWT_SECRET must be set in production")
+        if self.database_url.startswith("sqlite"):
+            raise RuntimeError("KIN_DATABASE_URL must use PostgreSQL in production")
 
 
 @lru_cache
