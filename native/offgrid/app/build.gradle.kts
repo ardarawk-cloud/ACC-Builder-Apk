@@ -20,8 +20,8 @@ android {
         applicationId = "com.offgrid.mesh.dev"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.1.1-phase1-ui"
+        versionCode = 4
+        versionName = "0.1.2-phase1-history"
     }
 
     buildTypes {
