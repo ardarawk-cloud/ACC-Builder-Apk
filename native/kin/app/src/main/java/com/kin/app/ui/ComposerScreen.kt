@@ -14,6 +14,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,15 +22,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kin.app.KinAppGraph
 import com.kin.app.data.KinPostEntity
 import com.kin.app.data.KinProfileEntity
-import com.kin.app.media.KinNowPlayingReader
 import com.kin.app.session.KinSession
+import com.kin.app.share.KinShareInbox
 import java.util.UUID
 import kotlinx.coroutines.launch
 
@@ -40,24 +40,29 @@ fun ComposerScreen(
     profile: KinProfileEntity?,
     onPublished: () -> Unit,
 ) {
-    val context = LocalContext.current
     val people by graph.relationshipRepository.observePeople().collectAsStateWithLifecycle(initialValue = emptyList())
+    val sharedContent by KinShareInbox.sharedContent.collectAsStateWithLifecycle()
     var text by rememberSaveable { mutableStateOf("") }
     var audience by rememberSaveable { mutableStateOf("Friends") }
     var feeling by rememberSaveable { mutableStateOf("") }
     var listening by rememberSaveable { mutableStateOf("") }
     var location by rememberSaveable { mutableStateOf("") }
     var withPersonId by rememberSaveable { mutableStateOf("") }
-    var musicStatus by rememberSaveable { mutableStateOf("") }
     var publishing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(sharedContent) {
+        val shared = sharedContent ?: return@LaunchedEffect
+        if (listening.isBlank()) listening = shared.text
+        KinShareInbox.consume()
+    }
 
     val withPerson = people.firstOrNull { it.person.id == withPersonId }
     val hasContent = text.isNotBlank() || feeling.isNotBlank() || listening.isNotBlank() || location.isNotBlank() || withPerson != null
 
     KinScreenColumn(
         title = "Create post",
-        subtitle = "One composer. Add context only when you want it.",
+        subtitle = "One composer. Your post goes straight to Home.",
     ) {
         OutlinedTextField(
             value = text,
@@ -89,24 +94,14 @@ fun ComposerScreen(
 
         Text("Listening", fontWeight = FontWeight.Bold)
         if (listening.isBlank()) {
-            Button(
-                onClick = {
-                    if (!KinNowPlayingReader.hasAccess(context)) {
-                        musicStatus = "Enable KIN Music Access once, then return and tap this button again."
-                        KinNowPlayingReader.openAccessSettings(context)
-                    } else {
-                        val nowPlaying = KinNowPlayingReader.read(context)
-                        if (nowPlaying == null) {
-                            musicStatus = "No active music found. Start a song in your music app, then try again."
-                        } else {
-                            listening = nowPlaying.displayText
-                            musicStatus = ""
-                        }
-                    }
-                },
+            Card(
                 modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             ) {
-                Text("Add current music from phone")
+                Column(Modifier.padding(16.dp)) {
+                    Text("Add music safely", fontWeight = FontWeight.Bold)
+                    Text("From Spotify, YouTube Music or another music app: tap Share → KIN. The shared song/link will return here automatically.")
+                }
             }
         } else {
             Card(
@@ -114,14 +109,11 @@ fun ComposerScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
             ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Now playing", fontWeight = FontWeight.Bold)
+                    Text("Listening to", fontWeight = FontWeight.Bold)
                     Text(listening)
                     OutlinedButton(onClick = { listening = "" }) { Text("Remove") }
                 }
             }
-        }
-        if (musicStatus.isNotBlank()) {
-            Text(musicStatus, style = MaterialTheme.typography.bodySmall)
         }
 
         OutlinedTextField(
