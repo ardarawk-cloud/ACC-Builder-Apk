@@ -1,8 +1,8 @@
 # KIN API Contract v1
 
-Status: LOCKED for Phase 1A client integration
+Status: LOCKED for Phase 1A client integration; Phase 1B People/Connections extension is additive
 
-This document is the compatibility contract between the KIN Android client and the Phase 1A backend. Breaking changes require a new API version; existing `/v1` behavior must remain compatible.
+This document is the compatibility contract between the KIN Android client and backend. Breaking changes require a new API version; existing `/v1` behavior must remain compatible.
 
 ## Transport
 
@@ -25,6 +25,22 @@ This document is the compatibility contract between the KIN Android client and t
 ```
 
 `username` and `email` are unique. Usernames are normalized to lowercase and may contain letters, numbers, dots, and underscores.
+
+## Public user object
+
+People/Connections endpoints never expose email or authentication data:
+
+```json
+{
+  "id": 2,
+  "username": "nadia_kin",
+  "display_name": "Nadia",
+  "bio": "",
+  "skin_id": "kin-original"
+}
+```
+
+A person profile adds one viewer-relative `relationship` value: `none`, `outgoing_pending`, `incoming_pending`, or `friends`.
 
 ## Auth response
 
@@ -140,6 +156,49 @@ Any subset of:
 
 Success: `200` with the updated User object. Android writes the returned User object into Room after server success.
 
+## Phase 1B People / Connections extension
+
+All endpoints below require `Authorization: Bearer <access_token>` and are additive to Phase 1A.
+
+### `GET /v1/people/search?q=<username-fragment>`
+
+Searches active accounts by username, excludes the caller, and returns at most 20 person profiles. `q` may start with `@`. Email is never returned.
+
+### `GET /v1/people/{username}`
+
+Returns one public person profile plus viewer-relative `relationship`. The caller cannot use this endpoint to open their own account profile.
+
+### `POST /v1/friend-requests/{username}`
+
+Creates a pending request. Success: `201` with the target person profile and `relationship = outgoing_pending`.
+
+Conflicts return `409` when already friends, already requested, or when an incoming request from that person is already pending. Adding yourself returns `400`.
+
+### `GET /v1/friend-requests`
+
+Returns:
+
+```json
+{
+  "incoming": [
+    {"id": 10, "user": {"...": "Public user object"}, "created_at": "<iso-time>"}
+  ],
+  "outgoing": []
+}
+```
+
+### `POST /v1/friend-requests/{request_id}/accept`
+
+Only the recipient may accept a pending request. Success: `200` with the counterpart profile and `relationship = friends`.
+
+### `DELETE /v1/friend-requests/{request_id}`
+
+Either participant may remove a pending request: the recipient declines it or the sender cancels it. Success: `204`.
+
+### `GET /v1/connections`
+
+Returns accepted friends as public user objects, sorted by display name. Private local relationship metadata is not returned.
+
 ## Error body
 
 Application errors use FastAPI's stable detail shape:
@@ -150,11 +209,12 @@ Application errors use FastAPI's stable detail shape:
 
 Validation errors may use FastAPI/Pydantic `422` validation detail arrays. Clients must not depend on exact validation-array wording.
 
-## Phase 1A invariants
+## Invariants
 
 - Passwords are hashed server-side and never returned by the API.
 - Access uses Bearer tokens.
 - Refresh tokens are opaque, stored server-side only as hashes, and rotate on refresh.
 - Room remains local cache; remote account state does not replace the existing UI/data architecture.
-- Private Relationship Notes are not part of the account/profile API and must not be uploaded by Phase 1A.
-- `/v1` is now compatibility-locked for the Android Phase 1A integration.
+- Private Relationship Notes remain device-owner-only and are never uploaded by People/Connections sync.
+- Circle labels remain private/local in the first Phase 1B slice; remote Circle sync requires a later explicit contract extension.
+- `/v1` compatibility is preserved; Phase 1B adds endpoints without breaking Phase 1A clients.

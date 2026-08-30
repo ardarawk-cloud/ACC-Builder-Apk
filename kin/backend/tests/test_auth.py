@@ -86,3 +86,78 @@ def test_username_and_email_are_unique():
         },
     )
     assert duplicate_username.status_code == 409
+
+
+def test_people_search_friend_request_accept_and_decline():
+    def register(email: str, username: str, display_name: str) -> dict:
+        response = client.post(
+            "/v1/auth/register",
+            json={
+                "email": email,
+                "username": username,
+                "display_name": display_name,
+                "password": "strong-pass-123",
+            },
+        )
+        assert response.status_code == 201, response.text
+        return response.json()
+
+    def headers(auth: dict) -> dict[str, str]:
+        return {"Authorization": f"Bearer {auth['access_token']}"}
+
+    arda = register("friend-arda@example.com", "ardmrn", "Arda Moron")
+    nadia = register("friend-nadia@example.com", "nadia_kin", "Nadia")
+    raka = register("friend-raka@example.com", "raka.kin", "Raka")
+
+    search = client.get("/v1/people/search?q=nadia", headers=headers(arda))
+    assert search.status_code == 200, search.text
+    assert [person["username"] for person in search.json()] == ["nadia_kin"]
+    assert search.json()[0]["relationship"] == "none"
+    assert "email" not in search.json()[0]
+
+    self_search = client.get("/v1/people/search?q=ardmrn", headers=headers(arda))
+    assert self_search.status_code == 200
+    assert self_search.json() == []
+
+    sent = client.post("/v1/friend-requests/@nadia_kin", headers=headers(arda))
+    assert sent.status_code == 201, sent.text
+    assert sent.json()["relationship"] == "outgoing_pending"
+
+    duplicate = client.post("/v1/friend-requests/nadia_kin", headers=headers(arda))
+    assert duplicate.status_code == 409
+
+    arda_requests = client.get("/v1/friend-requests", headers=headers(arda))
+    assert arda_requests.status_code == 200
+    assert len(arda_requests.json()["outgoing"]) == 1
+    request_id = arda_requests.json()["outgoing"][0]["id"]
+
+    nadia_requests = client.get("/v1/friend-requests", headers=headers(nadia))
+    assert nadia_requests.status_code == 200
+    assert nadia_requests.json()["incoming"][0]["user"]["username"] == "ardmrn"
+
+    own_accept = client.post(f"/v1/friend-requests/{request_id}/accept", headers=headers(arda))
+    assert own_accept.status_code == 403
+
+    accepted = client.post(f"/v1/friend-requests/{request_id}/accept", headers=headers(nadia))
+    assert accepted.status_code == 200, accepted.text
+    assert accepted.json()["relationship"] == "friends"
+
+    arda_connections = client.get("/v1/connections", headers=headers(arda))
+    nadia_connections = client.get("/v1/connections", headers=headers(nadia))
+    assert [person["username"] for person in arda_connections.json()] == ["nadia_kin"]
+    assert [person["username"] for person in nadia_connections.json()] == ["ardmrn"]
+
+    profile = client.get("/v1/people/@nadia_kin", headers=headers(arda))
+    assert profile.status_code == 200
+    assert profile.json()["relationship"] == "friends"
+
+    sent_to_raka = client.post("/v1/friend-requests/raka.kin", headers=headers(arda))
+    assert sent_to_raka.status_code == 201
+    raka_requests = client.get("/v1/friend-requests", headers=headers(raka)).json()
+    decline_id = raka_requests["incoming"][0]["id"]
+
+    declined = client.delete(f"/v1/friend-requests/{decline_id}", headers=headers(raka))
+    assert declined.status_code == 204
+
+    resend = client.post("/v1/friend-requests/raka.kin", headers=headers(arda))
+    assert resend.status_code == 201

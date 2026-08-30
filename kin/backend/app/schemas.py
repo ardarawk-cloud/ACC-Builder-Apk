@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
@@ -44,6 +46,31 @@ class UserOut(BaseModel):
     skin_id: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PublicUserOut(BaseModel):
+    id: int
+    username: str
+    display_name: str
+    bio: str
+    skin_id: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PersonProfileOut(PublicUserOut):
+    relationship: str
+
+
+class FriendRequestOut(BaseModel):
+    id: int
+    user: PublicUserOut
+    created_at: datetime
+
+
+class FriendRequestsOut(BaseModel):
+    incoming: list[FriendRequestOut]
+    outgoing: list[FriendRequestOut]
 
 
 class AuthResponse(BaseModel):
