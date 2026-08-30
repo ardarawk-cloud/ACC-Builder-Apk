@@ -87,7 +87,20 @@ jobs:
           BWD_FIREBASE_PROJECT_ID: ${{ secrets.BWD_FIREBASE_PROJECT_ID }}
           BWD_FIREBASE_SENDER_ID: ${{ secrets.BWD_FIREBASE_SENDER_ID }}
           BWD_CLOUD_BASE_URL: ${{ secrets.BWD_CLOUD_BASE_URL }}
-        run: python3 scripts/patch_bwd_cloud_v2.py bwd-native
+        run: |
+          set -euo pipefail
+          python3 scripts/patch_bwd_cloud_v2.py bwd-native
+          touch bwd-native/gradle.properties
+          if grep -q '^android.useAndroidX=' bwd-native/gradle.properties; then
+            sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' bwd-native/gradle.properties
+          else
+            echo 'android.useAndroidX=true' >> bwd-native/gradle.properties
+          fi
+          if grep -q '^android.suppressUnsupportedCompileSdk=' bwd-native/gradle.properties; then
+            sed -i 's/^android.suppressUnsupportedCompileSdk=.*/android.suppressUnsupportedCompileSdk=36/' bwd-native/gradle.properties
+          else
+            echo 'android.suppressUnsupportedCompileSdk=36' >> bwd-native/gradle.properties
+          fi
 
       - name: Apply UI wording update
         shell: bash
