@@ -2,6 +2,9 @@ import os
 from pathlib import Path
 
 TEST_DB = Path("test-kin.db")
+if TEST_DB.exists():
+    TEST_DB.unlink()
+
 os.environ["KIN_DATABASE_URL"] = f"sqlite:///{TEST_DB}"
 os.environ["KIN_JWT_SECRET"] = "test-secret-not-for-production"
 
@@ -11,11 +14,6 @@ from app.main import app
 
 
 client = TestClient(app)
-
-
-def setup_module():
-    if TEST_DB.exists():
-        TEST_DB.unlink()
 
 
 def test_health():
