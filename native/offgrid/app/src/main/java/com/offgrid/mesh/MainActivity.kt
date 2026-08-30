@@ -38,6 +38,8 @@ class MainActivity : Activity() {
     private lateinit var chatTitle: TextView
     private lateinit var chatLog: TextView
     private lateinit var chatScroll: ScrollView
+    private lateinit var pageScroll: ScrollView
+    private lateinit var composerBar: LinearLayout
     private lateinit var messageInput: EditText
     private lateinit var sendButton: Button
     private lateinit var chatManager: BleChatManager
@@ -87,8 +89,10 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     chatTitle.text = "Encrypted chat · OFFGRID-${peerId.takeLast(6)}"
                     chatPanel.visibility = View.VISIBLE
+                    composerBar.visibility = View.VISIBLE
                     sendButton.isEnabled = true
                     setStatus("Secure BLE session ready · encrypted direct chat")
+                    pageScroll.post { pageScroll.fullScroll(View.FOCUS_DOWN) }
                 }
             },
             onIncomingMessage = { id, text ->
@@ -121,70 +125,79 @@ class MainActivity : Activity() {
         val density = resources.displayMetrics.density
         fun dp(v: Int) = (v * density).toInt()
 
-        val rootScroll = ScrollView(this)
-        val root = LinearLayout(this).apply {
+        val screen = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(24), dp(20), dp(28))
         }
 
-        root.addView(TextView(this).apply {
+        pageScroll = ScrollView(this).apply {
+            isFillViewport = true
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(18), dp(20), dp(12))
+        }
+        pageScroll.addView(content)
+        screen.addView(
+            pageScroll,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+        )
+
+        content.addView(TextView(this).apply {
             text = "OFFGRID"
             textSize = 34f
         })
-        root.addView(TextView(this).apply {
+        content.addView(TextView(this).apply {
             text = "Phase 1 · Direct encrypted BLE chat"
             textSize = 16f
         })
 
         myIdView = TextView(this).apply {
             textSize = 14f
-            setPadding(0, dp(20), 0, 0)
+            setPadding(0, dp(14), 0, 0)
         }
-        root.addView(myIdView)
+        content.addView(myIdView)
 
         statusView = TextView(this).apply {
             text = "Status: Idle"
             textSize = 15f
-            setPadding(0, dp(8), 0, dp(16))
+            setPadding(0, dp(6), 0, dp(10))
         }
-        root.addView(statusView)
+        content.addView(statusView)
 
         val buttonRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-
         buttonRow.addView(Button(this).apply {
             text = "START DISCOVERY"
             setOnClickListener { requestPermissionsAndStart() }
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-
         buttonRow.addView(Button(this).apply {
             text = "STOP"
             setOnClickListener { stopDiscovery() }
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        root.addView(buttonRow)
+        content.addView(buttonRow)
 
-        root.addView(TextView(this).apply {
+        content.addView(TextView(this).apply {
             text = "Nearby OFFGRID nodes"
             textSize = 20f
-            setPadding(0, dp(24), 0, dp(4))
+            setPadding(0, dp(16), 0, dp(3))
         })
-        root.addView(TextView(this).apply {
-            text = "Tap a node on ONE phone only. The other phone accepts the incoming connection automatically."
+        content.addView(TextView(this).apply {
+            text = "Tap a node on ONE phone only. The other phone accepts automatically."
             textSize = 13f
-            setPadding(0, 0, 0, dp(8))
+            setPadding(0, 0, 0, dp(6))
         })
 
         peersContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
-        root.addView(peersContainer)
+        content.addView(peersContainer)
 
         chatPanel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
-            setPadding(0, dp(24), 0, 0)
+            setPadding(0, dp(16), 0, 0)
         }
         chatTitle = TextView(this).apply {
             text = "Encrypted chat"
@@ -194,40 +207,50 @@ class MainActivity : Activity() {
         chatPanel.addView(TextView(this).apply {
             text = "ECDH session key + AES-GCM payload encryption · QR identity verification comes next."
             textSize = 12f
-            setPadding(0, dp(3), 0, dp(8))
+            setPadding(0, dp(3), 0, dp(5))
         })
 
         chatLog = TextView(this).apply {
             text = "Secure handshake ready. Send a message."
             textSize = 15f
-            setPadding(dp(10), dp(10), dp(10), dp(10))
+            setPadding(dp(10), dp(8), dp(10), dp(8))
         }
         chatScroll = ScrollView(this).apply {
             addView(chatLog)
         }
-        chatPanel.addView(chatScroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(230)))
+        chatPanel.addView(
+            chatScroll,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(150))
+        )
+        content.addView(chatPanel)
 
-        val composeRow = LinearLayout(this).apply {
+        composerBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+            setPadding(dp(12), dp(8), dp(12), dp(8))
         }
         messageInput = EditText(this).apply {
             hint = "Offline message"
             maxLines = 3
+            minLines = 1
         }
-        composeRow.addView(messageInput, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-
+        composerBar.addView(
+            messageInput,
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        )
         sendButton = Button(this).apply {
             text = "SEND"
             isEnabled = false
             setOnClickListener { sendCurrentMessage() }
         }
-        composeRow.addView(sendButton)
-        chatPanel.addView(composeRow)
-        root.addView(chatPanel)
+        composerBar.addView(sendButton)
+        screen.addView(
+            composerBar,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        )
 
-        rootScroll.addView(root)
-        setContentView(rootScroll)
+        setContentView(screen)
         renderPeers()
     }
 
@@ -283,7 +306,6 @@ class MainActivity : Activity() {
         } else {
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
         }
-
         val missing = permissions.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
         if (missing.isEmpty()) startDiscovery()
         else requestPermissions(missing.toTypedArray(), REQUEST_BLUETOOTH)
@@ -308,17 +330,14 @@ class MainActivity : Activity() {
             setStatus("Turn Bluetooth on, then tap START DISCOVERY")
             return
         }
-
         if (!chatManager.startServer()) {
             setStatus("Could not start OFFGRID GATT server")
             return
         }
-
         val scanner = bluetoothAdapter.bluetoothLeScanner ?: run {
             setStatus("BLE scanner unavailable")
             return
         }
-
         running = true
         peers.clear()
         renderPeers()
@@ -355,10 +374,12 @@ class MainActivity : Activity() {
             return
         }
         chatPanel.visibility = View.VISIBLE
+        composerBar.visibility = View.GONE
         chatTitle.text = "Connecting · OFFGRID-${peer.id.takeLast(6)}"
         sendButton.isEnabled = false
         messages.clear()
         renderChat()
+        pageScroll.post { pageScroll.fullScroll(View.FOCUS_DOWN) }
         chatManager.connect(peer.device)
     }
 
