@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: balinightlife666-web/ACC-Android-Builder
-          ref: 5d8549f39cf9807f26fe5bd8519618012b328bf9
+          ref: c64aae7bc87c4d1c824ce1202115135767a48d90
           path: source
           persist-credentials: false
 
@@ -49,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           actual="$(git -C source rev-parse HEAD)"
-          test "$actual" = '5d8549f39cf9807f26fe5bd8519618012b328bf9' || { echo "Source SHA mismatch: $actual"; exit 5; }
+          test "$actual" = 'c64aae7bc87c4d1c824ce1202115135767a48d90' || { echo "Source SHA mismatch: $actual"; exit 5; }
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -78,20 +78,20 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp source/projects/moshi/android/app/build/outputs/apk/debug/app-debug.apk dist/MOSHI-alpha-v0.1-alpha3.apk
-          sha256sum dist/MOSHI-alpha-v0.1-alpha3.apk | tee dist/MOSHI-alpha-v0.1-alpha3.sha256
+          cp source/projects/moshi/android/app/build/outputs/apk/debug/app-debug.apk dist/MOSHI-alpha-v0.1-alpha4.apk
+          sha256sum dist/MOSHI-alpha-v0.1-alpha4.apk | tee dist/MOSHI-alpha-v0.1-alpha4.sha256
           {
             echo 'product=MOSHI'
-            echo 'channel=internal-alpha-v0.1-alpha3'
-            echo 'source_commit=5d8549f39cf9807f26fe5bd8519618012b328bf9'
+            echo 'channel=internal-alpha-v0.1-alpha4'
+            echo 'source_commit=c64aae7bc87c4d1c824ce1202115135767a48d90'
             echo "relay_commit=$GITHUB_SHA"
             echo "api_base_url=$API_BASE_URL"
             echo 'stable_signing=false'
-          } > dist/MOSHI-alpha-v0.1-alpha3-build.txt
+          } > dist/MOSHI-alpha-v0.1-alpha4-build.txt
 
       - name: Upload endpoint-pinned APK
         uses: actions/upload-artifact@v4
         with:
-          name: MOSHI-alpha-v0.1-alpha3-endpoint-pinned
+          name: MOSHI-alpha-v0.1-alpha4-endpoint-pinned
           path: dist/
           retention-days: 14
