@@ -36,6 +36,8 @@ class MainActivity : Activity() {
     private lateinit var myIdView: TextView
     private lateinit var chatPanel: LinearLayout
     private lateinit var chatTitle: TextView
+    private lateinit var identityView: TextView
+    private lateinit var verifyButton: Button
     private lateinit var chatLog: TextView
     private lateinit var chatScroll: ScrollView
     private lateinit var pageScroll: ScrollView
@@ -47,7 +49,10 @@ class MainActivity : Activity() {
 
     private var running = false
     private var activePeerId: String? = null
-    private var pendingPeerAddress: String? = null
+    private var activePeerFingerprint: String? = null
+    private var activeSafetyCode: String? = null
+    private var activePeerVerified = false
+    private var activeIdentityChanged = false
     private val peers = linkedMapOf<String, PeerInfo>()
     private val messages = mutableListOf<ChatEntry>()
     private val localId by lazy { deviceId() }
@@ -84,36 +89,25 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         chatStore = ChatStore(this)
         buildUi()
-        myIdView.text = "This device: $localId"
         chatManager = BleChatManager(
             context = this,
             localDeviceId = localId,
             onState = { state -> runOnUiThread { setStatus(state) } },
-            onSecurePeer = { peerId ->
-                runOnUiThread {
-                    activePeerId = peerId
-                    chatStore.rememberPeer(peerId, pendingPeerAddress)
-                    messages.clear()
-                    messages += chatStore.loadMessages(peerId).map {
-                        ChatEntry(it.id, it.mine, it.text, it.delivered, it.createdAt)
-                    }
-                    chatTitle.text = "Encrypted chat · OFFGRID-${peerId.takeLast(6)}"
-                    chatPanel.visibility = View.VISIBLE
-                    composerBar.visibility = View.VISIBLE
-                    sendButton.isEnabled = true
-                    renderChat()
-                    setStatus(
-                        if (messages.isEmpty()) {
-                            "Secure BLE session ready · encrypted direct chat"
-                        } else {
-                            "Secure BLE session ready · ${messages.size} local messages restored"
-                        }
-                    )
-                    pageScroll.post { pageScroll.fullScroll(View.FOCUS_DOWN) }
+            onSecurePeer = { peer ->
+                val check = chatStore.observePeerIdentity(
+                    peerId = peer.deviceId,
+                    address = peer.address.ifBlank { null },
+                    fingerprint = peer.identityFingerprint
+                )
+                val restored = chatStore.loadMessages(peer.deviceId).map {
+                    ChatEntry(it.id, it.mine, it.text, it.delivered, it.createdAt)
                 }
+                runOnUiThread { applySecurePeer(peer, check, restored) }
+                check.state != ChatStore.IdentityState.CHANGED
             },
             onIncomingMessage = { id, text ->
                 runOnUiThread {
+                    if (activeIdentityChanged) return@runOnUiThread
                     val peerId = activePeerId ?: return@runOnUiThread
                     if (messages.none { it.id == id }) {
                         val createdAt = System.currentTimeMillis()
@@ -136,6 +130,7 @@ class MainActivity : Activity() {
                 }
             }
         )
+        myIdView.text = "This device: $localId\nIdentity: ${chatManager.localIdentityFingerprint()}"
     }
 
     override fun onDestroy() {
@@ -171,7 +166,7 @@ class MainActivity : Activity() {
             textSize = 34f
         })
         content.addView(TextView(this).apply {
-            text = "Phase 1.2 · Encrypted BLE chat + local history"
+            text = "Phase 1.3 · Signed identity + reconnect stabilization"
             textSize = 16f
         })
 
@@ -208,7 +203,7 @@ class MainActivity : Activity() {
             setPadding(0, dp(16), 0, dp(3))
         })
         content.addView(TextView(this).apply {
-            text = "Known peers keep local chat history on this phone. Tap on ONE phone only to connect."
+            text = "Known peers keep local history. Verified peers also remember their cryptographic identity."
             textSize = 13f
             setPadding(0, 0, 0, dp(6))
         })
@@ -229,10 +224,25 @@ class MainActivity : Activity() {
         }
         chatPanel.addView(chatTitle)
         chatPanel.addView(TextView(this).apply {
-            text = "ECDH + AES-GCM · history stored locally on this device · identity verification comes next."
+            text = "Ephemeral ECDH + AES-GCM · persistent identity key signs every handshake."
             textSize = 12f
             setPadding(0, dp(3), 0, dp(5))
         })
+
+        identityView = TextView(this).apply {
+            text = "Waiting for signed peer identity…"
+            textSize = 14f
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+        }
+        chatPanel.addView(identityView)
+
+        verifyButton = Button(this).apply {
+            text = "MARK IDENTITY VERIFIED"
+            isAllCaps = false
+            visibility = View.GONE
+            setOnClickListener { verifyCurrentPeer() }
+        }
+        chatPanel.addView(verifyButton)
 
         chatLog = TextView(this).apply {
             text = "Secure handshake ready. Send a message."
@@ -244,7 +254,7 @@ class MainActivity : Activity() {
         }
         chatPanel.addView(
             chatScroll,
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(170))
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(150))
         )
         content.addView(chatPanel)
 
@@ -278,9 +288,81 @@ class MainActivity : Activity() {
         renderPeers()
     }
 
+    private fun applySecurePeer(
+        peer: BleChatManager.SecurePeer,
+        check: ChatStore.PeerIdentityCheck,
+        restored: List<ChatEntry>
+    ) {
+        activePeerId = peer.deviceId
+        activePeerFingerprint = peer.identityFingerprint
+        activeSafetyCode = peer.safetyCode
+        activePeerVerified = check.verified
+        activeIdentityChanged = check.state == ChatStore.IdentityState.CHANGED
+
+        messages.clear()
+        messages += restored
+        chatTitle.text = "Encrypted chat · OFFGRID-${peer.deviceId.takeLast(6)}"
+        chatPanel.visibility = View.VISIBLE
+        renderIdentityPanel()
+        renderChat()
+
+        if (activeIdentityChanged) {
+            composerBar.visibility = View.GONE
+            sendButton.isEnabled = false
+            setStatus("IDENTITY CHANGED · encrypted chat blocked")
+        } else {
+            composerBar.visibility = View.VISIBLE
+            sendButton.isEnabled = true
+            setStatus(
+                when {
+                    activePeerVerified -> "Secure session ready · verified peer · ${messages.size} local messages"
+                    messages.isEmpty() -> "Secure session ready · identity not verified yet"
+                    else -> "Secure session ready · ${messages.size} local messages restored · identity unverified"
+                }
+            )
+        }
+        pageScroll.post { pageScroll.fullScroll(View.FOCUS_DOWN) }
+        renderPeers()
+    }
+
+    private fun renderIdentityPanel() {
+        val fingerprint = activePeerFingerprint?.take(16)?.chunked(4)?.joinToString("-") ?: "unknown"
+        val safety = activeSafetyCode ?: "----"
+        identityView.text = when {
+            activeIdentityChanged -> {
+                "⚠ IDENTITY CHANGED\nPeer fingerprint: $fingerprint\nThe saved identity for this OFFGRID ID is different. Chat is blocked."
+            }
+            activePeerVerified -> {
+                "✓ VERIFIED IDENTITY\nSafety code: $safety\nPeer fingerprint: $fingerprint\nIdentity matches the one you previously verified."
+            }
+            else -> {
+                "UNVERIFIED IDENTITY\nSafety code: $safety\nPeer fingerprint: $fingerprint\nCompare the Safety Code on BOTH phones. Only if they match, tap MARK IDENTITY VERIFIED."
+            }
+        }
+        verifyButton.visibility = if (!activeIdentityChanged && !activePeerVerified) View.VISIBLE else View.GONE
+    }
+
+    private fun verifyCurrentPeer() {
+        if (activeIdentityChanged) return
+        val peerId = activePeerId ?: return
+        val fingerprint = activePeerFingerprint ?: return
+        if (chatStore.markPeerVerified(peerId, fingerprint)) {
+            activePeerVerified = true
+            renderIdentityPanel()
+            renderPeers()
+            setStatus("Identity verified · future key changes will be blocked")
+        } else {
+            setStatus("Could not verify peer identity")
+        }
+    }
+
     private fun sendCurrentMessage() {
         val text = messageInput.text.toString().trim()
         if (text.isEmpty()) return
+        if (activeIdentityChanged) {
+            setStatus("Identity changed · chat blocked")
+            return
+        }
         if (!chatManager.isSecure()) {
             setStatus("Secure handshake not ready")
             sendButton.isEnabled = false
@@ -405,13 +487,18 @@ class MainActivity : Activity() {
             setStatus("Bluetooth permission required")
             return
         }
-        pendingPeerAddress = peer.address
         activePeerId = null
-        val knownPeerId = chatStore.peerIdForAddress(peer.address)
+        activePeerFingerprint = null
+        activeSafetyCode = null
+        activePeerVerified = false
+        activeIdentityChanged = false
+        val knownPeer = chatStore.peerForAddress(peer.address)
         chatPanel.visibility = View.VISIBLE
         composerBar.visibility = View.GONE
-        chatTitle.text = if (knownPeerId != null) {
-            "Reconnecting · OFFGRID-${knownPeerId.takeLast(6)}"
+        verifyButton.visibility = View.GONE
+        identityView.text = "Waiting for signed peer identity…"
+        chatTitle.text = if (knownPeer != null) {
+            "Reconnecting · OFFGRID-${knownPeer.peerId.takeLast(6)}"
         } else {
             "Connecting · OFFGRID-${peer.id.takeLast(6)}"
         }
@@ -465,12 +552,18 @@ class MainActivity : Activity() {
         }
 
         peers.values.sortedByDescending { it.rssi }.forEach { peer ->
-            val knownPeerId = chatStore.peerIdForAddress(peer.address)
+            val knownPeer = chatStore.peerForAddress(peer.address)
             peersContainer.addView(Button(this).apply {
-                text = if (knownPeerId != null) {
-                    "OFFGRID-${knownPeerId.takeLast(6)}   ·   ${peer.rssi} dBm\nKNOWN PEER · TAP TO RECONNECT"
-                } else {
-                    "OFFGRID-${peer.id.takeLast(6)}   ·   ${peer.rssi} dBm\nTAP TO CONNECT"
+                text = when {
+                    knownPeer?.verified == true -> {
+                        "OFFGRID-${knownPeer.peerId.takeLast(6)}   ·   ${peer.rssi} dBm\n✓ VERIFIED PEER · TAP TO RECONNECT"
+                    }
+                    knownPeer != null -> {
+                        "OFFGRID-${knownPeer.peerId.takeLast(6)}   ·   ${peer.rssi} dBm\nKNOWN PEER · TAP TO RECONNECT"
+                    }
+                    else -> {
+                        "OFFGRID-${peer.id.takeLast(6)}   ·   ${peer.rssi} dBm\nTAP TO CONNECT"
+                    }
                 }
                 isAllCaps = false
                 setOnClickListener { connectTo(peer) }
