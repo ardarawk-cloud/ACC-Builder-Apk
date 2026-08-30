@@ -2,22 +2,19 @@ package com.kin.app.auth
 
 import com.kin.app.data.KinDao
 import com.kin.app.data.KinProfileEntity
+import com.kin.app.network.KinApiClient
 import com.kin.app.session.KinSessionStore
 import java.net.HttpURLConnection
-import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 class RemoteKinAuthRepository(
-    baseUrl: String,
+    private val apiClient: KinApiClient,
     private val dao: KinDao,
     private val sessionStore: KinSessionStore,
-    private val tokenStore: KinTokenStore,
 ) : KinAuthRepository {
-    private val apiBaseUrl = baseUrl.trimEnd('/')
-
     override suspend fun login(identity: String, password: String): KinAuthResult = withContext(Dispatchers.IO) {
         if (identity.isBlank() || password.isBlank()) {
             return@withContext KinAuthResult.Error("Enter your account and password.")
@@ -39,8 +36,8 @@ class RemoteKinAuthRepository(
 
     override suspend fun restoreSession(): KinAuthResult = withContext(Dispatchers.IO) {
         val existingSession = sessionStore.session.first()
-        val accessToken = tokenStore.accessToken()
-        val refreshToken = tokenStore.refreshToken()
+        val accessToken = apiClient.accessToken()
+        val refreshToken = apiClient.refreshToken()
 
         if (accessToken == null && refreshToken == null) {
             if (existingSession.signedIn) sessionStore.signOut()
@@ -49,24 +46,25 @@ class RemoteKinAuthRepository(
 
         try {
             if (accessToken != null) {
-                val me = request("GET", "/v1/me", bearerToken = accessToken)
+                val me = apiClient.request("GET", "/v1/me", bearerToken = accessToken)
                 if (me.code in 200..299) {
                     cacheUser(JSONObject(me.body), onboardingComplete = null)
                     return@withContext KinAuthResult.Success
                 }
                 if (me.code != HttpURLConnection.HTTP_UNAUTHORIZED) {
-                    return@withContext KinAuthResult.Error(errorDetail(me, "Could not sync your KIN profile."))
+                    return@withContext KinAuthResult.Error(apiClient.errorDetail(me, "Could not sync your KIN profile."))
                 }
             }
 
-            if (refreshTokens()) {
+            val refreshed = apiClient.refreshAuth()
+            if (refreshed != null) {
+                cacheUser(refreshed.getJSONObject("user"), onboardingComplete = null)
                 return@withContext KinAuthResult.Success
             }
 
             expireLocalSession()
             KinAuthResult.Error("Your KIN session expired. Log in again.")
         } catch (_: java.net.UnknownHostException) {
-            // Offline-first behavior: keep a previously verified local session and Room cache usable.
             if (existingSession.signedIn) KinAuthResult.Success
             else KinAuthResult.Error("KIN server is unreachable. Check your connection.")
         } catch (_: java.net.SocketTimeoutException) {
@@ -90,9 +88,9 @@ class RemoteKinAuthRepository(
         }
 
         try {
-            val response = authorizedRequest("PATCH", "/v1/me", payload)
+            val response = apiClient.authorizedRequest("PATCH", "/v1/me", payload)
             if (response.code !in 200..299) {
-                return@withContext KinAuthResult.Error(errorDetail(response, "Could not update your KIN profile."))
+                return@withContext KinAuthResult.Error(apiClient.errorDetail(response, "Could not update your KIN profile."))
             }
             cacheUser(JSONObject(response.body), onboardingComplete = null)
             KinAuthResult.Success
@@ -106,16 +104,16 @@ class RemoteKinAuthRepository(
     }
 
     override suspend fun logout(): KinAuthResult = withContext(Dispatchers.IO) {
-        val refreshToken = tokenStore.refreshToken()
+        val refreshToken = apiClient.refreshToken()
         if (refreshToken != null) {
             runCatching {
-                post(
+                apiClient.post(
                     "/v1/auth/logout",
                     JSONObject().put("refresh_token", refreshToken),
                 )
             }
         }
-        tokenStore.clear()
+        apiClient.clearTokens()
         sessionStore.signOut()
         KinAuthResult.Success
     }
@@ -126,9 +124,9 @@ class RemoteKinAuthRepository(
         onboardingComplete: Boolean,
     ): KinAuthResult {
         return try {
-            val response = post(path, payload)
+            val response = apiClient.post(path, payload)
             if (response.code !in 200..299) {
-                return KinAuthResult.Error(errorDetail(response, "KIN server rejected the request."))
+                return KinAuthResult.Error(apiClient.errorDetail(response, "KIN server rejected the request."))
             }
             persistAuthResponse(JSONObject(response.body), onboardingComplete)
             KinAuthResult.Success
@@ -141,39 +139,8 @@ class RemoteKinAuthRepository(
         }
     }
 
-    private suspend fun authorizedRequest(method: String, path: String, payload: JSONObject? = null): HttpResult {
-        var accessToken = tokenStore.accessToken()
-        if (accessToken == null) {
-            if (!refreshTokens()) return HttpResult(HttpURLConnection.HTTP_UNAUTHORIZED, "")
-            accessToken = tokenStore.accessToken()
-        }
-
-        var response = request(method, path, payload, accessToken)
-        if (response.code == HttpURLConnection.HTTP_UNAUTHORIZED && refreshTokens()) {
-            val renewedAccess = tokenStore.accessToken()
-            if (renewedAccess != null) {
-                response = request(method, path, payload, renewedAccess)
-            }
-        }
-        return response
-    }
-
-    private suspend fun refreshTokens(): Boolean {
-        val refreshToken = tokenStore.refreshToken() ?: return false
-        val response = post(
-            "/v1/auth/refresh",
-            JSONObject().put("refresh_token", refreshToken),
-        )
-        if (response.code !in 200..299) return false
-        persistAuthResponse(JSONObject(response.body), onboardingComplete = null)
-        return true
-    }
-
     private suspend fun persistAuthResponse(body: JSONObject, onboardingComplete: Boolean?) {
-        tokenStore.save(
-            accessToken = body.getString("access_token"),
-            refreshToken = body.getString("refresh_token"),
-        )
+        apiClient.persistAuthTokens(body)
         cacheUser(body.getJSONObject("user"), onboardingComplete)
     }
 
@@ -196,49 +163,7 @@ class RemoteKinAuthRepository(
     }
 
     private suspend fun expireLocalSession() {
-        tokenStore.clear()
+        apiClient.clearTokens()
         sessionStore.signOut()
     }
-
-    private fun errorDetail(response: HttpResult, fallback: String): String {
-        return runCatching { JSONObject(response.body).optString("detail") }
-            .getOrNull()
-            ?.takeIf { it.isNotBlank() }
-            ?: fallback
-    }
-
-    private fun post(path: String, payload: JSONObject): HttpResult =
-        request("POST", path, payload)
-
-    private fun request(
-        method: String,
-        path: String,
-        payload: JSONObject? = null,
-        bearerToken: String? = null,
-    ): HttpResult {
-        require(apiBaseUrl.startsWith("https://")) { "KIN remote API must use HTTPS" }
-        val connection = (URL(apiBaseUrl + path).openConnection() as HttpURLConnection).apply {
-            requestMethod = method
-            connectTimeout = 12_000
-            readTimeout = 12_000
-            setRequestProperty("Accept", "application/json")
-            bearerToken?.let { setRequestProperty("Authorization", "Bearer $it") }
-            if (payload != null) {
-                doOutput = true
-                setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            }
-        }
-        if (payload != null) {
-            connection.outputStream.use { stream ->
-                stream.write(payload.toString().toByteArray(Charsets.UTF_8))
-            }
-        }
-        val code = connection.responseCode
-        val input = if (code in 200..299) connection.inputStream else connection.errorStream
-        val body = input?.bufferedReader()?.use { it.readText() }.orEmpty()
-        connection.disconnect()
-        return HttpResult(code, body)
-    }
-
-    private data class HttpResult(val code: Int, val body: String)
 }

@@ -125,7 +125,7 @@ fun KinApp(graph: KinAppGraph, session: KinSession) {
                         repository = graph.postRepository,
                         onCreate = { selected = KinRoot.CREATE },
                     )
-                    KinRoot.PEOPLE -> PeopleScreen(graph.relationshipRepository)
+                    KinRoot.PEOPLE -> PeopleV1BScreen(graph.relationshipRepository)
                     KinRoot.CREATE -> ComposerScreen(
                         graph = graph,
                         session = session,

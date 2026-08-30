@@ -15,6 +15,8 @@ import com.kin.app.data.KinRelationshipRepository
 import com.kin.app.data.LocalKinPostRepository
 import com.kin.app.data.LocalKinProfileRepository
 import com.kin.app.data.LocalKinRelationshipRepository
+import com.kin.app.data.RemoteKinRelationshipRepository
+import com.kin.app.network.KinApiClient
 import com.kin.app.session.KinSessionStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -60,29 +62,34 @@ class KinAppGraph private constructor(context: Context) {
     private val database = KinDatabase.create(appContext)
     private val dao = database.kinDao()
     private val tokenStore = KinTokenStore(appContext)
+    private val apiBaseUrl = BuildConfig.KIN_API_BASE_URL.trim()
+    private val apiClient: KinApiClient? = apiBaseUrl.takeIf { it.isNotBlank() }?.let { configuredUrl ->
+        require(configuredUrl.startsWith("https://")) { "KIN_API_BASE_URL must use HTTPS" }
+        KinApiClient(configuredUrl, tokenStore)
+    }
 
     val sessionStore = KinSessionStore(appContext)
     val appearanceStore = KinAppearanceStore(appContext)
     val profileRepository: KinProfileRepository = LocalKinProfileRepository(dao)
     val postRepository: KinPostRepository = LocalKinPostRepository(dao)
-    val relationshipRepository: KinRelationshipRepository = LocalKinRelationshipRepository(dao)
 
-    val authRepository: KinAuthRepository = BuildConfig.KIN_API_BASE_URL.trim().let { apiBaseUrl ->
-        if (apiBaseUrl.isBlank()) {
-            LocalKinAuthRepository(
-                dao = dao,
-                sessionStore = sessionStore,
-            )
-        } else {
-            require(apiBaseUrl.startsWith("https://")) { "KIN_API_BASE_URL must use HTTPS" }
-            RemoteKinAuthRepository(
-                baseUrl = apiBaseUrl,
-                dao = dao,
-                sessionStore = sessionStore,
-                tokenStore = tokenStore,
-            )
-        }
-    }
+    val relationshipRepository: KinRelationshipRepository = apiClient?.let { client ->
+        RemoteKinRelationshipRepository(
+            dao = dao,
+            apiClient = client,
+        )
+    } ?: LocalKinRelationshipRepository(dao)
+
+    val authRepository: KinAuthRepository = apiClient?.let { client ->
+        RemoteKinAuthRepository(
+            apiClient = client,
+            dao = dao,
+            sessionStore = sessionStore,
+        )
+    } ?: LocalKinAuthRepository(
+        dao = dao,
+        sessionStore = sessionStore,
+    )
 
     companion object {
         @Volatile private var instance: KinAppGraph? = null

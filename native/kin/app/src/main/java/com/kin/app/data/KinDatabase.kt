@@ -102,6 +102,12 @@ interface KinDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertPerson(person: KinPersonEntity)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertPersonIfMissing(person: KinPersonEntity)
+
+    @Query("UPDATE kin_people SET displayName = :displayName, handle = :handle WHERE id = :personId")
+    suspend fun updatePersonIdentity(personId: String, displayName: String, handle: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun linkPersonCircle(link: KinPersonCircleCrossRef)
 

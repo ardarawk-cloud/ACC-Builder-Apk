@@ -28,6 +28,13 @@ interface KinRelationshipRepository {
     suspend fun ensureStarterData()
     suspend fun savePrivateNote(personId: String, note: String)
     suspend fun setPersonCircles(personId: String, circleIds: List<String>)
+
+    suspend fun syncConnections(): KinPeopleResult<Unit>
+    suspend fun searchPeople(query: String): KinPeopleResult<List<KinRemotePerson>>
+    suspend fun loadFriendRequests(): KinPeopleResult<KinFriendRequests>
+    suspend fun sendFriendRequest(username: String): KinPeopleResult<KinRemotePerson>
+    suspend fun acceptFriendRequest(requestId: Int): KinPeopleResult<KinRemotePerson>
+    suspend fun declineFriendRequest(requestId: Int): KinPeopleResult<Unit>
 }
 
 class LocalKinRelationshipRepository(private val dao: KinDao) : KinRelationshipRepository {
@@ -65,4 +72,21 @@ class LocalKinRelationshipRepository(private val dao: KinDao) : KinRelationshipR
             dao.linkPersonCircle(KinPersonCircleCrossRef(personId, circleId))
         }
     }
+
+    override suspend fun syncConnections(): KinPeopleResult<Unit> = KinPeopleResult.Success(Unit)
+
+    override suspend fun searchPeople(query: String): KinPeopleResult<List<KinRemotePerson>> =
+        KinPeopleResult.Success(emptyList())
+
+    override suspend fun loadFriendRequests(): KinPeopleResult<KinFriendRequests> =
+        KinPeopleResult.Success(KinFriendRequests())
+
+    override suspend fun sendFriendRequest(username: String): KinPeopleResult<KinRemotePerson> =
+        KinPeopleResult.Error("KIN server is not configured for real connections.")
+
+    override suspend fun acceptFriendRequest(requestId: Int): KinPeopleResult<KinRemotePerson> =
+        KinPeopleResult.Error("KIN server is not configured for real connections.")
+
+    override suspend fun declineFriendRequest(requestId: Int): KinPeopleResult<Unit> =
+        KinPeopleResult.Error("KIN server is not configured for real connections.")
 }
