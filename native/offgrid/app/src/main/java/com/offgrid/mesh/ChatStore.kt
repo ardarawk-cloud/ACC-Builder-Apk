@@ -7,6 +7,22 @@ import android.database.sqlite.SQLiteOpenHelper
 
 class ChatStore(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
 
+    enum class IdentityState { NEW, MATCH, CHANGED }
+
+    data class PeerIdentityCheck(
+        val state: IdentityState,
+        val verified: Boolean,
+        val previousFingerprint: String?
+    )
+
+    data class StoredPeer(
+        val peerId: String,
+        val address: String?,
+        val lastSeen: Long,
+        val identityFingerprint: String?,
+        val verified: Boolean
+    )
+
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """
@@ -26,14 +42,21 @@ class ChatStore(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_
             CREATE TABLE peers (
                 peer_id TEXT PRIMARY KEY,
                 address TEXT,
-                last_seen INTEGER NOT NULL
+                last_seen INTEGER NOT NULL,
+                identity_fingerprint TEXT,
+                verified INTEGER NOT NULL DEFAULT 0
             )
             """.trimIndent()
         )
         db.execSQL("CREATE INDEX idx_peers_address ON peers(address)")
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE peers ADD COLUMN identity_fingerprint TEXT")
+            db.execSQL("ALTER TABLE peers ADD COLUMN verified INTEGER NOT NULL DEFAULT 0")
+        }
+    }
 
     fun saveMessage(message: StoredMessage) {
         val values = ContentValues().apply {
@@ -79,19 +102,59 @@ class ChatStore(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_
         return result
     }
 
-    fun rememberPeer(peerId: String, address: String?) {
-        val values = ContentValues().apply {
-            put("peer_id", peerId)
-            put("address", address)
-            put("last_seen", System.currentTimeMillis())
+    fun observePeerIdentity(peerId: String, address: String?, fingerprint: String): PeerIdentityCheck {
+        val existing = peerById(peerId)
+        val now = System.currentTimeMillis()
+
+        if (existing == null) {
+            val values = ContentValues().apply {
+                put("peer_id", peerId)
+                put("address", address)
+                put("last_seen", now)
+                put("identity_fingerprint", fingerprint)
+                put("verified", 0)
+            }
+            writableDatabase.insertWithOnConflict("peers", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+            return PeerIdentityCheck(IdentityState.NEW, false, null)
         }
-        writableDatabase.insertWithOnConflict("peers", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+
+        val previous = existing.identityFingerprint
+        if (previous != null && previous != fingerprint) {
+            writableDatabase.update(
+                "peers",
+                ContentValues().apply { put("last_seen", now) },
+                "peer_id = ?",
+                arrayOf(peerId)
+            )
+            return PeerIdentityCheck(IdentityState.CHANGED, false, previous)
+        }
+
+        val values = ContentValues().apply {
+            put("address", address)
+            put("last_seen", now)
+            if (previous == null) {
+                put("identity_fingerprint", fingerprint)
+                put("verified", 0)
+            }
+        }
+        writableDatabase.update("peers", values, "peer_id = ?", arrayOf(peerId))
+        return PeerIdentityCheck(IdentityState.MATCH, if (previous == null) false else existing.verified, previous)
     }
 
-    fun peerIdForAddress(address: String): String? {
+    fun markPeerVerified(peerId: String, fingerprint: String): Boolean {
+        val values = ContentValues().apply { put("verified", 1) }
+        return writableDatabase.update(
+            "peers",
+            values,
+            "peer_id = ? AND identity_fingerprint = ?",
+            arrayOf(peerId, fingerprint)
+        ) > 0
+    }
+
+    fun peerForAddress(address: String): StoredPeer? {
         readableDatabase.query(
             "peers",
-            arrayOf("peer_id"),
+            arrayOf("peer_id", "address", "last_seen", "identity_fingerprint", "verified"),
             "address = ?",
             arrayOf(address),
             null,
@@ -99,8 +162,35 @@ class ChatStore(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_
             "last_seen DESC",
             "1"
         ).use { cursor ->
-            return if (cursor.moveToFirst()) cursor.getString(0) else null
+            return if (cursor.moveToFirst()) peerFromCursor(cursor) else null
         }
+    }
+
+    fun peerIdForAddress(address: String): String? = peerForAddress(address)?.peerId
+
+    private fun peerById(peerId: String): StoredPeer? {
+        readableDatabase.query(
+            "peers",
+            arrayOf("peer_id", "address", "last_seen", "identity_fingerprint", "verified"),
+            "peer_id = ?",
+            arrayOf(peerId),
+            null,
+            null,
+            null,
+            "1"
+        ).use { cursor ->
+            return if (cursor.moveToFirst()) peerFromCursor(cursor) else null
+        }
+    }
+
+    private fun peerFromCursor(cursor: android.database.Cursor): StoredPeer {
+        return StoredPeer(
+            peerId = cursor.getString(0),
+            address = if (cursor.isNull(1)) null else cursor.getString(1),
+            lastSeen = cursor.getLong(2),
+            identityFingerprint = if (cursor.isNull(3)) null else cursor.getString(3),
+            verified = cursor.getInt(4) == 1
+        )
     }
 
     data class StoredMessage(
@@ -114,6 +204,6 @@ class ChatStore(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_
 
     companion object {
         private const val DB_NAME = "offgrid-chat.db"
-        private const val DB_VERSION = 1
+        private const val DB_VERSION = 2
     }
 }
