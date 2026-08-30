@@ -26,7 +26,9 @@ Do not set Android `KIN_API_BASE_URL` until `/health` on that exact deployment r
 
 ## Alpha-only limitation
 
-The Blueprint intentionally uses Render free plans for the first two-device validation. Free Render PostgreSQL expires after 30 days and is not suitable for production/public alpha data. Upgrade or migrate the database before long-lived/public use.
+The Blueprint intentionally uses Render free plans for the first two-device validation. Free Render PostgreSQL expires after 30 days, is limited to 1 GB, and does not provide production-grade durability/backups. It is acceptable only for this internal validation gate.
+
+Before any long-lived/public alpha, move the database to a non-expiring paid Postgres plan or another persistent managed PostgreSQL provider and re-run the same verification sequence.
 
 ## Verification order
 
