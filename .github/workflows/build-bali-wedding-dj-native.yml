@@ -4,8 +4,10 @@ on:
   push:
     branches:
       - feat/bali-wedding-dj-native-v1
+      - feat/bali-wedding-dj-cloud-v2
     paths:
       - "native/bali-wedding-dj-src/**"
+      - "scripts/patch_bwd_cloud_v2.py"
       - ".github/workflows/build-bali-wedding-dj-native.yml"
       - "bali-wedding-dj-native.trigger"
   workflow_dispatch:
@@ -16,7 +18,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout source
@@ -35,7 +37,7 @@ jobs:
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
@@ -68,6 +70,38 @@ jobs:
             exit 1
           fi
 
+      - name: Upload restored source for inspection
+        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bwd-native-restored-source
+          path: bwd-native
+          retention-days: 2
+
+      - name: Apply Cloud V2 patch
+        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2' && hashFiles('scripts/patch_bwd_cloud_v2.py') != ''
+        shell: bash
+        env:
+          BWD_FIREBASE_API_KEY: ${{ secrets.BWD_FIREBASE_API_KEY }}
+          BWD_FIREBASE_APP_ID: ${{ secrets.BWD_FIREBASE_APP_ID }}
+          BWD_FIREBASE_PROJECT_ID: ${{ secrets.BWD_FIREBASE_PROJECT_ID }}
+          BWD_FIREBASE_SENDER_ID: ${{ secrets.BWD_FIREBASE_SENDER_ID }}
+          BWD_CLOUD_BASE_URL: ${{ secrets.BWD_CLOUD_BASE_URL }}
+        run: |
+          set -euo pipefail
+          python3 scripts/patch_bwd_cloud_v2.py bwd-native
+          touch bwd-native/gradle.properties
+          if grep -q '^android.useAndroidX=' bwd-native/gradle.properties; then
+            sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' bwd-native/gradle.properties
+          else
+            echo 'android.useAndroidX=true' >> bwd-native/gradle.properties
+          fi
+          if grep -q '^android.suppressUnsupportedCompileSdk=' bwd-native/gradle.properties; then
+            sed -i 's/^android.suppressUnsupportedCompileSdk=.*/android.suppressUnsupportedCompileSdk=36/' bwd-native/gradle.properties
+          else
+            echo 'android.suppressUnsupportedCompileSdk=36' >> bwd-native/gradle.properties
+          fi
+
       - name: Apply UI wording update
         shell: bash
         run: |
@@ -82,15 +116,19 @@ jobs:
           cd bwd-native
           gradle --no-daemon :app:assembleDebug --stacktrace
           mkdir -p ../dist
-          cp app/build/outputs/apk/debug/app-debug.apk ../dist/BALI-WEDDING-DJ-Native-v1.1.apk
+          if [ "${GITHUB_REF_NAME}" = "feat/bali-wedding-dj-cloud-v2" ]; then
+            cp app/build/outputs/apk/debug/app-debug.apk ../dist/BALI-WEDDING-DJ-Cloud-v2-debug.apk
+          else
+            cp app/build/outputs/apk/debug/app-debug.apk ../dist/BALI-WEDDING-DJ-Native-v1.1.apk
+          fi
 
       - name: APK checksum
         shell: bash
-        run: sha256sum dist/BALI-WEDDING-DJ-Native-v1.1.apk
+        run: sha256sum dist/*.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BALI-WEDDING-DJ-Native-v1.1
-          path: dist/BALI-WEDDING-DJ-Native-v1.1.apk
+          name: BALI-WEDDING-DJ-${{ github.ref_name == 'feat/bali-wedding-dj-cloud-v2' && 'Cloud-v2-debug' || 'Native-v1.1' }}
+          path: dist/*.apk
           retention-days: 30

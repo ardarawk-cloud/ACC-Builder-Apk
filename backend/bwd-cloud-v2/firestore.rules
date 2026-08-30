@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Bali Wedding DJ client apps never access Firestore directly.
+    // All booking/admin access goes through trusted Cloud Functions using Admin SDK.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
