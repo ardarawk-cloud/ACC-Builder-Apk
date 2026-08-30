@@ -1,0 +1,31 @@
+name: MOSHI Relay Access Probe
+
+on:
+  push:
+    branches: [feat/moshi-relay-builder]
+    paths:
+      - '.github/workflows/moshi-relay-probe.yml'
+      - 'moshi-relay/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm hosted runner
+        run: echo "runner allocated on $RUNNER_OS"
+      - name: Check relay token presence
+        env:
+          RELAY_TOKEN: ${{ secrets.BALI_ENTERTAINMENT_TOKEN }}
+        run: |
+          if [ -n "$RELAY_TOKEN" ]; then
+            echo "relay_token_present=true"
+          else
+            echo "relay_token_present=false"
+            exit 2
+          fi
