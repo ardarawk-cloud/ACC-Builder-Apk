@@ -42,7 +42,7 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Build native debug APK
+      - name: Build native Phase 1 APK
         working-directory: native/offgrid
         run: gradle --no-daemon :app:assembleDebug --stacktrace
 
@@ -50,16 +50,16 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp native/offgrid/app/build/outputs/apk/debug/app-debug.apk dist/OFFGRID-v0.0.1-phase0.apk
-          sha256sum dist/OFFGRID-v0.0.1-phase0.apk | tee dist/OFFGRID-v0.0.1-phase0.sha256
+          cp native/offgrid/app/build/outputs/apk/debug/app-debug.apk dist/OFFGRID-v0.1.0-phase1.apk
+          sha256sum dist/OFFGRID-v0.1.0-phase1.apk | tee dist/OFFGRID-v0.1.0-phase1.sha256
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OFFGRID-v0.0.1-phase0
+          name: OFFGRID-v0.1.0-phase1
           path: |
-            dist/OFFGRID-v0.0.1-phase0.apk
-            dist/OFFGRID-v0.0.1-phase0.sha256
+            dist/OFFGRID-v0.1.0-phase1.apk
+            dist/OFFGRID-v0.1.0-phase1.sha256
           retention-days: 30
 
       - name: Publish APK release
@@ -67,12 +67,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          TAG="offgrid-phase0-${GITHUB_RUN_NUMBER}"
+          TAG="offgrid-phase1-${GITHUB_RUN_NUMBER}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/OFFGRID-v0.0.1-phase0.apk dist/OFFGRID-v0.0.1-phase0.sha256 --clobber
+            gh release upload "$TAG" dist/OFFGRID-v0.1.0-phase1.apk dist/OFFGRID-v0.1.0-phase1.sha256 --clobber
           else
-            gh release create "$TAG" dist/OFFGRID-v0.0.1-phase0.apk dist/OFFGRID-v0.0.1-phase0.sha256 \
-              --title "OFFGRID Phase 0 APK" \
-              --notes "Native Android BLE discovery test build. Debug-signed for direct installation/testing." \
+            gh release create "$TAG" dist/OFFGRID-v0.1.0-phase1.apk dist/OFFGRID-v0.1.0-phase1.sha256 \
+              --title "OFFGRID Phase 1 APK" \
+              --notes "Native Android direct BLE chat test build with GATT duplex transport, P-256 ECDH session key, AES-GCM encrypted payloads and message ACK. Dev-signed for update-compatible physical-device testing. Peer identity is not yet QR-authenticated." \
               --target "$GITHUB_SHA"
           fi
