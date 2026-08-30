@@ -5,7 +5,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.kin.app.auth.KinAuthRepository
+import com.kin.app.auth.KinTokenStore
 import com.kin.app.auth.LocalKinAuthRepository
+import com.kin.app.auth.RemoteKinAuthRepository
 import com.kin.app.data.KinDatabase
 import com.kin.app.data.KinPostRepository
 import com.kin.app.data.KinProfileRepository
@@ -54,16 +56,33 @@ class KinAppearanceStore(private val context: Context) {
 }
 
 class KinAppGraph private constructor(context: Context) {
-    private val database = KinDatabase.create(context)
-    val sessionStore = KinSessionStore(context.applicationContext)
-    val appearanceStore = KinAppearanceStore(context.applicationContext)
-    val profileRepository: KinProfileRepository = LocalKinProfileRepository(database.kinDao())
-    val postRepository: KinPostRepository = LocalKinPostRepository(database.kinDao())
-    val relationshipRepository: KinRelationshipRepository = LocalKinRelationshipRepository(database.kinDao())
-    val authRepository: KinAuthRepository = LocalKinAuthRepository(
-        dao = database.kinDao(),
-        sessionStore = sessionStore,
-    )
+    private val appContext = context.applicationContext
+    private val database = KinDatabase.create(appContext)
+    private val dao = database.kinDao()
+    private val tokenStore = KinTokenStore(appContext)
+
+    val sessionStore = KinSessionStore(appContext)
+    val appearanceStore = KinAppearanceStore(appContext)
+    val profileRepository: KinProfileRepository = LocalKinProfileRepository(dao)
+    val postRepository: KinPostRepository = LocalKinPostRepository(dao)
+    val relationshipRepository: KinRelationshipRepository = LocalKinRelationshipRepository(dao)
+
+    val authRepository: KinAuthRepository = BuildConfig.KIN_API_BASE_URL.trim().let { apiBaseUrl ->
+        if (apiBaseUrl.isBlank()) {
+            LocalKinAuthRepository(
+                dao = dao,
+                sessionStore = sessionStore,
+            )
+        } else {
+            require(apiBaseUrl.startsWith("https://")) { "KIN_API_BASE_URL must use HTTPS" }
+            RemoteKinAuthRepository(
+                baseUrl = apiBaseUrl,
+                dao = dao,
+                sessionStore = sessionStore,
+                tokenStore = tokenStore,
+            )
+        }
+    }
 
     companion object {
         @Volatile private var instance: KinAppGraph? = null
