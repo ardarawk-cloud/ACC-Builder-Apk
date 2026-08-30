@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
@@ -18,8 +19,10 @@ import android.os.Build
 import android.os.Bundle
 import android.os.ParcelUuid
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -27,20 +30,29 @@ import java.util.UUID
 
 class MainActivity : Activity() {
 
-    private val serviceUuid = ParcelUuid(UUID.fromString("9f92b6a8-d601-4db8-a2fc-0ff67f0a6b71"))
+    private val serviceUuid = ParcelUuid(BleChatManager.SERVICE_UUID)
     private lateinit var statusView: TextView
-    private lateinit var peersView: TextView
+    private lateinit var peersContainer: LinearLayout
     private lateinit var myIdView: TextView
-    private var running = false
+    private lateinit var chatPanel: LinearLayout
+    private lateinit var chatTitle: TextView
+    private lateinit var chatLog: TextView
+    private lateinit var chatScroll: ScrollView
+    private lateinit var messageInput: EditText
+    private lateinit var sendButton: Button
+    private lateinit var chatManager: BleChatManager
 
+    private var running = false
     private val peers = linkedMapOf<String, PeerInfo>()
+    private val messages = mutableListOf<ChatEntry>()
+    private val localId by lazy { deviceId() }
 
     private val bluetoothManager by lazy { getSystemService(BluetoothManager::class.java) }
     private val adapter: BluetoothAdapter? get() = bluetoothManager?.adapter
 
     private val advertiseCallback = object : AdvertiseCallback() {
         override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
-            runOnUiThread { setStatus("BLE advertising + scanning") }
+            runOnUiThread { setStatus("BLE advertising + scanning · tap one node to connect") }
         }
 
         override fun onStartFailure(errorCode: Int) {
@@ -51,14 +63,10 @@ class MainActivity : Activity() {
     private val scanCallback = object : ScanCallback() {
         @SuppressLint("MissingPermission")
         override fun onScanResult(callbackType: Int, result: ScanResult) {
-            val id = runCatching {
-                result.device.address.replace(":", "").takeLast(12)
-            }.getOrElse {
-                "NODE${result.hashCode().toUInt().toString(16)}"
-            }
-
+            val address = runCatching { result.device.address }.getOrElse { return }
+            val id = address.replace(":", "").takeLast(12)
             if (id.isBlank()) return
-            peers[id] = PeerInfo(id, result.rssi, System.currentTimeMillis())
+            peers[address] = PeerInfo(id, address, result.device, result.rssi, System.currentTimeMillis())
             pruneAndRender()
         }
 
@@ -70,11 +78,42 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         buildUi()
-        myIdView.text = "This device: ${deviceId()}"
+        myIdView.text = "This device: $localId"
+        chatManager = BleChatManager(
+            context = this,
+            localDeviceId = localId,
+            onState = { state -> runOnUiThread { setStatus(state) } },
+            onSecurePeer = { peerId ->
+                runOnUiThread {
+                    chatTitle.text = "Encrypted chat · OFFGRID-${peerId.takeLast(6)}"
+                    chatPanel.visibility = View.VISIBLE
+                    sendButton.isEnabled = true
+                    setStatus("Secure BLE session ready · encrypted direct chat")
+                }
+            },
+            onIncomingMessage = { id, text ->
+                runOnUiThread {
+                    if (messages.none { it.id == id }) {
+                        messages += ChatEntry(id, false, text, true)
+                        renderChat()
+                    }
+                }
+            },
+            onDelivered = { id ->
+                runOnUiThread {
+                    val index = messages.indexOfFirst { it.id == id }
+                    if (index >= 0) {
+                        messages[index] = messages[index].copy(delivered = true)
+                        renderChat()
+                    }
+                }
+            }
+        )
     }
 
     override fun onDestroy() {
         stopDiscovery()
+        chatManager.close()
         super.onDestroy()
     }
 
@@ -82,9 +121,10 @@ class MainActivity : Activity() {
         val density = resources.displayMetrics.density
         fun dp(v: Int) = (v * density).toInt()
 
+        val rootScroll = ScrollView(this)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(24), dp(20), dp(24))
+            setPadding(dp(20), dp(24), dp(20), dp(28))
         }
 
         root.addView(TextView(this).apply {
@@ -92,7 +132,7 @@ class MainActivity : Activity() {
             textSize = 34f
         })
         root.addView(TextView(this).apply {
-            text = "Phase 0 · Native BLE discovery"
+            text = "Phase 1 · Direct encrypted BLE chat"
             textSize = 16f
         })
 
@@ -123,25 +163,105 @@ class MainActivity : Activity() {
             text = "STOP"
             setOnClickListener { stopDiscovery() }
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-
         root.addView(buttonRow)
 
         root.addView(TextView(this).apply {
             text = "Nearby OFFGRID nodes"
             textSize = 20f
-            setPadding(0, dp(24), 0, dp(8))
+            setPadding(0, dp(24), 0, dp(4))
+        })
+        root.addView(TextView(this).apply {
+            text = "Tap a node on ONE phone only. The other phone accepts the incoming connection automatically."
+            textSize = 13f
+            setPadding(0, 0, 0, dp(8))
         })
 
-        peersView = TextView(this).apply {
-            text = "No OFFGRID nodes detected yet.\n\nInstall this APK on another Android phone, turn Bluetooth on, then tap START DISCOVERY on both phones."
-            textSize = 16f
+        peersContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
         }
+        root.addView(peersContainer)
 
-        val scroll = ScrollView(this)
-        scroll.addView(peersView)
-        root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        chatPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            setPadding(0, dp(24), 0, 0)
+        }
+        chatTitle = TextView(this).apply {
+            text = "Encrypted chat"
+            textSize = 20f
+        }
+        chatPanel.addView(chatTitle)
+        chatPanel.addView(TextView(this).apply {
+            text = "ECDH session key + AES-GCM payload encryption · QR identity verification comes next."
+            textSize = 12f
+            setPadding(0, dp(3), 0, dp(8))
+        })
 
-        setContentView(root)
+        chatLog = TextView(this).apply {
+            text = "Secure handshake ready. Send a message."
+            textSize = 15f
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+        }
+        chatScroll = ScrollView(this).apply {
+            addView(chatLog)
+        }
+        chatPanel.addView(chatScroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(230)))
+
+        val composeRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        messageInput = EditText(this).apply {
+            hint = "Offline message"
+            maxLines = 3
+        }
+        composeRow.addView(messageInput, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+
+        sendButton = Button(this).apply {
+            text = "SEND"
+            isEnabled = false
+            setOnClickListener { sendCurrentMessage() }
+        }
+        composeRow.addView(sendButton)
+        chatPanel.addView(composeRow)
+        root.addView(chatPanel)
+
+        rootScroll.addView(root)
+        setContentView(rootScroll)
+        renderPeers()
+    }
+
+    private fun sendCurrentMessage() {
+        val text = messageInput.text.toString().trim()
+        if (text.isEmpty()) return
+        if (!chatManager.isSecure()) {
+            setStatus("Secure handshake not ready")
+            sendButton.isEnabled = false
+            return
+        }
+        val id = chatManager.sendText(text)
+        if (id == null) {
+            setStatus("Could not send message")
+            return
+        }
+        messages += ChatEntry(id, true, text, false)
+        messageInput.setText("")
+        renderChat()
+    }
+
+    private fun renderChat() {
+        chatLog.text = if (messages.isEmpty()) {
+            "Secure handshake ready. Send a message."
+        } else {
+            messages.joinToString("\n\n") { msg ->
+                if (msg.mine) {
+                    "You: ${msg.text}\n${if (msg.delivered) "✓ Delivered" else "… Sending"}"
+                } else {
+                    "Peer: ${msg.text}"
+                }
+            }
+        }
+        chatScroll.post { chatScroll.fullScroll(View.FOCUS_DOWN) }
     }
 
     private fun deviceId(): String {
@@ -189,6 +309,11 @@ class MainActivity : Activity() {
             return
         }
 
+        if (!chatManager.startServer()) {
+            setStatus("Could not start OFFGRID GATT server")
+            return
+        }
+
         val scanner = bluetoothAdapter.bluetoothLeScanner ?: run {
             setStatus("BLE scanner unavailable")
             return
@@ -224,6 +349,20 @@ class MainActivity : Activity() {
     }
 
     @SuppressLint("MissingPermission")
+    private fun connectTo(peer: PeerInfo) {
+        if (!hasBluetoothPermissions()) {
+            setStatus("Bluetooth permission required")
+            return
+        }
+        chatPanel.visibility = View.VISIBLE
+        chatTitle.text = "Connecting · OFFGRID-${peer.id.takeLast(6)}"
+        sendButton.isEnabled = false
+        messages.clear()
+        renderChat()
+        chatManager.connect(peer.device)
+    }
+
+    @SuppressLint("MissingPermission")
     private fun stopDiscovery() {
         if (!running) return
         if (hasBluetoothPermissions()) {
@@ -231,7 +370,7 @@ class MainActivity : Activity() {
             adapter?.bluetoothLeAdvertiser?.stopAdvertising(advertiseCallback)
         }
         running = false
-        setStatus("Discovery stopped")
+        setStatus(if (chatManager.isSecure()) "Discovery stopped · chat connection remains active" else "Discovery stopped")
     }
 
     private fun hasBluetoothPermissions(): Boolean {
@@ -253,23 +392,47 @@ class MainActivity : Activity() {
     }
 
     private fun renderPeers() {
+        peersContainer.removeAllViews()
+        val density = resources.displayMetrics.density
+        fun dp(v: Int) = (v * density).toInt()
+
         if (peers.isEmpty()) {
-            peersView.text = "No OFFGRID nodes detected yet.\n\nInstall this APK on another Android phone, turn Bluetooth on, then tap START DISCOVERY on both phones."
+            peersContainer.addView(TextView(this).apply {
+                text = "No OFFGRID nodes detected yet.\nInstall this APK on another Android phone, turn Bluetooth on, then START DISCOVERY on both."
+                textSize = 15f
+            })
             return
         }
 
-        peersView.text = peers.values
-            .sortedByDescending { it.rssi }
-            .joinToString("\n\n") { peer ->
-                "OFFGRID-${peer.id.takeLast(6)}\nRSSI ${peer.rssi} dBm\nNode ${peer.id}"
-            }
+        peers.values.sortedByDescending { it.rssi }.forEach { peer ->
+            peersContainer.addView(Button(this).apply {
+                text = "OFFGRID-${peer.id.takeLast(6)}   ·   ${peer.rssi} dBm\nTAP TO CONNECT"
+                isAllCaps = false
+                setOnClickListener { connectTo(peer) }
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(6)
+            })
+        }
     }
 
     private fun setStatus(value: String) {
         statusView.text = "Status: $value"
     }
 
-    private data class PeerInfo(val id: String, val rssi: Int, val lastSeen: Long)
+    private data class PeerInfo(
+        val id: String,
+        val address: String,
+        val device: BluetoothDevice,
+        val rssi: Int,
+        val lastSeen: Long
+    )
+
+    private data class ChatEntry(
+        val id: String,
+        val mine: Boolean,
+        val text: String,
+        val delivered: Boolean
+    )
 
     companion object {
         private const val REQUEST_BLUETOOTH = 1001
