@@ -1,0 +1,14 @@
+{
+  "status": "QC_PASS",
+  "project": "AFTER SCHOOL CITY",
+  "mode": "ROAD_SIDEWALK_INTERSECTION_CLEANUP_V0_8_2",
+  "sourceRepo": "ardarawk-cloud/ACC-Roblox-maps",
+  "sourceCommit": "398f80859527a09d65eae59474342895fef31949",
+  "baseLiveCommit": "efa281ac26f847f683e002b6085b49d196c05421",
+  "rojoVersion": "7.7.0",
+  "placeBytes": 111920,
+  "placeSha256": "6f12286e4e9b77bb237124d67349bc4543da683bbcb5c4184afa14a0a3746852",
+  "runId": "33303659588",
+  "checkedAt": "2026-08-30T09:17:08Z",
+  "note": "Public rescue hosted QC only; NOT PUBLISHED. V0.8.2 splits legacy long sidewalk strips at perpendicular asphalt-road intersections; asphalt road geometry immutable; protected LIVE v28 source unchanged."
+}
