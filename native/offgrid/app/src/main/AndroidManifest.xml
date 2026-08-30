@@ -13,6 +13,8 @@
 
     <application
         android:allowBackup="false"
+        android:icon="@drawable/ic_offgrid_logo"
+        android:roundIcon="@drawable/ic_offgrid_logo"
         android:label="OFFGRID"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
