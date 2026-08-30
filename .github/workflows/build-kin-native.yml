@@ -68,6 +68,10 @@ jobs:
             echo "WebView usage is forbidden in the KIN native app."
             exit 1
           fi
+          if grep -R "NotificationListenerService\|BIND_NOTIFICATION_LISTENER_SERVICE\|ACTION_NOTIFICATION_LISTENER_SETTINGS" -n native/kin/app/src/main; then
+            echo "Broad notification access is forbidden in KIN. Use privacy-safe share/API integrations instead."
+            exit 1
+          fi
 
       - name: Build updateable KIN dev APK
         shell: bash
@@ -87,6 +91,11 @@ jobs:
           test -f "$APK"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
           "$BUILD_TOOLS/aapt" dump badging "$APK" | head -n 5
+          "$BUILD_TOOLS/aapt" dump permissions "$APK"
+          if "$BUILD_TOOLS/aapt" dump xmltree "$APK" AndroidManifest.xml | grep -q "BIND_NOTIFICATION_LISTENER_SERVICE"; then
+            echo "Sensitive notification listener service unexpectedly present in built APK."
+            exit 1
+          fi
 
       - name: Stage APK
         shell: bash
