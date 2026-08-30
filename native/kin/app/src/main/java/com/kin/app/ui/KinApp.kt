@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kin.app.KinAppGraph
 import com.kin.app.session.KinSession
+import com.kin.app.share.KinShareInbox
 
 enum class KinRoot(val label: String, val symbol: String) {
     HOME("HOME", "⌂"),
@@ -76,9 +77,14 @@ private fun kinY2kColors() = lightColorScheme(
 fun KinApp(graph: KinAppGraph, session: KinSession) {
     var selected by rememberSaveable { mutableStateOf(KinRoot.HOME) }
     val profile by graph.profileRepository.observeProfile().collectAsStateWithLifecycle(initialValue = null)
+    val sharedContent by KinShareInbox.sharedContent.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         graph.relationshipRepository.ensureStarterData()
+    }
+
+    LaunchedEffect(sharedContent) {
+        if (sharedContent != null) selected = KinRoot.CREATE
     }
 
     val colorScheme = when (profile?.skinId) {
