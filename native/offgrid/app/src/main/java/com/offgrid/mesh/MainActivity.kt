@@ -43,8 +43,11 @@ class MainActivity : Activity() {
     private lateinit var messageInput: EditText
     private lateinit var sendButton: Button
     private lateinit var chatManager: BleChatManager
+    private lateinit var chatStore: ChatStore
 
     private var running = false
+    private var activePeerId: String? = null
+    private var pendingPeerAddress: String? = null
     private val peers = linkedMapOf<String, PeerInfo>()
     private val messages = mutableListOf<ChatEntry>()
     private val localId by lazy { deviceId() }
@@ -79,6 +82,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        chatStore = ChatStore(this)
         buildUi()
         myIdView.text = "This device: $localId"
         chatManager = BleChatManager(
@@ -87,18 +91,36 @@ class MainActivity : Activity() {
             onState = { state -> runOnUiThread { setStatus(state) } },
             onSecurePeer = { peerId ->
                 runOnUiThread {
+                    activePeerId = peerId
+                    chatStore.rememberPeer(peerId, pendingPeerAddress)
+                    messages.clear()
+                    messages += chatStore.loadMessages(peerId).map {
+                        ChatEntry(it.id, it.mine, it.text, it.delivered, it.createdAt)
+                    }
                     chatTitle.text = "Encrypted chat · OFFGRID-${peerId.takeLast(6)}"
                     chatPanel.visibility = View.VISIBLE
                     composerBar.visibility = View.VISIBLE
                     sendButton.isEnabled = true
-                    setStatus("Secure BLE session ready · encrypted direct chat")
+                    renderChat()
+                    setStatus(
+                        if (messages.isEmpty()) {
+                            "Secure BLE session ready · encrypted direct chat"
+                        } else {
+                            "Secure BLE session ready · ${messages.size} local messages restored"
+                        }
+                    )
                     pageScroll.post { pageScroll.fullScroll(View.FOCUS_DOWN) }
                 }
             },
             onIncomingMessage = { id, text ->
                 runOnUiThread {
+                    val peerId = activePeerId ?: return@runOnUiThread
                     if (messages.none { it.id == id }) {
-                        messages += ChatEntry(id, false, text, true)
+                        val createdAt = System.currentTimeMillis()
+                        messages += ChatEntry(id, false, text, true, createdAt)
+                        chatStore.saveMessage(
+                            ChatStore.StoredMessage(id, peerId, false, text, true, createdAt)
+                        )
                         renderChat()
                     }
                 }
@@ -108,6 +130,7 @@ class MainActivity : Activity() {
                     val index = messages.indexOfFirst { it.id == id }
                     if (index >= 0) {
                         messages[index] = messages[index].copy(delivered = true)
+                        chatStore.markDelivered(id)
                         renderChat()
                     }
                 }
@@ -118,6 +141,7 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         stopDiscovery()
         chatManager.close()
+        chatStore.close()
         super.onDestroy()
     }
 
@@ -147,7 +171,7 @@ class MainActivity : Activity() {
             textSize = 34f
         })
         content.addView(TextView(this).apply {
-            text = "Phase 1 · Direct encrypted BLE chat"
+            text = "Phase 1.2 · Encrypted BLE chat + local history"
             textSize = 16f
         })
 
@@ -184,7 +208,7 @@ class MainActivity : Activity() {
             setPadding(0, dp(16), 0, dp(3))
         })
         content.addView(TextView(this).apply {
-            text = "Tap a node on ONE phone only. The other phone accepts automatically."
+            text = "Known peers keep local chat history on this phone. Tap on ONE phone only to connect."
             textSize = 13f
             setPadding(0, 0, 0, dp(6))
         })
@@ -205,7 +229,7 @@ class MainActivity : Activity() {
         }
         chatPanel.addView(chatTitle)
         chatPanel.addView(TextView(this).apply {
-            text = "ECDH session key + AES-GCM payload encryption · QR identity verification comes next."
+            text = "ECDH + AES-GCM · history stored locally on this device · identity verification comes next."
             textSize = 12f
             setPadding(0, dp(3), 0, dp(5))
         })
@@ -220,7 +244,7 @@ class MainActivity : Activity() {
         }
         chatPanel.addView(
             chatScroll,
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(150))
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(170))
         )
         content.addView(chatPanel)
 
@@ -262,12 +286,20 @@ class MainActivity : Activity() {
             sendButton.isEnabled = false
             return
         }
+        val peerId = activePeerId ?: run {
+            setStatus("Peer identity not ready")
+            return
+        }
         val id = chatManager.sendText(text)
         if (id == null) {
             setStatus("Could not send message")
             return
         }
-        messages += ChatEntry(id, true, text, false)
+        val createdAt = System.currentTimeMillis()
+        messages += ChatEntry(id, true, text, false, createdAt)
+        chatStore.saveMessage(
+            ChatStore.StoredMessage(id, peerId, true, text, false, createdAt)
+        )
         messageInput.setText("")
         renderChat()
     }
@@ -373,9 +405,16 @@ class MainActivity : Activity() {
             setStatus("Bluetooth permission required")
             return
         }
+        pendingPeerAddress = peer.address
+        activePeerId = null
+        val knownPeerId = chatStore.peerIdForAddress(peer.address)
         chatPanel.visibility = View.VISIBLE
         composerBar.visibility = View.GONE
-        chatTitle.text = "Connecting · OFFGRID-${peer.id.takeLast(6)}"
+        chatTitle.text = if (knownPeerId != null) {
+            "Reconnecting · OFFGRID-${knownPeerId.takeLast(6)}"
+        } else {
+            "Connecting · OFFGRID-${peer.id.takeLast(6)}"
+        }
         sendButton.isEnabled = false
         messages.clear()
         renderChat()
@@ -419,15 +458,20 @@ class MainActivity : Activity() {
 
         if (peers.isEmpty()) {
             peersContainer.addView(TextView(this).apply {
-                text = "No OFFGRID nodes detected yet.\nInstall this APK on another Android phone, turn Bluetooth on, then START DISCOVERY on both."
+                text = "No OFFGRID nodes detected yet.\nInstall OFFGRID on another Android phone, turn Bluetooth on, then START DISCOVERY on both."
                 textSize = 15f
             })
             return
         }
 
         peers.values.sortedByDescending { it.rssi }.forEach { peer ->
+            val knownPeerId = chatStore.peerIdForAddress(peer.address)
             peersContainer.addView(Button(this).apply {
-                text = "OFFGRID-${peer.id.takeLast(6)}   ·   ${peer.rssi} dBm\nTAP TO CONNECT"
+                text = if (knownPeerId != null) {
+                    "OFFGRID-${knownPeerId.takeLast(6)}   ·   ${peer.rssi} dBm\nKNOWN PEER · TAP TO RECONNECT"
+                } else {
+                    "OFFGRID-${peer.id.takeLast(6)}   ·   ${peer.rssi} dBm\nTAP TO CONNECT"
+                }
                 isAllCaps = false
                 setOnClickListener { connectTo(peer) }
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
@@ -452,7 +496,8 @@ class MainActivity : Activity() {
         val id: String,
         val mine: Boolean,
         val text: String,
-        val delivered: Boolean
+        val delivered: Boolean,
+        val createdAt: Long
     )
 
     companion object {
