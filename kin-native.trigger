@@ -1,4 +1,5 @@
-KIN native rebuild — corrected Termux mapping 8000 KTX / 8010 MOSHI / 8020 KIN
+KIN native milestone rebuild — Social Core batch
 API: https://club-medline-definition-languages.trycloudflare.com
-Date: 2026-08-31
-Build target: KIN Dev v0.3.66
+Source gate: 6765b4914592b1f420ecd01f88f4c34b56c11e66
+Includes: People finalization, private Circles/notes, real feed, selected audience, edit/delete post, persistent 1-to-1 chat
+Date: 2026-09-01
