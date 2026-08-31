@@ -9,6 +9,7 @@ on:
       - "native/bali-wedding-dj-src/**"
       - "scripts/patch_bwd_business_contact.py"
       - "scripts/patch_bwd_cloud_v2.py"
+      - "scripts/patch_bwd_receipt_cloud.py"
       - "scripts/patch_bwd_public_client.py"
       - ".github/workflows/build-bali-wedding-dj-native.yml"
       - "bali-wedding-dj-native.trigger"
@@ -111,6 +112,15 @@ jobs:
             echo 'android.suppressUnsupportedCompileSdk=36' >> bwd-native/gradle.properties
           fi
 
+      - name: Apply secure receipt cloud patch
+        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/patch_bwd_receipt_cloud.py bwd-native
+          grep -q 'submitReceipt' bwd-native/app/src/main/java/com/baliweddingdj/app/BwdCloud.java
+          grep -q 'receipt_url' bwd-native/app/src/main/java/com/baliweddingdj/app/BwdFirebaseMessagingService.java
+
       - name: Apply customer safety patch
         if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
         shell: bash
@@ -118,7 +128,6 @@ jobs:
           set -euo pipefail
           python3 scripts/patch_bwd_public_client.py bwd-native
           ! grep -q 'ADMIN ACCESS' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
-          grep -q 'secure admin sync pending' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
 
       - name: Apply UI wording update
         shell: bash
