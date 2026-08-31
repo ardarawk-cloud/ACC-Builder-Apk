@@ -49,16 +49,16 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp native/offgrid/app/build/outputs/apk/debug/app-debug.apk dist/OFFGRID-v0.2.1-phase2-handoff.apk
-          sha256sum dist/OFFGRID-v0.2.1-phase2-handoff.apk | tee dist/OFFGRID-v0.2.1-phase2-handoff.sha256
+          cp native/offgrid/app/build/outputs/apk/debug/app-debug.apk dist/OFFGRID-Alpha-v1.apk
+          sha256sum dist/OFFGRID-Alpha-v1.apk | tee dist/OFFGRID-Alpha-v1.sha256
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OFFGRID-v0.2.1-phase2-handoff
+          name: OFFGRID-Alpha-v1
           path: |
-            dist/OFFGRID-v0.2.1-phase2-handoff.apk
-            dist/OFFGRID-v0.2.1-phase2-handoff.sha256
+            dist/OFFGRID-Alpha-v1.apk
+            dist/OFFGRID-Alpha-v1.sha256
           retention-days: 30
 
       - name: Publish APK release
@@ -66,12 +66,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          TAG="offgrid-phase2-handoff-${GITHUB_RUN_NUMBER}"
+          TAG="offgrid-alpha-v1-${GITHUB_RUN_NUMBER}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/OFFGRID-v0.2.1-phase2-handoff.apk dist/OFFGRID-v0.2.1-phase2-handoff.sha256 --clobber
+            gh release upload "$TAG" dist/OFFGRID-Alpha-v1.apk dist/OFFGRID-Alpha-v1.sha256 --clobber
           else
-            gh release create "$TAG" dist/OFFGRID-v0.2.1-phase2-handoff.apk dist/OFFGRID-v0.2.1-phase2-handoff.sha256 \
-              --title "OFFGRID Phase 2.1 Stable Mesh Handoff" \
-              --notes "Three-phone mesh stability fix: mesh group setup runs off the UI thread, JOIN does not disturb an active direct BLE session, peer switching uses an OFFGRID release-control handshake to stop unwanted reconnect races, and persistent encrypted mesh packets survive A-to-B-to-C carrier handoff. Keeps direct encrypted chat, history, signed identity verification, dedupe, TTL/hop limit and launcher branding." \
+            gh release create "$TAG" dist/OFFGRID-Alpha-v1.apk dist/OFFGRID-Alpha-v1.sha256 \
+              --title "OFFGRID Alpha v1" \
+              --notes "Milestone build. Direct encrypted BLE chat, persistent local history, signed identity verification, cleaner Chats/Groups/Nearby/Settings UI, encrypted persistent store-and-forward group mesh, automatic relay handoff across nearby phones, dedupe/TTL/hop controls, reconnect handling, diagnostics, and offline installer sharing through Android local sharing transports. Dev-signed alpha; production signing remains separate." \
               --target "$GITHUB_SHA"
           fi
