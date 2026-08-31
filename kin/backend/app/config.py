@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     app_name: str = "KIN API"
     environment: str = "development"
     database_url: str = "sqlite:///./kin.db"
+    media_dir: str = "./media"
     jwt_secret: str = "dev-only-change-me"
     access_token_minutes: int = 30
     refresh_token_days: int = 30

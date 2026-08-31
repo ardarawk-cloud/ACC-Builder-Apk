@@ -16,6 +16,7 @@ class LocalKinProfileRepository(private val dao: KinDao) : KinProfileRepository 
 interface KinPostRepository {
     fun observePosts(): Flow<List<KinPostEntity>>
     suspend fun refreshFeed(): KinPeopleResult<Unit>
+    suspend fun uploadMedia(bytes: ByteArray, contentType: String, fileName: String): KinPeopleResult<KinPostMedia>
     suspend fun publishPost(post: KinPostEntity, allowedUserIds: List<String> = emptyList()): KinPeopleResult<KinPostEntity>
     suspend fun editPost(postId: String, text: String): KinPeopleResult<KinPostEntity>
     suspend fun deletePost(postId: String): KinPeopleResult<Unit>
@@ -25,6 +26,9 @@ class LocalKinPostRepository(private val dao: KinDao) : KinPostRepository {
     override fun observePosts(): Flow<List<KinPostEntity>> = dao.observePosts()
 
     override suspend fun refreshFeed(): KinPeopleResult<Unit> = KinPeopleResult.Success(Unit)
+
+    override suspend fun uploadMedia(bytes: ByteArray, contentType: String, fileName: String): KinPeopleResult<KinPostMedia> =
+        KinPeopleResult.Error("Photo and video posts need the KIN server.")
 
     override suspend fun publishPost(post: KinPostEntity, allowedUserIds: List<String>): KinPeopleResult<KinPostEntity> {
         dao.upsertPost(post)

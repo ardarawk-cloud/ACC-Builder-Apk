@@ -39,6 +39,27 @@ def decode_access_token(token: str) -> int:
     return int(payload["sub"])
 
 
+def create_media_token(user_id: int, media_id: str, minutes: int = 120) -> str:
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(user_id),
+        "type": "media",
+        "media": media_id,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(minutes=minutes)).timestamp()),
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
+
+
+def decode_media_token(token: str, media_id: str) -> int:
+    settings = get_settings()
+    payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+    if payload.get("type") != "media" or payload.get("media") != media_id:
+        raise jwt.InvalidTokenError("wrong media token")
+    return int(payload["sub"])
+
+
 def new_refresh_token() -> tuple[str, str, str, datetime]:
     settings = get_settings()
     raw = secrets.token_urlsafe(48)

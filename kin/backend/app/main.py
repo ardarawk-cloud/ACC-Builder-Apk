@@ -7,6 +7,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from .database import Base, engine, get_db
+from .media import router as media_router
 from .models import Block, ChatMessage, Friendship, Post, PostAudience, RefreshSession, User
 from .schemas import (
     AuthResponse,
@@ -36,7 +37,8 @@ from .security import (
 )
 
 Base.metadata.create_all(bind=engine)
-app = FastAPI(title="KIN API", version="1.2.0")
+app = FastAPI(title="KIN API", version="1.3.0")
+app.include_router(media_router)
 
 
 def issue_auth(db: Session, user: User) -> AuthResponse:

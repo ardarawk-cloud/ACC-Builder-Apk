@@ -1,7 +1,7 @@
 package com.kin.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +12,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -20,8 +21,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,40 +41,56 @@ enum class KinRoot(val label: String, val symbol: String) {
 }
 
 private fun kinOriginalColors() = lightColorScheme(
-    primary = Color(0xFF7C5CFC),
+    primary = Color(0xFF7655C8),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFEDE6FF),
-    onPrimaryContainer = Color(0xFF25105A),
-    secondary = Color(0xFFFF7FA6),
-    secondaryContainer = Color(0xFFFFE3EC),
-    background = Color(0xFFF9F7FF),
-    surface = Color(0xFFFFFBFF),
+    primaryContainer = Color(0xFFEDE3FF),
+    onPrimaryContainer = Color(0xFF26134E),
+    secondary = Color(0xFFB45C7E),
+    secondaryContainer = Color(0xFFFFE4EE),
+    background = Color(0xFFFFFBF7),
+    surface = Color(0xFFFFFCFA),
 )
 
 private fun kinMidnightColors() = darkColorScheme(
-    primary = Color(0xFFB6A5FF),
-    onPrimary = Color(0xFF211947),
-    primaryContainer = Color(0xFF3F365E),
-    onPrimaryContainer = Color(0xFFF1ECFF),
-    secondary = Color(0xFFFF9CC0),
-    secondaryContainer = Color(0xFF382A33),
-    onSecondaryContainer = Color(0xFFFFE7F1),
-    background = Color(0xFF0E0D12),
-    surface = Color(0xFF17151C),
+    primary = Color(0xFFC5A8FF),
+    onPrimary = Color(0xFF25133F),
+    primaryContainer = Color(0xFF3B2850),
+    onPrimaryContainer = Color(0xFFF4ECFF),
+    secondary = Color(0xFFFF9FC8),
+    secondaryContainer = Color(0xFF3C2734),
+    onSecondaryContainer = Color(0xFFFFE7F2),
+    background = Color(0xFF09080D),
+    surface = Color(0xFF15131B),
 )
 
 private fun kinY2kColors() = lightColorScheme(
-    primary = Color(0xFFFF2EB8),
+    primary = Color(0xFF8A3FFC),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFFFD4F1),
-    onPrimaryContainer = Color(0xFF4C0037),
-    secondary = Color(0xFF536DFE),
-    secondaryContainer = Color(0xFFDDE2FF),
-    onSecondaryContainer = Color(0xFF101A5C),
-    tertiary = Color(0xFF00A99D),
-    background = Color(0xFFFFF4D8),
-    surface = Color(0xFFFFFDF7),
+    primaryContainer = Color(0xFFE9D5FF),
+    onPrimaryContainer = Color(0xFF35005D),
+    secondary = Color(0xFFE83EA8),
+    secondaryContainer = Color(0xFFFFD7F0),
+    onSecondaryContainer = Color(0xFF550035),
+    tertiary = Color(0xFF008D83),
+    background = Color(0xFFFFF4E6),
+    surface = Color(0xFFFFFBF6),
 )
+
+private fun kinTypography(skinId: String): Typography {
+    val base = Typography()
+    return when (skinId) {
+        "y2k" -> base.copy(
+            headlineLarge = base.headlineLarge.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold),
+            headlineMedium = base.headlineMedium.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold),
+            headlineSmall = base.headlineSmall.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold),
+        )
+        "midnight" -> base.copy(
+            headlineLarge = base.headlineLarge.copy(fontWeight = FontWeight.Black),
+            headlineMedium = base.headlineMedium.copy(fontWeight = FontWeight.Black),
+        )
+        else -> base
+    }
+}
 
 @Composable
 fun KinApp(graph: KinAppGraph, session: KinSession) {
@@ -89,57 +108,59 @@ fun KinApp(graph: KinAppGraph, session: KinSession) {
         if (sharedContent != null) selected = KinRoot.CREATE
     }
 
-    val colorScheme = when (profile?.skinId) {
+    val skinId = profile?.skinId ?: "kin-original"
+    val colorScheme = when (skinId) {
         "midnight" -> kinMidnightColors()
         "y2k" -> kinY2kColors()
         else -> kinOriginalColors()
     }
 
-    MaterialTheme(colorScheme = colorScheme) {
-        Scaffold(
-            topBar = {
-                KinHeader(
-                    selected = selected,
-                    skinId = profile?.skinId ?: "kin-original",
-                )
-            },
-            bottomBar = {
-                NavigationBar {
-                    KinRoot.entries.forEach { root ->
-                        NavigationBarItem(
-                            selected = selected == root,
-                            onClick = { selected = root },
-                            icon = { Text(root.symbol, fontWeight = FontWeight.Bold) },
-                            label = { Text(root.label) },
-                        )
+    MaterialTheme(colorScheme = colorScheme, typography = kinTypography(skinId)) {
+        KinSkinBackdrop(skinId = skinId) {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                containerColor = Color.Transparent,
+                topBar = {
+                    KinCompactHeader(selected = selected, skinId = skinId)
+                },
+                bottomBar = {
+                    NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)) {
+                        KinRoot.entries.forEach { root ->
+                            NavigationBarItem(
+                                selected = selected == root,
+                                onClick = { selected = root },
+                                icon = { Text(root.symbol, fontWeight = FontWeight.Bold) },
+                                label = { Text(root.label) },
+                            )
+                        }
                     }
-                }
-            },
-        ) { padding ->
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                color = MaterialTheme.colorScheme.background,
-            ) {
-                when (selected) {
-                    KinRoot.HOME -> HomeScreen(
-                        repository = graph.postRepository,
-                        currentUsername = profile?.username ?: session.username,
-                        onCreate = { selected = KinRoot.CREATE },
-                    )
-                    KinRoot.PEOPLE -> PeopleV1BScreen(graph.relationshipRepository)
-                    KinRoot.CREATE -> ComposerScreen(
-                        graph = graph,
-                        session = session,
-                        profile = profile,
-                        onPublished = { selected = KinRoot.HOME },
-                    )
-                    KinRoot.CHAT -> ChatScreen(
-                        relationshipRepository = graph.relationshipRepository,
-                        chatRepository = graph.chatRepository,
-                    )
-                    KinRoot.ME -> MeScreen(graph = graph, session = session)
+                },
+            ) { padding ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                ) {
+                    when (selected) {
+                        KinRoot.HOME -> HomeScreen(
+                            repository = graph.postRepository,
+                            currentUsername = profile?.username ?: session.username,
+                            skinId = skinId,
+                            onCreate = { selected = KinRoot.CREATE },
+                        )
+                        KinRoot.PEOPLE -> PeopleV1BScreen(graph.relationshipRepository)
+                        KinRoot.CREATE -> ComposerScreen(
+                            graph = graph,
+                            session = session,
+                            profile = profile,
+                            onPublished = { selected = KinRoot.HOME },
+                        )
+                        KinRoot.CHAT -> ChatScreen(
+                            relationshipRepository = graph.relationshipRepository,
+                            chatRepository = graph.chatRepository,
+                        )
+                        KinRoot.ME -> MeScreen(graph = graph, session = session)
+                    }
                 }
             }
         }
@@ -147,25 +168,28 @@ fun KinApp(graph: KinAppGraph, session: KinSession) {
 }
 
 @Composable
-private fun KinHeader(selected: KinRoot, skinId: String) {
+private fun KinCompactHeader(selected: KinRoot, skinId: String) {
     Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        shadowElevation = 1.dp,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = if (skinId == "midnight") 0.88f else 0.94f),
+        shadowElevation = if (skinId == "y2k") 0.dp else 1.dp,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 11.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
-                Text("KIN", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-                Text("Your Space. Your People.", style = MaterialTheme.typography.labelMedium)
-            }
-            Column {
-                Text(selected.label, style = MaterialTheme.typography.labelLarge)
-                Text(kinSkinLabel(skinId), style = MaterialTheme.typography.labelSmall)
-            }
+            Text("KIN", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+            Text(
+                when (selected) {
+                    KinRoot.HOME -> "My People"
+                    KinRoot.CREATE -> "New Post"
+                    KinRoot.ME -> "My Space"
+                    else -> selected.label.lowercase().replaceFirstChar { it.uppercase() }
+                },
+                style = MaterialTheme.typography.labelLarge,
+            )
         }
     }
 }

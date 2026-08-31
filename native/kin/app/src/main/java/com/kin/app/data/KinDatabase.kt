@@ -65,6 +65,7 @@ data class KinPostEntity(
     val listening: String? = null,
     val location: String? = null,
     val withPeople: String? = null,
+    val mediaJson: String = "[]",
     val createdAt: Long,
 )
 
@@ -179,7 +180,7 @@ interface KinDao {
         KinPostEntity::class,
         KinMessageEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class KinDatabase : RoomDatabase() {
@@ -230,12 +231,18 @@ abstract class KinDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `kin_posts` ADD COLUMN `mediaJson` TEXT NOT NULL DEFAULT '[]'")
+            }
+        }
+
         fun create(context: Context): KinDatabase = Room.databaseBuilder(
             context.applicationContext,
             KinDatabase::class.java,
             "kin.db",
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
 }

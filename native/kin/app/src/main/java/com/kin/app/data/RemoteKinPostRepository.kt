@@ -22,9 +22,14 @@ class RemoteKinPostRepository(
             if (response.code !in 200..299) {
                 return@withContext KinPeopleResult.Error(apiClient.errorDetail(response, "Could not refresh Home."))
             }
+            val mediaByPost = loadFeedMedia()
             val array = JSONArray(response.body)
             val posts = buildList {
-                for (index in 0 until array.length()) add(postFromJson(array.getJSONObject(index)))
+                for (index in 0 until array.length()) {
+                    val json = array.getJSONObject(index)
+                    val id = json.getString("id")
+                    add(postFromJson(json, kinPostMediaToJson(mediaByPost[id].orEmpty())))
+                }
             }
             dao.clearPosts()
             if (posts.isNotEmpty()) dao.upsertPosts(posts)
@@ -38,8 +43,33 @@ class RemoteKinPostRepository(
         }
     }
 
+    override suspend fun uploadMedia(
+        bytes: ByteArray,
+        contentType: String,
+        fileName: String,
+    ): KinPeopleResult<KinPostMedia> = withContext(Dispatchers.IO) {
+        try {
+            val response = apiClient.authorizedBinaryRequest(
+                method = "POST",
+                path = "/v1/media",
+                bytes = bytes,
+                contentType = contentType,
+                fileName = fileName,
+            )
+            if (response.code !in 200..299) {
+                return@withContext KinPeopleResult.Error(apiClient.errorDetail(response, "Could not upload this media."))
+            }
+            KinPeopleResult.Success(mediaFromJson(JSONObject(response.body)))
+        } catch (_: java.net.SocketTimeoutException) {
+            KinPeopleResult.Error("Media upload took too long. Try a shorter video or smaller photo.")
+        } catch (_: Exception) {
+            KinPeopleResult.Error("Could not upload this media right now.")
+        }
+    }
+
     override suspend fun publishPost(post: KinPostEntity, allowedUserIds: List<String>): KinPeopleResult<KinPostEntity> = withContext(Dispatchers.IO) {
         try {
+            val media = kinPostMediaFromJson(post.mediaJson)
             val payload = JSONObject()
                 .put("text", post.text)
                 .put("audience", audienceToApi(post.audience))
@@ -49,11 +79,22 @@ class RemoteKinPostRepository(
             post.location?.let { payload.put("location", it) }
             post.withPeople?.let { payload.put("with_people", it) }
 
-            val response = apiClient.authorizedRequest("POST", "/v1/posts", payload)
+            val path = if (media.isNotEmpty()) {
+                payload.put("media_ids", JSONArray(media.map { it.id }))
+                "/v1/media-posts"
+            } else {
+                "/v1/posts"
+            }
+            val response = apiClient.authorizedRequest("POST", path, payload)
             if (response.code !in 200..299) {
                 return@withContext KinPeopleResult.Error(apiClient.errorDetail(response, "Could not publish this post."))
             }
-            val saved = postFromJson(JSONObject(response.body))
+            val responseJson = JSONObject(response.body)
+            val responseMedia = if (responseJson.has("media")) mediaListFromJson(responseJson.getJSONArray("media")) else emptyList()
+            val saved = postFromJson(
+                responseJson,
+                kinPostMediaToJson(if (responseMedia.isNotEmpty()) responseMedia else media),
+            )
             dao.upsertPost(saved)
             KinPeopleResult.Success(saved)
         } catch (_: java.net.UnknownHostException) {
@@ -75,7 +116,8 @@ class RemoteKinPostRepository(
             if (response.code !in 200..299) {
                 return@withContext KinPeopleResult.Error(apiClient.errorDetail(response, "Could not edit this post."))
             }
-            val saved = postFromJson(JSONObject(response.body))
+            val existingMedia = loadPostMedia(postId)
+            val saved = postFromJson(JSONObject(response.body), kinPostMediaToJson(existingMedia))
             dao.upsertPost(saved)
             KinPeopleResult.Success(saved)
         } catch (_: Exception) {
@@ -96,7 +138,37 @@ class RemoteKinPostRepository(
         }
     }
 
-    private fun postFromJson(json: JSONObject): KinPostEntity {
+    private fun loadFeedMedia(): Map<String, List<KinPostMedia>> {
+        val response = apiClient.authorizedRequest("GET", "/v1/feed/media")
+        if (response.code == 404) return emptyMap()
+        if (response.code !in 200..299) return emptyMap()
+        val array = JSONArray(response.body)
+        val output = linkedMapOf<String, List<KinPostMedia>>()
+        for (index in 0 until array.length()) {
+            val bundle = array.getJSONObject(index)
+            output[bundle.getString("post_id")] = mediaListFromJson(bundle.getJSONArray("media"))
+        }
+        return output
+    }
+
+    private fun loadPostMedia(postId: String): List<KinPostMedia> {
+        val response = apiClient.authorizedRequest("GET", "/v1/posts/$postId/media")
+        if (response.code !in 200..299) return emptyList()
+        return mediaListFromJson(JSONArray(response.body))
+    }
+
+    private fun mediaListFromJson(array: JSONArray): List<KinPostMedia> = buildList {
+        for (index in 0 until array.length()) add(mediaFromJson(array.getJSONObject(index)))
+    }
+
+    private fun mediaFromJson(json: JSONObject): KinPostMedia = KinPostMedia(
+        id = json.getString("id"),
+        type = json.optString("type", "image"),
+        contentType = json.optString("content_type"),
+        url = apiClient.absoluteUrl(json.getString("url")),
+    )
+
+    private fun postFromJson(json: JSONObject, mediaJson: String = "[]"): KinPostEntity {
         val author = json.getJSONObject("author")
         return KinPostEntity(
             id = json.getString("id"),
@@ -108,6 +180,7 @@ class RemoteKinPostRepository(
             listening = nullableString(json, "listening"),
             location = nullableString(json, "location"),
             withPeople = nullableString(json, "with_people"),
+            mediaJson = mediaJson,
             createdAt = parseTimestamp(json.getString("created_at")),
         )
     }

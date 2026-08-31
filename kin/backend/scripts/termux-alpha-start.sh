@@ -10,6 +10,7 @@ DATA_DIR="${KIN_TERMUX_DATA_DIR:-${TERMUX_HOME}/kin-data}"
 BACKEND_DIR="${SOURCE_DIR}/kin/backend"
 LEGACY_DB="${BACKEND_DIR}/kin.db"
 PERSISTENT_DB="${DATA_DIR}/kin.db"
+MEDIA_DIR="${DATA_DIR}/media"
 PORT="${KIN_TERMUX_PORT:-8020}"
 SESSION="${KIN_TERMUX_SESSION:-kin}"
 VENV_DIR="/root/.venvs/kin"
@@ -19,7 +20,7 @@ if [[ ! -d "${BACKEND_DIR}" ]]; then
   exit 1
 fi
 
-mkdir -p "${DATA_DIR}"
+mkdir -p "${DATA_DIR}" "${MEDIA_DIR}"
 
 # One-time, non-destructive migration from the old repo-relative SQLite database.
 # Never overwrite an existing persistent database.
@@ -59,12 +60,13 @@ tmux new-session -d -s "${SESSION}" \
   "proot-distro login ubuntu \
   --bind=${SOURCE_DIR}:/root/kin-source \
   --bind=${DATA_DIR}:/root/kin-data \
-  -- bash -lc 'cd /root/kin-source/kin/backend && export KIN_DATABASE_URL=sqlite:////root/kin-data/kin.db && exec /root/.venvs/kin/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port ${PORT} --proxy-headers --forwarded-allow-ips=\"*\" --no-server-header'"
+  -- bash -lc 'cd /root/kin-source/kin/backend && export KIN_DATABASE_URL=sqlite:////root/kin-data/kin.db && export KIN_MEDIA_DIR=/root/kin-data/media && exec /root/.venvs/kin/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port ${PORT} --proxy-headers --forwarded-allow-ips=\"*\" --no-server-header'"
 
 sleep 4
 
 echo "KIN session: ${SESSION}"
 echo "KIN port: ${PORT}"
 echo "KIN DB: ${PERSISTENT_DB}"
+echo "KIN media: ${MEDIA_DIR}"
 curl -fsS "http://127.0.0.1:${PORT}/health"
 echo
