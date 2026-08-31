@@ -6,6 +6,7 @@ on:
       - feat/bali-wedding-dj-native-v1
     paths:
       - "native/bali-wedding-dj-src/**"
+      - "scripts/patch_bwd_business_contact.py"
       - ".github/workflows/build-bali-wedding-dj-native.yml"
       - "bali-wedding-dj-native.trigger"
   workflow_dispatch:
@@ -67,6 +68,13 @@ jobs:
             echo "WebView usage is forbidden for this native build."
             exit 1
           fi
+
+      - name: Apply business WhatsApp contact
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/patch_bwd_business_contact.py bwd-native
+          grep -R '6282247972288\|+62 822-4797-2288' -n bwd-native/app/src/main/java/com/baliweddingdj/app
 
       - name: Apply UI wording update
         shell: bash
