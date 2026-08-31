@@ -5,8 +5,7 @@ on:
     branches:
       - build/offgrid-phase0-native
     paths:
-      - "native/offgrid/**"
-      - ".github/workflows/offgrid-native-apk.yml"
+      - "native/offgrid/.release-trigger"
   workflow_dispatch:
 
 permissions:
