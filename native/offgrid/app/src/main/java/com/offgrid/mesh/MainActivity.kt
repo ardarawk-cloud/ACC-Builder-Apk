@@ -91,6 +91,7 @@ class MainActivity : Activity() {
     private var currentConnectionAuto = false
     private var manualLockUntil = 0L
     private var switching = false
+    private var relayScheduled = false
     private var pendingSwitch: PeerInfo? = null
     private val relayAttemptedAt = mutableMapOf<String, Long>()
 
@@ -524,11 +525,14 @@ class MainActivity : Activity() {
         val restored = chatStore.loadMessages(peer.deviceId).map {
             ChatEntry(it.id, it.mine, it.text, it.delivered, it.createdAt)
         }
+        val initiatedByUs = connectingAddress != null
+        val showAsChat = (!currentConnectionAuto && initiatedByUs) ||
+            displayedPeerId == peer.deviceId ||
+            (displayedPeerId == null && currentTab == TAB_CHATS && meshStore.queueCount() == 0)
         runOnUiThread {
             activePeerId = peer.deviceId
             activeAddress = peer.address.ifBlank { connectingAddress }
             connectingAddress = null
-            displayedPeerId = peer.deviceId
             activePeerFingerprint = peer.identityFingerprint
             activeSafetyCode = peer.safetyCode
             activePeerVerified = check.verified
@@ -536,9 +540,12 @@ class MainActivity : Activity() {
             connectedAt = System.currentTimeMillis()
             switching = false
             pendingSwitch = null
-            messages.clear()
-            messages += restored
-            renderDirectChat()
+            if (showAsChat) {
+                displayedPeerId = peer.deviceId
+                messages.clear()
+                messages += restored
+                renderDirectChat()
+            }
             renderPeers()
             syncMeshWithPeer(peer.deviceId)
             setStatus("Connected securely · OFFGRID-${peer.deviceId.takeLast(6)}")
@@ -554,8 +561,8 @@ class MainActivity : Activity() {
         meshTransportAcks.clear()
         meshInFlight.clear()
         sendButton.isEnabled = false
-        if (displayedPeerId != null) chatPeerTitle.text = "OFFGRID-${displayedPeerId!!.takeLast(6)} · offline"
         if (pendingSwitch == null) switching = false
+        renderDirectChat()
         renderPeers()
         refreshDiagnostics()
         scheduleRelayPump(500)
@@ -599,12 +606,19 @@ class MainActivity : Activity() {
         runOnUiThread {
             if (activeIdentityChanged) return@runOnUiThread
             val peerId = activePeerId ?: return@runOnUiThread
+            if (displayedPeerId != peerId) {
+                displayedPeerId = peerId
+                messages.clear()
+                messages += chatStore.loadMessages(peerId).map {
+                    ChatEntry(it.id, it.mine, it.text, it.delivered, it.createdAt)
+                }
+            }
             if (messages.none { it.id == transportId }) {
                 val now = System.currentTimeMillis()
                 messages += ChatEntry(transportId, false, text, true, now)
                 chatStore.saveMessage(ChatStore.StoredMessage(transportId, peerId, false, text, true, now))
-                renderDirectChat()
             }
+            renderDirectChat()
         }
     }
 
@@ -677,11 +691,12 @@ class MainActivity : Activity() {
             val connected = activePeerId == peerId && chatManager.isSecure()
             chatPeerTitle.text = "OFFGRID-${peerId.takeLast(6)}${if (connected) " · connected" else " · offline"}"
             val fp = activePeerFingerprint?.take(16)?.chunked(4)?.joinToString("-") ?: "unknown"
-            chatSecurity.text = when {
+            chatSecurity.text = if (!connected) {
+                "Encrypted history stored locally"
+            } else when {
                 activeIdentityChanged -> "⚠ Identity changed · blocked"
                 activePeerVerified -> "✓ Verified identity · ${activeSafetyCode ?: ""}"
-                connected -> "Unverified identity · Safety code ${activeSafetyCode ?: "----"} · Fingerprint $fp"
-                else -> "Encrypted history stored locally"
+                else -> "Unverified identity · Safety code ${activeSafetyCode ?: "----"} · Fingerprint $fp"
             }
             verifyButton.visibility = if (connected && !activePeerVerified && !activeIdentityChanged) View.VISIBLE else View.GONE
             sendButton.isEnabled = connected && !activeIdentityChanged
@@ -922,11 +937,13 @@ class MainActivity : Activity() {
     }
 
     private fun scheduleRelayPump(delay: Long = RELAY_PUMP_MS) {
-        uiHandler.removeCallbacks(relayRunnable)
+        if (relayScheduled) return
+        relayScheduled = true
         uiHandler.postDelayed(relayRunnable, delay)
     }
 
     private val relayRunnable = Runnable {
+        relayScheduled = false
         autoRelayPump()
         scheduleRelayPump(RELAY_PUMP_MS)
     }
