@@ -1,0 +1,111 @@
+name: Test KIN Backend
+
+on:
+  push:
+    branches:
+      - feat/kin-foundation-v1
+    paths:
+      - "kin/backend/**"
+      - ".github/workflows/test-kin-backend.yml"
+  pull_request:
+    paths:
+      - "kin/backend/**"
+      - ".github/workflows/test-kin-backend.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: kin-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kin
+          POSTGRES_PASSWORD: kin
+          POSTGRES_DB: kin
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kin -d kin"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: kin/backend
+    env:
+      KIN_ENVIRONMENT: test
+      KIN_JWT_SECRET: ci-test-secret-not-for-production
+      PYTHONPATH: ${{ github.workspace }}/kin/backend
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: kin/backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Compile Python sources
+        run: python -m compileall -q app tests
+
+      - name: Run API integration tests
+        run: pytest -q
+
+      - name: Security contract guard
+        run: |
+          set -euo pipefail
+          grep -q 'password_hash' app/models.py
+          grep -q 'refresh_sessions' app/models.py
+          grep -q 'production' app/config.py
+          if grep -R "dev-only-change-me" -n app | grep -v config.py; then
+            echo "Development secret leaked outside config guard"
+            exit 1
+          fi
+
+      - name: Build production container
+        run: docker build --tag kin-api-ci .
+
+      - name: Production container + PostgreSQL smoke test
+        run: |
+          set -euo pipefail
+          docker run --detach --name kin-api-ci --network host \
+            -e KIN_ENVIRONMENT=production \
+            -e KIN_DATABASE_URL=postgresql://kin:kin@127.0.0.1:5432/kin \
+            -e KIN_JWT_SECRET=ci-production-secret-not-for-production \
+            kin-api-ci
+
+          cleanup() {
+            docker logs kin-api-ci || true
+            docker rm --force kin-api-ci >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:8000/health | grep -q '"status":"ok"'; then
+              echo "KIN production container reached /health with PostgreSQL."
+              exit 0
+            fi
+            if ! docker inspect --format='{{.State.Running}}' kin-api-ci 2>/dev/null | grep -q true; then
+              echo "KIN production container exited before becoming healthy."
+              exit 1
+            fi
+            sleep 1
+          done
+
+          echo "KIN production container did not become healthy."
+          exit 1
