@@ -2,6 +2,11 @@ name: BWD v1 Master RC Build
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feat/bwd-v1-master-batch
+    paths:
+      - "bwd-master-final.trigger"
 
 permissions:
   contents: read
@@ -78,6 +83,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 scripts/patch_bwd_master_v1.py bwd-native
+          python3 scripts/patch_bwd_release_fixups.py bwd-native
           cat > bwd-native/gradle.properties <<'EOF'
           android.useAndroidX=true
           android.suppressUnsupportedCompileSdk=36
@@ -86,6 +92,8 @@ jobs:
           grep -q 'syncOwner' bwd-native/app/src/main/java/com/baliweddingdj/app/BwdCloud.java
           grep -q 'viewAdminReceipt' bwd-native/app/src/main/java/com/baliweddingdj/app/BwdCloud.java
           grep -q 'applyCloudBooking' bwd-native/app/src/main/java/com/baliweddingdj/app/WeddingDb.java
+          grep -q 'String openId=' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -q 'cloudAccepted' bwd-native/app/src/main/java/com/baliweddingdj/app/WeddingDb.java
 
       - name: Snapshot dedicated Owner app
         shell: bash
