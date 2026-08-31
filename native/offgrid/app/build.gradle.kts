@@ -7,6 +7,10 @@ android {
     namespace = "com.offgrid.mesh"
     compileSdk = 35
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     signingConfigs {
         create("offgridDev") {
             storeFile = file("../signing/offgrid-dev.jks")
