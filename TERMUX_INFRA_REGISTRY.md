@@ -36,16 +36,21 @@ Tunnel sessions must remain project-specific as well (for example `kin-tunnel`; 
 - Termux source bind: `~/kin-source` -> `/root/kin-source`
 - Canonical local backend port: `127.0.0.1:8020`
 - Backend directory: `/root/kin-source/kin/backend`
+- Persistent alpha data directory: `~/kin-data` -> `/root/kin-data`
+- Persistent alpha SQLite DB: `~/kin-data/kin.db`
+- Canonical Termux launcher: `kin/backend/scripts/termux-alpha-start.sh`
+- Do not run KIN alpha against repo-relative `kin/backend/kin.db` after migration.
 
 ## Incident note — 2026-08-31
 
 KIN was observed running on port `8010`, which conflicts with MOSHI's pre-existing port reservation. This is configuration drift, not a registry revision. The repair direction is:
 
 1. Preserve KIN data/source.
-2. Move KIN backend and its tunnel to `8020`.
-3. Restore MOSHI backend to `8010`.
+2. Run KIN backend and its tunnel on `8020`.
+3. Keep MOSHI backend on `8010`.
 4. Never point a KIN tunnel at MOSHI's `8010` port.
 5. Any APK base URL must be rebuilt only after the correct KIN tunnel to `8020` is verified.
+6. Keep KIN alpha database outside the git checkout at `~/kin-data/kin.db` so source updates/restarts cannot silently switch to a fresh repo-relative SQLite DB.
 
 ## Operating rule
 
