@@ -9,6 +9,7 @@ on:
       - "native/bali-wedding-dj-src/**"
       - "scripts/patch_bwd_business_contact.py"
       - "scripts/patch_bwd_cloud_v2.py"
+      - "scripts/patch_bwd_public_client.py"
       - ".github/workflows/build-bali-wedding-dj-native.yml"
       - "bali-wedding-dj-native.trigger"
   workflow_dispatch:
@@ -110,6 +111,15 @@ jobs:
             echo 'android.suppressUnsupportedCompileSdk=36' >> bwd-native/gradle.properties
           fi
 
+      - name: Apply customer safety patch
+        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/patch_bwd_public_client.py bwd-native
+          ! grep -q 'ADMIN ACCESS' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -q 'secure admin sync pending' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+
       - name: Apply UI wording update
         shell: bash
         run: |
@@ -125,7 +135,7 @@ jobs:
           gradle --no-daemon :app:assembleDebug --stacktrace
           mkdir -p ../dist
           if [ "${GITHUB_REF_NAME}" = "feat/bali-wedding-dj-cloud-v2" ]; then
-            cp app/build/outputs/apk/debug/app-debug.apk ../dist/BALI-WEDDING-DJ-Cloud-v2-debug.apk
+            cp app/build/outputs/apk/debug/app-debug.apk ../dist/BALI-WEDDING-DJ-Cloud-v2-client-safe-debug.apk
           else
             cp app/build/outputs/apk/debug/app-debug.apk ../dist/BALI-WEDDING-DJ-Native-v1.1.apk
           fi
@@ -137,6 +147,6 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BALI-WEDDING-DJ-${{ github.ref_name == 'feat/bali-wedding-dj-cloud-v2' && 'Cloud-v2-debug' || 'Native-v1.1' }}
+          name: BALI-WEDDING-DJ-${{ github.ref_name == 'feat/bali-wedding-dj-cloud-v2' && 'Cloud-v2-client-safe-debug' || 'Native-v1.1' }}
           path: dist/*.apk
           retention-days: 30
