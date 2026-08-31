@@ -195,6 +195,8 @@ def replace_post_audience(db: Session, post: Post, viewer: User, allowed_user_id
     existing = db.scalars(select(PostAudience).where(PostAudience.post_id == post.id)).all()
     for row in existing:
         db.delete(row)
+    if existing:
+        db.flush()
     if post.audience != "selected":
         return
     for target_id in sorted(set(allowed_user_ids)):
