@@ -121,6 +121,14 @@ jobs:
           grep -q 'submitReceipt' bwd-native/app/src/main/java/com/baliweddingdj/app/BwdCloud.java
           grep -q 'receipt_url' bwd-native/app/src/main/java/com/baliweddingdj/app/BwdFirebaseMessagingService.java
 
+      - name: Snapshot owner admin build
+        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a bwd-native bwd-admin
+          grep -q 'ADMIN ACCESS' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+
       - name: Apply customer safety patch
         if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
         shell: bash
@@ -134,19 +142,24 @@ jobs:
         run: |
           set -euo pipefail
           find bwd-native/app/src/main/java -name '*.java' -print0 | xargs -0 sed -i 's/"Reception"/"Wedding Reception"/g'
+          if [ -d bwd-admin ]; then
+            find bwd-admin/app/src/main/java -name '*.java' -print0 | xargs -0 sed -i 's/"Reception"/"Wedding Reception"/g'
+          fi
           grep -R 'Wedding Reception' -n bwd-native/app/src/main/java
 
-      - name: Build native APK
+      - name: Build APKs
         shell: bash
         run: |
           set -euo pipefail
-          cd bwd-native
-          gradle --no-daemon :app:assembleDebug --stacktrace
-          mkdir -p ../dist
+          mkdir -p dist
           if [ "${GITHUB_REF_NAME}" = "feat/bali-wedding-dj-cloud-v2" ]; then
-            cp app/build/outputs/apk/debug/app-debug.apk ../dist/BALI-WEDDING-DJ-Cloud-v2-client-safe-debug.apk
+            (cd bwd-native && gradle --no-daemon :app:assembleDebug --stacktrace)
+            cp bwd-native/app/build/outputs/apk/debug/app-debug.apk dist/BALI-WEDDING-DJ-Cloud-v2-CLIENT-debug.apk
+            (cd bwd-admin && gradle --no-daemon :app:assembleDebug --stacktrace)
+            cp bwd-admin/app/build/outputs/apk/debug/app-debug.apk dist/BALI-WEDDING-DJ-Cloud-v2-OWNER-ADMIN-debug.apk
           else
-            cp app/build/outputs/apk/debug/app-debug.apk ../dist/BALI-WEDDING-DJ-Native-v1.1.apk
+            (cd bwd-native && gradle --no-daemon :app:assembleDebug --stacktrace)
+            cp bwd-native/app/build/outputs/apk/debug/app-debug.apk dist/BALI-WEDDING-DJ-Native-v1.1.apk
           fi
 
       - name: APK checksum
@@ -156,6 +169,6 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BALI-WEDDING-DJ-${{ github.ref_name == 'feat/bali-wedding-dj-cloud-v2' && 'Cloud-v2-client-safe-debug' || 'Native-v1.1' }}
+          name: BALI-WEDDING-DJ-${{ github.ref_name == 'feat/bali-wedding-dj-cloud-v2' && 'Cloud-v2-CLIENT-and-OWNER-ADMIN' || 'Native-v1.1' }}
           path: dist/*.apk
           retention-days: 30
