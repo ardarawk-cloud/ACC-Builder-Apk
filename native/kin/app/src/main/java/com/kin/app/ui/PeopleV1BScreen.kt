@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kin.app.data.KinCircleEntity
 import com.kin.app.data.KinFriendRequest
 import com.kin.app.data.KinFriendRequests
 import com.kin.app.data.KinPeopleResult
@@ -69,6 +70,8 @@ fun PeopleV1BScreen(repository: KinRelationshipRepository) {
     if (selectedLocal != null) {
         LocalConnectionDetailScreen(
             person = selectedLocal,
+            circles = circles,
+            repository = repository,
             onBack = { selectedLocalId = "" },
         )
         return
@@ -246,12 +249,13 @@ fun PeopleV1BScreen(repository: KinRelationshipRepository) {
                         Text(person.person.displayName, fontWeight = FontWeight.Bold)
                         Text(person.person.handle)
                         Text(person.circles.joinToString(" · ") { it.name }.ifBlank { "No Circle yet" })
+                        Text("Tap to manage Circles & private note", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
         }
 
-        Text("Your private Circle labels", fontWeight = FontWeight.Bold)
+        Text("Available private Circle labels", fontWeight = FontWeight.Bold)
         circles.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { circle ->
@@ -341,23 +345,102 @@ private fun RemotePersonDetailScreen(
 }
 
 @Composable
-private fun LocalConnectionDetailScreen(person: KinPersonWithCircles, onBack: () -> Unit) {
+private fun LocalConnectionDetailScreen(
+    person: KinPersonWithCircles,
+    circles: List<KinCircleEntity>,
+    repository: KinRelationshipRepository,
+    onBack: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var selectedCircleIds by remember(person.person.id) {
+        mutableStateOf(person.circles.map { it.id }.toSet())
+    }
+    var privateNote by remember(person.person.id) { mutableStateOf(person.person.privateNote) }
+    var status by remember(person.person.id) { mutableStateOf("") }
+    var saving by remember(person.person.id) { mutableStateOf(false) }
+
     KinScreenColumn(
         title = person.person.displayName,
         subtitle = "Your relationship context stays private to you.",
     ) {
         OutlinedButton(onClick = onBack) { Text("← People") }
         Text(person.person.handle, style = MaterialTheme.typography.titleMedium)
-        if (person.circles.isNotEmpty()) {
-            Text("Circles", fontWeight = FontWeight.Bold)
-            person.circles.forEach { circle -> Text("• ${circle.name}") }
-        } else {
-            Text("No Circle yet")
+
+        Text("Choose Circles", fontWeight = FontWeight.Bold)
+        Text("You can put one person in more than one Circle.", style = MaterialTheme.typography.bodySmall)
+        circles.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { circle ->
+                    val selected = circle.id in selectedCircleIds
+                    if (selected) {
+                        Button(
+                            onClick = {
+                                selectedCircleIds = selectedCircleIds - circle.id
+                                status = ""
+                            },
+                            enabled = !saving,
+                        ) {
+                            Text("✓ ${circle.name}")
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = {
+                                selectedCircleIds = selectedCircleIds + circle.id
+                                status = ""
+                            },
+                            enabled = !saving,
+                        ) {
+                            Text(circle.name)
+                        }
+                    }
+                }
+            }
         }
-        if (person.person.privateNote.isNotBlank()) {
-            Text("Private note", fontWeight = FontWeight.Bold)
-            Text(person.person.privateNote)
+        Button(
+            onClick = {
+                scope.launch {
+                    saving = true
+                    repository.setPersonCircles(person.person.id, selectedCircleIds.toList())
+                    status = if (selectedCircleIds.isEmpty()) "Circles cleared." else "Circles saved."
+                    saving = false
+                }
+            },
+            enabled = !saving,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Save Circles")
         }
+
+        Text("Private note", fontWeight = FontWeight.Bold)
+        Text("Only you can see this. It is never uploaded to KIN.", style = MaterialTheme.typography.bodySmall)
+        OutlinedTextField(
+            value = privateNote,
+            onValueChange = {
+                privateNote = it
+                status = ""
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("How do you know this person?") },
+            minLines = 2,
+            maxLines = 5,
+        )
+        Button(
+            onClick = {
+                scope.launch {
+                    saving = true
+                    repository.savePrivateNote(person.person.id, privateNote.trim())
+                    status = if (privateNote.isBlank()) "Private note cleared." else "Private note saved."
+                    saving = false
+                }
+            },
+            enabled = !saving,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Save Private Note")
+        }
+
+        if (saving) CircularProgressIndicator()
+        if (status.isNotBlank()) Text(status, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
