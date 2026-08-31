@@ -1,0 +1,94 @@
+name: MOSHI Alpha.7 Receiver Autoscroll Build
+
+on:
+  push:
+    branches: [feat/moshi-relay-builder]
+    paths:
+      - '.github/workflows/moshi-alpha7-receiver-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout MOSHI source
+        uses: actions/checkout@v4
+        with:
+          repository: balinightlife666-web/ACC-Android-Builder
+          ref: fix/moshi-compose-scope-alpha
+          path: source
+          persist-credentials: false
+
+      - name: Patch receiver realtime autoscroll and Alpha.7 version
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          chat = Path('source/projects/moshi/android/app/src/main/java/com/ardacore/moshi/ChatUi.kt')
+          text = chat.read_text()
+          old = '''    val latestMessageId = controller.messages.lastOrNull()?.id
+    LaunchedEffect(conversation.id, latestMessageId) {
+        if (controller.messages.isNotEmpty()) {
+            messageListState.animateScrollToItem(controller.messages.lastIndex)
+        }
+    }
+'''
+          new = '''    val messageCount = controller.messages.size
+    val latestMessage = controller.messages.lastOrNull()
+    val latestMessageRevision = latestMessage?.let { "${it.id}:${it.createdAt}:${it.state}" }
+    LaunchedEffect(conversation.id, messageCount, latestMessageRevision) {
+        if (messageCount > 0) {
+            androidx.compose.runtime.withFrameNanos { }
+            messageListState.scrollToItem(messageCount - 1)
+        }
+    }
+'''
+          if old not in text:
+              raise SystemExit('expected autoscroll block not found')
+          chat.write_text(text.replace(old, new, 1))
+          gradle = Path('source/projects/moshi/android/app/build.gradle.kts')
+          g = gradle.read_text()
+          if 'versionCode = 8' not in g or 'versionName = "0.4.0-alpha.6"' not in g:
+              raise SystemExit('expected Alpha.6 version block not found')
+          g = g.replace('versionCode = 8', 'versionCode = 9', 1)
+          g = g.replace('versionName = "0.4.0-alpha.6"', 'versionName = "0.4.0-alpha.7"', 1)
+          gradle.write_text(g)
+          PY
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Package Alpha.7 release
+        working-directory: source/projects/moshi/android
+        run: gradle :app:packageRelease --stacktrace -PMOSHI_API_BASE_URL="https://america-assignments-donors-seo.trycloudflare.com"
+
+      - name: Align unsigned APK and stage signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          APK="source/projects/moshi/android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          test -f "$APK"
+          "$BUILD_TOOLS/zipalign" -p -f 4 "$APK" dist/MOSHI-alpha7-aligned-unsigned.apk
+          "$BUILD_TOOLS/zipalign" -c -v 4 dist/MOSHI-alpha7-aligned-unsigned.apk
+          cp "$BUILD_TOOLS/lib/apksigner.jar" dist/apksigner.jar
+          sha256sum dist/MOSHI-alpha7-aligned-unsigned.apk dist/apksigner.jar > dist/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MOSHI-alpha7-receiver-autoscroll
+          path: dist/
+          retention-days: 7
