@@ -81,6 +81,8 @@ fun KinApp(graph: KinAppGraph, session: KinSession) {
 
     LaunchedEffect(Unit) {
         graph.relationshipRepository.ensureStarterData()
+        graph.relationshipRepository.syncConnections()
+        graph.postRepository.refreshFeed()
     }
 
     LaunchedEffect(sharedContent) {
@@ -123,6 +125,7 @@ fun KinApp(graph: KinAppGraph, session: KinSession) {
                 when (selected) {
                     KinRoot.HOME -> HomeScreen(
                         repository = graph.postRepository,
+                        currentUsername = profile?.username ?: session.username,
                         onCreate = { selected = KinRoot.CREATE },
                     )
                     KinRoot.PEOPLE -> PeopleV1BScreen(graph.relationshipRepository)
@@ -132,7 +135,10 @@ fun KinApp(graph: KinAppGraph, session: KinSession) {
                         profile = profile,
                         onPublished = { selected = KinRoot.HOME },
                     )
-                    KinRoot.CHAT -> ChatScreen(graph.relationshipRepository)
+                    KinRoot.CHAT -> ChatScreen(
+                        relationshipRepository = graph.relationshipRepository,
+                        chatRepository = graph.chatRepository,
+                    )
                     KinRoot.ME -> MeScreen(graph = graph, session = session)
                 }
             }

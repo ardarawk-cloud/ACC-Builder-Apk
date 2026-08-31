@@ -73,6 +73,91 @@ class FriendRequestsOut(BaseModel):
     outgoing: list[FriendRequestOut]
 
 
+class PostCreate(BaseModel):
+    text: str = Field(default="", max_length=1000)
+    audience: str = "friends"
+    allowed_user_ids: list[int] = Field(default_factory=list, max_length=200)
+    feeling: str | None = Field(default=None, max_length=80)
+    listening: str | None = Field(default=None, max_length=500)
+    location: str | None = Field(default=None, max_length=120)
+    with_people: str | None = Field(default=None, max_length=240)
+
+    @field_validator("audience")
+    @classmethod
+    def validate_audience(cls, value: str) -> str:
+        normalized = value.strip().lower().replace(" ", "_")
+        aliases = {
+            "circle": "selected",
+            "selected": "selected",
+            "friends": "friends",
+            "public": "public",
+            "only_me": "only_me",
+        }
+        if normalized not in aliases:
+            raise ValueError("audience must be public, friends, selected, or only_me")
+        return aliases[normalized]
+
+
+class PostPatch(BaseModel):
+    text: str | None = Field(default=None, max_length=1000)
+    audience: str | None = None
+    allowed_user_ids: list[int] | None = Field(default=None, max_length=200)
+    feeling: str | None = Field(default=None, max_length=80)
+    listening: str | None = Field(default=None, max_length=500)
+    location: str | None = Field(default=None, max_length=120)
+    with_people: str | None = Field(default=None, max_length=240)
+
+    @field_validator("audience")
+    @classmethod
+    def validate_audience(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip().lower().replace(" ", "_")
+        aliases = {
+            "circle": "selected",
+            "selected": "selected",
+            "friends": "friends",
+            "public": "public",
+            "only_me": "only_me",
+        }
+        if normalized not in aliases:
+            raise ValueError("audience must be public, friends, selected, or only_me")
+        return aliases[normalized]
+
+
+class PostOut(BaseModel):
+    id: str
+    author: PublicUserOut
+    text: str
+    audience: str
+    feeling: str | None = None
+    listening: str | None = None
+    location: str | None = None
+    with_people: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class MessageCreate(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("text")
+    @classmethod
+    def strip_message(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("message cannot be blank")
+        return value
+
+
+class MessageOut(BaseModel):
+    id: str
+    sender: PublicUserOut
+    recipient: PublicUserOut
+    text: str
+    created_at: datetime
+
+
 class AuthResponse(BaseModel):
     access_token: str
     refresh_token: str

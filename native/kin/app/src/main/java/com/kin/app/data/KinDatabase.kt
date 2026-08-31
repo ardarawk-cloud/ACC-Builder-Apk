@@ -68,6 +68,21 @@ data class KinPostEntity(
     val createdAt: Long,
 )
 
+@Entity(
+    tableName = "kin_messages",
+    indices = [Index("otherPersonId"), Index("createdAt")],
+)
+data class KinMessageEntity(
+    @PrimaryKey val id: String,
+    val otherPersonId: String,
+    val senderId: String,
+    val senderDisplayName: String,
+    val senderUsername: String,
+    val text: String,
+    val mine: Boolean,
+    val createdAt: Long,
+)
+
 data class KinPersonWithCircles(
     @Embedded val person: KinPersonEntity,
     @Relation(
@@ -108,6 +123,9 @@ interface KinDao {
     @Query("UPDATE kin_people SET displayName = :displayName, handle = :handle WHERE id = :personId")
     suspend fun updatePersonIdentity(personId: String, displayName: String, handle: String)
 
+    @Query("SELECT id FROM kin_people")
+    suspend fun getPeopleIds(): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun linkPersonCircle(link: KinPersonCircleCrossRef)
 
@@ -129,6 +147,27 @@ interface KinDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertPost(post: KinPostEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertPosts(posts: List<KinPostEntity>)
+
+    @Query("DELETE FROM kin_posts")
+    suspend fun clearPosts()
+
+    @Query("DELETE FROM kin_posts WHERE id = :postId")
+    suspend fun deletePost(postId: String)
+
+    @Query("SELECT * FROM kin_messages WHERE otherPersonId = :personId ORDER BY createdAt ASC")
+    fun observeMessages(personId: String): Flow<List<KinMessageEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertMessage(message: KinMessageEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertMessages(messages: List<KinMessageEntity>)
+
+    @Query("DELETE FROM kin_messages WHERE otherPersonId = :personId")
+    suspend fun clearMessages(personId: String)
 }
 
 @Database(
@@ -138,8 +177,9 @@ interface KinDao {
         KinCircleEntity::class,
         KinPersonCircleCrossRef::class,
         KinPostEntity::class,
+        KinMessageEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class KinDatabase : RoomDatabase() {
@@ -168,12 +208,34 @@ abstract class KinDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `kin_messages` (
+                        `id` TEXT NOT NULL,
+                        `otherPersonId` TEXT NOT NULL,
+                        `senderId` TEXT NOT NULL,
+                        `senderDisplayName` TEXT NOT NULL,
+                        `senderUsername` TEXT NOT NULL,
+                        `text` TEXT NOT NULL,
+                        `mine` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_kin_messages_otherPersonId` ON `kin_messages` (`otherPersonId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_kin_messages_createdAt` ON `kin_messages` (`createdAt`)")
+            }
+        }
+
         fun create(context: Context): KinDatabase = Room.databaseBuilder(
             context.applicationContext,
             KinDatabase::class.java,
             "kin.db",
         )
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
     }
 }

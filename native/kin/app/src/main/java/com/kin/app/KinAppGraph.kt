@@ -8,13 +8,17 @@ import com.kin.app.auth.KinAuthRepository
 import com.kin.app.auth.KinTokenStore
 import com.kin.app.auth.LocalKinAuthRepository
 import com.kin.app.auth.RemoteKinAuthRepository
+import com.kin.app.data.KinChatRepository
 import com.kin.app.data.KinDatabase
 import com.kin.app.data.KinPostRepository
 import com.kin.app.data.KinProfileRepository
 import com.kin.app.data.KinRelationshipRepository
+import com.kin.app.data.LocalKinChatRepository
 import com.kin.app.data.LocalKinPostRepository
 import com.kin.app.data.LocalKinProfileRepository
 import com.kin.app.data.LocalKinRelationshipRepository
+import com.kin.app.data.RemoteKinChatRepository
+import com.kin.app.data.RemoteKinPostRepository
 import com.kin.app.data.RemoteKinRelationshipRepository
 import com.kin.app.network.KinApiClient
 import com.kin.app.session.KinSessionStore
@@ -71,14 +75,18 @@ class KinAppGraph private constructor(context: Context) {
     val sessionStore = KinSessionStore(appContext)
     val appearanceStore = KinAppearanceStore(appContext)
     val profileRepository: KinProfileRepository = LocalKinProfileRepository(dao)
-    val postRepository: KinPostRepository = LocalKinPostRepository(dao)
+
+    val postRepository: KinPostRepository = apiClient?.let { client ->
+        RemoteKinPostRepository(dao = dao, apiClient = client)
+    } ?: LocalKinPostRepository(dao)
 
     val relationshipRepository: KinRelationshipRepository = apiClient?.let { client ->
-        RemoteKinRelationshipRepository(
-            dao = dao,
-            apiClient = client,
-        )
+        RemoteKinRelationshipRepository(dao = dao, apiClient = client)
     } ?: LocalKinRelationshipRepository(dao)
+
+    val chatRepository: KinChatRepository = apiClient?.let { client ->
+        RemoteKinChatRepository(dao = dao, apiClient = client)
+    } ?: LocalKinChatRepository(dao)
 
     val authRepository: KinAuthRepository = apiClient?.let { client ->
         RemoteKinAuthRepository(

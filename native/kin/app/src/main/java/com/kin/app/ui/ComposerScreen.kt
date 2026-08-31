@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kin.app.KinAppGraph
+import com.kin.app.data.KinPeopleResult
 import com.kin.app.data.KinPostEntity
 import com.kin.app.data.KinProfileEntity
 import com.kin.app.session.KinSession
@@ -41,6 +42,7 @@ fun ComposerScreen(
     onPublished: () -> Unit,
 ) {
     val people by graph.relationshipRepository.observePeople().collectAsStateWithLifecycle(initialValue = emptyList())
+    val circles by graph.relationshipRepository.observeCircles().collectAsStateWithLifecycle(initialValue = emptyList())
     val sharedContent by KinShareInbox.sharedContent.collectAsStateWithLifecycle()
     var text by rememberSaveable { mutableStateOf("") }
     var audience by rememberSaveable { mutableStateOf("Friends") }
@@ -48,7 +50,9 @@ fun ComposerScreen(
     var listening by rememberSaveable { mutableStateOf("") }
     var location by rememberSaveable { mutableStateOf("") }
     var withPersonId by rememberSaveable { mutableStateOf("") }
+    var selectedCircleIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var publishing by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(sharedContent) {
@@ -58,15 +62,20 @@ fun ComposerScreen(
     }
 
     val withPerson = people.firstOrNull { it.person.id == withPersonId }
+    val allowedUserIds = people
+        .filter { person -> person.circles.any { it.id in selectedCircleIds } }
+        .map { it.person.id }
+        .distinct()
     val hasContent = text.isNotBlank() || feeling.isNotBlank() || listening.isNotBlank() || location.isNotBlank() || withPerson != null
+    val validAudience = audience != "Circle" || selectedCircleIds.isNotEmpty()
 
     KinScreenColumn(
         title = "Create post",
-        subtitle = "One composer. Your post goes straight to Home.",
+        subtitle = "One composer. Your post goes straight to the chronological Home feed.",
     ) {
         OutlinedTextField(
             value = text,
-            onValueChange = { text = it.take(1000) },
+            onValueChange = { text = it.take(1000); status = "" },
             label = { Text("What's happening?") },
             modifier = Modifier.fillMaxWidth(),
             minLines = 4,
@@ -100,7 +109,7 @@ fun ComposerScreen(
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Add music safely", fontWeight = FontWeight.Bold)
-                    Text("From Spotify, YouTube Music or another music app: tap Share → KIN. The shared song/link will return here automatically.")
+                    Text("From Spotify, YouTube Music or another music app: Share → KIN. No notification access is used.")
                 }
             }
         } else {
@@ -126,16 +135,14 @@ fun ComposerScreen(
 
         Text("With", fontWeight = FontWeight.Bold)
         if (people.isEmpty()) {
-            Text("People can be tagged here once you have real KIN connections.", style = MaterialTheme.typography.bodySmall)
+            Text("Connect with people first to tag someone here.", style = MaterialTheme.typography.bodySmall)
         } else {
-            people.take(6).chunked(2).forEach { row ->
+            people.take(8).chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     row.forEach { person ->
                         FilterChip(
                             selected = withPersonId == person.person.id,
-                            onClick = {
-                                withPersonId = if (withPersonId == person.person.id) "" else person.person.id
-                            },
+                            onClick = { withPersonId = if (withPersonId == person.person.id) "" else person.person.id },
                             label = { Text(person.person.displayName) },
                         )
                     }
@@ -144,17 +151,45 @@ fun ComposerScreen(
         }
 
         Text("Who can see it?", fontWeight = FontWeight.Bold)
-        KinAudiencePicker(selected = audience, onSelected = { audience = it })
+        KinAudiencePicker(
+            selected = audience,
+            onSelected = {
+                audience = it
+                status = ""
+            },
+        )
+
+        if (audience == "Circle") {
+            Text("Choose private Circles", fontWeight = FontWeight.Bold)
+            Text("KIN sends only the matching account IDs. Your Circle names stay on this phone.", style = MaterialTheme.typography.bodySmall)
+            circles.chunked(2).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { circle ->
+                        FilterChip(
+                            selected = circle.id in selectedCircleIds,
+                            onClick = {
+                                selectedCircleIds = if (circle.id in selectedCircleIds) {
+                                    selectedCircleIds - circle.id
+                                } else {
+                                    selectedCircleIds + circle.id
+                                }
+                            },
+                            label = { Text(circle.name) },
+                        )
+                    }
+                }
+            }
+            Text("${allowedUserIds.size} connection(s) match this audience.", style = MaterialTheme.typography.bodySmall)
+        }
 
         Button(
             onClick = {
-                if (!hasContent || publishing) return@Button
+                if (!hasContent || publishing || !validAudience) return@Button
                 val authorDisplayName = profile?.displayName?.ifBlank { null }
                     ?: session.displayName.ifBlank { "KIN User" }
                 val authorUsername = profile?.username?.ifBlank { null }
                     ?: session.username.ifBlank { "kinuser" }
-
-                val post = KinPostEntity(
+                val draft = KinPostEntity(
                     id = UUID.randomUUID().toString(),
                     authorDisplayName = authorDisplayName,
                     authorUsername = authorUsername,
@@ -166,18 +201,21 @@ fun ComposerScreen(
                     withPeople = withPerson?.person?.displayName,
                     createdAt = System.currentTimeMillis(),
                 )
-
                 scope.launch {
                     publishing = true
-                    graph.postRepository.savePost(post)
+                    status = ""
+                    when (val result = graph.postRepository.publishPost(draft, if (audience == "Circle") allowedUserIds else emptyList())) {
+                        is KinPeopleResult.Success -> onPublished()
+                        is KinPeopleResult.Error -> status = result.message
+                    }
                     publishing = false
-                    onPublished()
                 }
             },
-            enabled = hasContent && !publishing,
+            enabled = hasContent && validAudience && !publishing,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(if (publishing) "Publishing…" else "Post to Home")
         }
+        if (status.isNotBlank()) Text(status)
     }
 }

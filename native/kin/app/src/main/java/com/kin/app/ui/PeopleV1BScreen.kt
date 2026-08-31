@@ -42,29 +42,32 @@ fun PeopleV1BScreen(repository: KinRelationshipRepository) {
     var query by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<KinRemotePerson>>(emptyList()) }
     var requests by remember { mutableStateOf(KinFriendRequests()) }
+    var blockedPeople by remember { mutableStateOf<List<KinRemotePerson>>(emptyList()) }
     var selectedLocalId by remember { mutableStateOf("") }
     var selectedRemote by remember { mutableStateOf<KinRemotePerson?>(null) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
 
     fun applyRemoteUpdate(updated: KinRemotePerson) {
-        searchResults = searchResults.map { person ->
-            if (person.id == updated.id) updated else person
-        }
+        searchResults = searchResults.map { if (it.id == updated.id) updated else it }
         if (selectedRemote?.id == updated.id) selectedRemote = updated
     }
 
-    suspend fun refreshRequestsAndConnections(showError: Boolean = false) {
-        repository.syncConnections()
+    suspend fun refreshAll(showError: Boolean = false) {
+        val connectionResult = repository.syncConnections()
+        if (showError && connectionResult is KinPeopleResult.Error) message = connectionResult.message
+
         when (val result = repository.loadFriendRequests()) {
             is KinPeopleResult.Success -> requests = result.value
             is KinPeopleResult.Error -> if (showError) message = result.message
         }
+        when (val result = repository.loadBlockedPeople()) {
+            is KinPeopleResult.Success -> blockedPeople = result.value
+            is KinPeopleResult.Error -> if (showError) message = result.message
+        }
     }
 
-    LaunchedEffect(Unit) {
-        refreshRequestsAndConnections()
-    }
+    LaunchedEffect(Unit) { refreshAll() }
 
     val selectedLocal = people.firstOrNull { it.person.id == selectedLocalId }
     if (selectedLocal != null) {
@@ -73,6 +76,11 @@ fun PeopleV1BScreen(repository: KinRelationshipRepository) {
             circles = circles,
             repository = repository,
             onBack = { selectedLocalId = "" },
+            onDetached = { notice ->
+                selectedLocalId = ""
+                message = notice
+                scope.launch { refreshAll(showError = true) }
+            },
         )
         return
     }
@@ -90,7 +98,7 @@ fun PeopleV1BScreen(repository: KinRelationshipRepository) {
                         is KinPeopleResult.Success -> {
                             applyRemoteUpdate(result.value)
                             message = "Friend request sent to @${result.value.username}."
-                            refreshRequestsAndConnections()
+                            refreshAll()
                         }
                         is KinPeopleResult.Error -> message = result.message
                     }
@@ -103,8 +111,22 @@ fun PeopleV1BScreen(repository: KinRelationshipRepository) {
 
     KinScreenColumn(
         title = "People",
-        subtitle = "Find real KIN accounts, connect, then organize them privately with Circles.",
+        subtitle = "Find real accounts, connect, then organize relationships privately with Circles.",
     ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = {
+                    scope.launch {
+                        busy = true
+                        message = ""
+                        refreshAll(showError = true)
+                        busy = false
+                    }
+                },
+                enabled = !busy,
+            ) { Text("Refresh") }
+        }
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -138,9 +160,7 @@ fun PeopleV1BScreen(repository: KinRelationshipRepository) {
                     },
                     enabled = query.trim().removePrefix("@").isNotBlank() && !busy,
                     modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Search KIN")
-                }
+                ) { Text("Search KIN") }
                 if (busy) CircularProgressIndicator()
                 if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodyMedium)
             }
@@ -160,7 +180,7 @@ fun PeopleV1BScreen(repository: KinRelationshipRepository) {
                                 is KinPeopleResult.Success -> {
                                     applyRemoteUpdate(result.value)
                                     message = "You and @${result.value.username} are now connected."
-                                    refreshRequestsAndConnections(showError = true)
+                                    refreshAll(showError = true)
                                 }
                                 is KinPeopleResult.Error -> message = result.message
                             }
@@ -174,7 +194,7 @@ fun PeopleV1BScreen(repository: KinRelationshipRepository) {
                             when (val result = repository.declineFriendRequest(request.id)) {
                                 is KinPeopleResult.Success -> {
                                     message = "Friend request removed."
-                                    refreshRequestsAndConnections(showError = true)
+                                    refreshAll(showError = true)
                                 }
                                 is KinPeopleResult.Error -> message = result.message
                             }
@@ -216,7 +236,7 @@ fun PeopleV1BScreen(repository: KinRelationshipRepository) {
                                 is KinPeopleResult.Success -> {
                                     applyRemoteUpdate(result.value)
                                     message = "Friend request sent to @${result.value.username}."
-                                    refreshRequestsAndConnections()
+                                    refreshAll()
                                 }
                                 is KinPeopleResult.Error -> message = result.message
                             }
@@ -235,7 +255,7 @@ fun PeopleV1BScreen(repository: KinRelationshipRepository) {
             ) {
                 Column(Modifier.padding(18.dp)) {
                     Text("No connections yet", fontWeight = FontWeight.Bold)
-                    Text("Search a KIN username above and send the first friend request.")
+                    Text("Search a KIN username above and send a friend request.")
                 }
             }
         } else {
@@ -249,20 +269,49 @@ fun PeopleV1BScreen(repository: KinRelationshipRepository) {
                         Text(person.person.displayName, fontWeight = FontWeight.Bold)
                         Text(person.person.handle)
                         Text(person.circles.joinToString(" · ") { it.name }.ifBlank { "No Circle yet" })
-                        Text("Tap to manage Circles & private note", style = MaterialTheme.typography.bodySmall)
+                        Text("Tap to manage Circles, private note, or connection", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
         }
 
-        Text("Available private Circle labels", fontWeight = FontWeight.Bold)
-        circles.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { circle ->
-                    OutlinedButton(onClick = {}, enabled = false) { Text(circle.name) }
+        if (blockedPeople.isNotEmpty()) {
+            Text("Blocked", fontWeight = FontWeight.Bold)
+            blockedPeople.forEach { person ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(person.displayName, fontWeight = FontWeight.Bold)
+                        Text(person.handle)
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    busy = true
+                                    when (val result = repository.unblockPerson(person.username)) {
+                                        is KinPeopleResult.Success -> {
+                                            message = "@${person.username} unblocked."
+                                            refreshAll(showError = true)
+                                        }
+                                        is KinPeopleResult.Error -> message = result.message
+                                    }
+                                    busy = false
+                                }
+                            },
+                            enabled = !busy,
+                        ) { Text("Unblock") }
+                    }
                 }
             }
         }
+
+        Text("Your private Circle labels", fontWeight = FontWeight.Bold)
+        Text("Circle labels are assigned inside a connection. They are never uploaded to KIN.", style = MaterialTheme.typography.bodySmall)
+        circles.forEach { circle -> Text("• ${circle.name}") }
     }
 }
 
@@ -327,19 +376,18 @@ private fun RemotePersonDetailScreen(
     onBack: () -> Unit,
     onAddFriend: () -> Unit,
 ) {
-    KinScreenColumn(
-        title = person.displayName,
-        subtitle = person.handle,
-    ) {
+    KinScreenColumn(title = person.displayName, subtitle = person.handle) {
         OutlinedButton(onClick = onBack) { Text("← People") }
         if (person.bio.isNotBlank()) Text(person.bio)
         Text("Relationship", fontWeight = FontWeight.Bold)
         Text(relationshipLabel(person.relationship))
         when (person.relationship) {
             "none" -> Button(onClick = onAddFriend, enabled = !busy) { Text("Add friend") }
-            "outgoing_pending" -> OutlinedButton(onClick = {}, enabled = false) { Text("Request sent") }
-            "incoming_pending" -> Text("This person already sent you a friend request. Return to People to accept it.")
+            "outgoing_pending" -> Text("Friend request sent.")
+            "incoming_pending" -> Text("This person sent you a friend request. Return to People to accept it.")
             "friends" -> Text("Connected on KIN.")
+            "blocked" -> Text("Blocked by you.")
+            else -> Text("This relationship is unavailable.")
         }
     }
 }
@@ -350,11 +398,10 @@ private fun LocalConnectionDetailScreen(
     circles: List<KinCircleEntity>,
     repository: KinRelationshipRepository,
     onBack: () -> Unit,
+    onDetached: (String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    var selectedCircleIds by remember(person.person.id) {
-        mutableStateOf(person.circles.map { it.id }.toSet())
-    }
+    var selectedCircleIds by remember(person.person.id) { mutableStateOf(person.circles.map { it.id }.toSet()) }
     var privateNote by remember(person.person.id) { mutableStateOf(person.person.privateNote) }
     var status by remember(person.person.id) { mutableStateOf("") }
     var saving by remember(person.person.id) { mutableStateOf(false) }
@@ -363,11 +410,11 @@ private fun LocalConnectionDetailScreen(
         title = person.person.displayName,
         subtitle = "Your relationship context stays private to you.",
     ) {
-        OutlinedButton(onClick = onBack) { Text("← People") }
+        OutlinedButton(onClick = onBack, enabled = !saving) { Text("← People") }
         Text(person.person.handle, style = MaterialTheme.typography.titleMedium)
 
         Text("Choose Circles", fontWeight = FontWeight.Bold)
-        Text("You can put one person in more than one Circle.", style = MaterialTheme.typography.bodySmall)
+        Text("One person can belong to more than one Circle.", style = MaterialTheme.typography.bodySmall)
         circles.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { circle ->
@@ -379,9 +426,7 @@ private fun LocalConnectionDetailScreen(
                                 status = ""
                             },
                             enabled = !saving,
-                        ) {
-                            Text("✓ ${circle.name}")
-                        }
+                        ) { Text("✓ ${circle.name}") }
                     } else {
                         OutlinedButton(
                             onClick = {
@@ -389,9 +434,7 @@ private fun LocalConnectionDetailScreen(
                                 status = ""
                             },
                             enabled = !saving,
-                        ) {
-                            Text(circle.name)
-                        }
+                        ) { Text(circle.name) }
                     }
                 }
             }
@@ -407,16 +450,14 @@ private fun LocalConnectionDetailScreen(
             },
             enabled = !saving,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Save Circles")
-        }
+        ) { Text("Save Circles") }
 
-        Text("Private note", fontWeight = FontWeight.Bold)
-        Text("Only you can see this. It is never uploaded to KIN.", style = MaterialTheme.typography.bodySmall)
+        Text("Private relationship note", fontWeight = FontWeight.Bold)
+        Text("Only you can see this. It never leaves this device.", style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(
             value = privateNote,
             onValueChange = {
-                privateNote = it
+                privateNote = it.take(1000)
                 status = ""
             },
             modifier = Modifier.fillMaxWidth(),
@@ -424,20 +465,61 @@ private fun LocalConnectionDetailScreen(
             minLines = 2,
             maxLines = 5,
         )
-        Button(
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = {
+                    scope.launch {
+                        saving = true
+                        repository.savePrivateNote(person.person.id, privateNote.trim())
+                        status = if (privateNote.isBlank()) "Private note cleared." else "Private note saved."
+                        saving = false
+                    }
+                },
+                enabled = !saving,
+            ) { Text("Save Note") }
+            OutlinedButton(
+                onClick = {
+                    privateNote = ""
+                    scope.launch {
+                        saving = true
+                        repository.savePrivateNote(person.person.id, "")
+                        status = "Private note cleared."
+                        saving = false
+                    }
+                },
+                enabled = !saving && (privateNote.isNotBlank() || person.person.privateNote.isNotBlank()),
+            ) { Text("Clear") }
+        }
+
+        Text("Connection", fontWeight = FontWeight.Bold)
+        OutlinedButton(
             onClick = {
                 scope.launch {
                     saving = true
-                    repository.savePrivateNote(person.person.id, privateNote.trim())
-                    status = if (privateNote.isBlank()) "Private note cleared." else "Private note saved."
+                    when (val result = repository.removeConnection(person.person.id, person.person.handle)) {
+                        is KinPeopleResult.Success -> onDetached("Connection removed.")
+                        is KinPeopleResult.Error -> status = result.message
+                    }
                     saving = false
                 }
             },
             enabled = !saving,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Save Private Note")
-        }
+        ) { Text("Remove Friend") }
+        OutlinedButton(
+            onClick = {
+                scope.launch {
+                    saving = true
+                    when (val result = repository.blockPerson(person.person.id, person.person.handle)) {
+                        is KinPeopleResult.Success -> onDetached("@${result.value.username} blocked.")
+                        is KinPeopleResult.Error -> status = result.message
+                    }
+                    saving = false
+                }
+            },
+            enabled = !saving,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Block") }
 
         if (saving) CircularProgressIndicator()
         if (status.isNotBlank()) Text(status, style = MaterialTheme.typography.bodyMedium)
@@ -448,5 +530,7 @@ private fun relationshipLabel(value: String): String = when (value) {
     "friends" -> "Connected"
     "outgoing_pending" -> "Request sent"
     "incoming_pending" -> "Request waiting for you"
+    "blocked" -> "Blocked"
+    "unavailable" -> "Unavailable"
     else -> "Not connected yet"
 }
