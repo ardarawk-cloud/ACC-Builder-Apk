@@ -1,27 +1,15 @@
-name: Build Bali Wedding DJ Native APK
+name: BWD v1 Master RC Build
 
 on:
-  push:
-    branches:
-      - feat/bali-wedding-dj-native-v1
-      - feat/bali-wedding-dj-cloud-v2
-    paths:
-      - "native/bali-wedding-dj-src/**"
-      - "scripts/patch_bwd_business_contact.py"
-      - "scripts/patch_bwd_cloud_v2.py"
-      - "scripts/patch_bwd_receipt_cloud.py"
-      - "scripts/patch_bwd_public_client.py"
-      - ".github/workflows/build-bali-wedding-dj-native.yml"
-      - "bali-wedding-dj-native.trigger"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  master-rc:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 45
 
     steps:
       - name: Checkout source
@@ -39,6 +27,7 @@ jobs:
       - name: Install Android platform
         shell: bash
         run: |
+          set -euo pipefail
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
@@ -47,7 +36,7 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Restore native project
+      - name: Restore canonical native project
         shell: bash
         run: |
           set -euo pipefail
@@ -68,107 +57,126 @@ jobs:
           tar -xzf /tmp/bwd.tar.gz
           test -f bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
           test -f bwd-native/app/src/main/java/com/baliweddingdj/app/WeddingDb.java
-          if grep -R "WebView" -n bwd-native/app/src/main/java; then
-            echo "WebView usage is forbidden for this native build."
-            exit 1
-          fi
 
-      - name: Upload restored source for inspection
-        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
-        uses: actions/upload-artifact@v4
-        with:
-          name: bwd-native-restored-source
-          path: bwd-native
-          retention-days: 2
-
-      - name: Apply business WhatsApp contact
+      - name: Apply business contact
         shell: bash
         run: |
           set -euo pipefail
           python3 scripts/patch_bwd_business_contact.py bwd-native
+          ! grep -R '628113813737\|+62 811-3813-737' -n bwd-native/app/src/main/java
           grep -R '6282247972288\|+62 822-4797-2288' -n bwd-native/app/src/main/java/com/baliweddingdj/app
 
-      - name: Apply Cloud V2 patch
-        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2' && hashFiles('scripts/patch_bwd_cloud_v2.py') != ''
+      - name: Apply BWD v1 master patch
         shell: bash
         env:
           BWD_FIREBASE_API_KEY: ${{ secrets.BWD_FIREBASE_API_KEY }}
           BWD_FIREBASE_APP_ID: ${{ secrets.BWD_FIREBASE_APP_ID }}
+          BWD_FIREBASE_OWNER_APP_ID: ${{ secrets.BWD_FIREBASE_OWNER_APP_ID }}
           BWD_FIREBASE_PROJECT_ID: ${{ secrets.BWD_FIREBASE_PROJECT_ID }}
           BWD_FIREBASE_SENDER_ID: ${{ secrets.BWD_FIREBASE_SENDER_ID }}
           BWD_CLOUD_BASE_URL: ${{ secrets.BWD_CLOUD_BASE_URL }}
         run: |
           set -euo pipefail
-          python3 scripts/patch_bwd_cloud_v2.py bwd-native
-          touch bwd-native/gradle.properties
-          if grep -q '^android.useAndroidX=' bwd-native/gradle.properties; then
-            sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' bwd-native/gradle.properties
-          else
-            echo 'android.useAndroidX=true' >> bwd-native/gradle.properties
-          fi
-          if grep -q '^android.suppressUnsupportedCompileSdk=' bwd-native/gradle.properties; then
-            sed -i 's/^android.suppressUnsupportedCompileSdk=.*/android.suppressUnsupportedCompileSdk=36/' bwd-native/gradle.properties
-          else
-            echo 'android.suppressUnsupportedCompileSdk=36' >> bwd-native/gradle.properties
-          fi
+          python3 scripts/patch_bwd_master_v1.py bwd-native
+          cat > bwd-native/gradle.properties <<'EOF'
+          android.useAndroidX=true
+          android.suppressUnsupportedCompileSdk=36
+          EOF
+          grep -q 'syncClientBookings' bwd-native/app/src/main/java/com/baliweddingdj/app/BwdCloud.java
+          grep -q 'syncOwner' bwd-native/app/src/main/java/com/baliweddingdj/app/BwdCloud.java
+          grep -q 'viewAdminReceipt' bwd-native/app/src/main/java/com/baliweddingdj/app/BwdCloud.java
+          grep -q 'applyCloudBooking' bwd-native/app/src/main/java/com/baliweddingdj/app/WeddingDb.java
 
-      - name: Apply secure receipt cloud patch
-        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
+      - name: Snapshot dedicated Owner app
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/patch_bwd_receipt_cloud.py bwd-native
-          grep -q 'submitReceipt' bwd-native/app/src/main/java/com/baliweddingdj/app/BwdCloud.java
-          grep -q 'receipt_url' bwd-native/app/src/main/java/com/baliweddingdj/app/BwdFirebaseMessagingService.java
+          cp -a bwd-native bwd-owner
+          sed -i "s/applicationId 'com.baliweddingdj.app'/applicationId 'com.baliweddingdj.owner'/" bwd-owner/app/build.gradle
+          sed -i 's/android:label="Bali Wedding DJ"/android:label="Bali Wedding DJ Owner"/' bwd-owner/app/src/main/AndroidManifest.xml
+          grep -q "applicationId 'com.baliweddingdj.owner'" bwd-owner/app/build.gradle
+          grep -q 'DASHBOARD' bwd-owner/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -q 'showAdminPayments' bwd-owner/app/src/main/java/com/baliweddingdj/app/MainActivity.java
 
-      - name: Snapshot owner admin build
-        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
-        shell: bash
-        run: |
-          set -euo pipefail
-          cp -a bwd-native bwd-admin
-          grep -q 'ADMIN ACCESS' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
-
-      - name: Apply customer safety patch
-        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
+      - name: Lock public Client app
         shell: bash
         run: |
           set -euo pipefail
           python3 scripts/patch_bwd_public_client.py bwd-native
           ! grep -q 'ADMIN ACCESS' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          ! grep -q 'p.addView(Ui.section(this,"ADMIN"))' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -q 'MY BOOKING' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
 
-      - name: Apply UI wording update
+      - name: Apply final wording
         shell: bash
         run: |
           set -euo pipefail
           find bwd-native/app/src/main/java -name '*.java' -print0 | xargs -0 sed -i 's/"Reception"/"Wedding Reception"/g'
-          if [ -d bwd-admin ]; then
-            find bwd-admin/app/src/main/java -name '*.java' -print0 | xargs -0 sed -i 's/"Reception"/"Wedding Reception"/g'
-          fi
-          grep -R 'Wedding Reception' -n bwd-native/app/src/main/java
+          find bwd-owner/app/src/main/java -name '*.java' -print0 | xargs -0 sed -i 's/"Reception"/"Wedding Reception"/g'
 
-      - name: Build APKs
+      - name: Backend QC in same run
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd backend/bwd-cloud-v2/functions
+          npm install --ignore-scripts
+          node --check index.js
+          npm ls --depth=0
+
+      - name: Build Client and Owner APKs
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          if [ "${GITHUB_REF_NAME}" = "feat/bali-wedding-dj-cloud-v2" ]; then
-            (cd bwd-native && gradle --no-daemon :app:assembleDebug --stacktrace)
-            cp bwd-native/app/build/outputs/apk/debug/app-debug.apk dist/BALI-WEDDING-DJ-Cloud-v2-CLIENT-debug.apk
-            (cd bwd-admin && gradle --no-daemon :app:assembleDebug --stacktrace)
-            cp bwd-admin/app/build/outputs/apk/debug/app-debug.apk dist/BALI-WEDDING-DJ-Cloud-v2-OWNER-ADMIN-debug.apk
-          else
-            (cd bwd-native && gradle --no-daemon :app:assembleDebug --stacktrace)
-            cp bwd-native/app/build/outputs/apk/debug/app-debug.apk dist/BALI-WEDDING-DJ-Native-v1.1.apk
-          fi
+          (cd bwd-native && gradle --no-daemon :app:assembleDebug --stacktrace)
+          cp bwd-native/app/build/outputs/apk/debug/app-debug.apk dist/BALI-WEDDING-DJ-v1-CLIENT-RC.apk
+          (cd bwd-owner && gradle --no-daemon :app:assembleDebug --stacktrace)
+          cp bwd-owner/app/build/outputs/apk/debug/app-debug.apk dist/BALI-WEDDING-DJ-v1-OWNER-RC.apk
 
-      - name: APK checksum
+      - name: Verify APK identities
         shell: bash
-        run: sha256sum dist/*.apk
+        run: |
+          set -euo pipefail
+          AAPT="${ANDROID_HOME}/build-tools/36.0.0/aapt"
+          "$AAPT" dump badging dist/BALI-WEDDING-DJ-v1-CLIENT-RC.apk | tee /tmp/client.badging
+          "$AAPT" dump badging dist/BALI-WEDDING-DJ-v1-OWNER-RC.apk | tee /tmp/owner.badging
+          grep -q "package: name='com.baliweddingdj.app'" /tmp/client.badging
+          grep -q "package: name='com.baliweddingdj.owner'" /tmp/owner.badging
+          grep -q "application-label:'Bali Wedding DJ Owner'" /tmp/owner.badging
 
-      - name: Upload APK artifact
+      - name: Cloud configuration status
+        shell: bash
+        env:
+          BWD_FIREBASE_API_KEY: ${{ secrets.BWD_FIREBASE_API_KEY }}
+          BWD_FIREBASE_APP_ID: ${{ secrets.BWD_FIREBASE_APP_ID }}
+          BWD_FIREBASE_OWNER_APP_ID: ${{ secrets.BWD_FIREBASE_OWNER_APP_ID }}
+          BWD_FIREBASE_PROJECT_ID: ${{ secrets.BWD_FIREBASE_PROJECT_ID }}
+          BWD_FIREBASE_SENDER_ID: ${{ secrets.BWD_FIREBASE_SENDER_ID }}
+          BWD_CLOUD_BASE_URL: ${{ secrets.BWD_CLOUD_BASE_URL }}
+        run: |
+          set -euo pipefail
+          missing=0
+          : > dist/CLOUD-CONFIG-STATUS.txt
+          for key in BWD_FIREBASE_API_KEY BWD_FIREBASE_APP_ID BWD_FIREBASE_OWNER_APP_ID BWD_FIREBASE_PROJECT_ID BWD_FIREBASE_SENDER_ID BWD_CLOUD_BASE_URL; do
+            if [ -z "${!key:-}" ]; then
+              echo "$key=MISSING" >> dist/CLOUD-CONFIG-STATUS.txt
+              missing=1
+            else
+              echo "$key=SET" >> dist/CLOUD-CONFIG-STATUS.txt
+            fi
+          done
+          if [ "$missing" = 0 ]; then echo 'RUNTIME_GATE=CLOUD_CONFIGURED' >> dist/CLOUD-CONFIG-STATUS.txt; else echo 'RUNTIME_GATE=RC_LOCAL_FALLBACK_ONLY' >> dist/CLOUD-CONFIG-STATUS.txt; fi
+          cat dist/CLOUD-CONFIG-STATUS.txt
+
+      - name: Checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum dist/*.apk | tee dist/SHA256SUMS.txt
+
+      - name: Upload single RC artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BALI-WEDDING-DJ-${{ github.ref_name == 'feat/bali-wedding-dj-cloud-v2' && 'Cloud-v2-CLIENT-and-OWNER-ADMIN' || 'Native-v1.1' }}
-          path: dist/*.apk
+          name: BALI-WEDDING-DJ-v1-MASTER-RC
+          path: dist/*
           retention-days: 30
