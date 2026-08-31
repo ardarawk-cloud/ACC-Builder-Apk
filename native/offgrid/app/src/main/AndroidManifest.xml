@@ -19,7 +19,7 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
-            android:name=".MainActivity"
+            android:name=".Phase21Activity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
