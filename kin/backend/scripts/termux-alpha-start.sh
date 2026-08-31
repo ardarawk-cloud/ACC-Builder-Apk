@@ -12,6 +12,7 @@ LEGACY_DB="${BACKEND_DIR}/kin.db"
 PERSISTENT_DB="${DATA_DIR}/kin.db"
 PORT="${KIN_TERMUX_PORT:-8020}"
 SESSION="${KIN_TERMUX_SESSION:-kin}"
+VENV_DIR="/root/.venvs/kin"
 
 if [[ ! -d "${BACKEND_DIR}" ]]; then
   echo "KIN backend not found: ${BACKEND_DIR}" >&2
@@ -34,13 +35,31 @@ fi
 # Keep the legacy file untouched as a recovery copy if it exists.
 # Mutable runtime data lives only under DATA_DIR from this point forward.
 
+# Ensure the dedicated Ubuntu virtualenv exists. This avoids accidentally
+# resolving Termux-host Python from inside proot, which does not contain KIN deps.
+proot-distro login ubuntu \
+  --bind="${SOURCE_DIR}:/root/kin-source" \
+  --bind="${DATA_DIR}:/root/kin-data" \
+  -- bash -lc '
+    set -e
+    export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    cd /root/kin-source/kin/backend
+    if [[ ! -x /root/.venvs/kin/bin/python ]]; then
+      mkdir -p /root/.venvs
+      /usr/bin/python3 -m venv /root/.venvs/kin
+      /root/.venvs/kin/bin/python -m pip install --upgrade pip
+      /root/.venvs/kin/bin/pip install -r requirements.txt
+    fi
+    /root/.venvs/kin/bin/python -c "import uvicorn, fastapi, sqlalchemy"
+  '
+
 tmux kill-session -t "${SESSION}" 2>/dev/null || true
 
 tmux new-session -d -s "${SESSION}" \
   "proot-distro login ubuntu \
   --bind=${SOURCE_DIR}:/root/kin-source \
   --bind=${DATA_DIR}:/root/kin-data \
-  -- bash -lc 'cd /root/kin-source/kin/backend && export KIN_DATABASE_URL=sqlite:////root/kin-data/kin.db && exec python -m uvicorn app.main:app --host 127.0.0.1 --port ${PORT} --proxy-headers --forwarded-allow-ips=\"*\" --no-server-header'"
+  -- bash -lc 'cd /root/kin-source/kin/backend && export KIN_DATABASE_URL=sqlite:////root/kin-data/kin.db && exec /root/.venvs/kin/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port ${PORT} --proxy-headers --forwarded-allow-ips=\"*\" --no-server-header'"
 
 sleep 4
 
