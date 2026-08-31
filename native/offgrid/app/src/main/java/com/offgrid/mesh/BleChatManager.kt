@@ -42,7 +42,9 @@ class BleChatManager(
     private val onState: (String) -> Unit,
     private val onSecurePeer: (SecurePeer) -> Boolean,
     private val onIncomingMessage: (String, String) -> Unit,
-    private val onDelivered: (String) -> Unit
+    private val onDelivered: (String) -> Unit,
+    private val onDisconnected: () -> Unit = {},
+    private val onPeerRelease: () -> Unit = {}
 ) {
     data class SecurePeer(
         val deviceId: String,
@@ -53,7 +55,7 @@ class BleChatManager(
 
     private val bluetoothManager = context.getSystemService(android.bluetooth.BluetoothManager::class.java)
     private val secureRandom = SecureRandom()
-    private val reconnectHandler = Handler(Looper.getMainLooper())
+    private val handler = Handler(Looper.getMainLooper())
     private val identityKeyPair: KeyPair = loadOrCreateIdentityKeyPair()
 
     private var gattServer: BluetoothGattServer? = null
@@ -71,6 +73,7 @@ class BleChatManager(
     private var reconnectTarget: BluetoothDevice? = null
     private var reconnectEnabled = false
     private var reconnectAttempt = 0
+    private var intentionalDisconnect = false
 
     private val clientQueue = ArrayDeque<ByteArray>()
     private var clientWriteInFlight = false
@@ -88,31 +91,75 @@ class BleChatManager(
             BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_NOTIFY,
             BluetoothGattCharacteristic.PERMISSION_WRITE
         )
-        val cccd = BluetoothGattDescriptor(
-            CCCD_UUID,
-            BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
+        characteristic.addDescriptor(
+            BluetoothGattDescriptor(
+                CCCD_UUID,
+                BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
+            )
         )
-        characteristic.addDescriptor(cccd)
         service.addCharacteristic(characteristic)
-        server.addService(service)
+        if (!server.addService(service)) {
+            runCatching { server.close() }
+            return false
+        }
         gattServer = server
         serverCharacteristic = characteristic
         return true
     }
 
-    fun connect(device: BluetoothDevice) {
-        disconnect()
+    fun connect(device: BluetoothDevice, autoReconnect: Boolean = true) {
+        disconnectInternal(notify = false)
         reconnectTarget = device
-        reconnectEnabled = true
+        reconnectEnabled = autoReconnect
         reconnectAttempt = 0
-        openClient(device, false)
+        intentionalDisconnect = false
+        openClient(device, retry = false)
     }
 
     fun disconnect() {
         reconnectEnabled = false
         reconnectTarget = null
+        intentionalDisconnect = true
+        disconnectInternal(notify = true)
+    }
+
+    fun releaseForHandoff() {
+        reconnectEnabled = false
+        reconnectTarget = null
+        intentionalDisconnect = true
+        if (sessionKey != null) sendFrame("R|HANDOFF")
+        handler.postDelayed({ disconnectInternal(notify = true) }, RELEASE_DELAY_MS)
+    }
+
+    fun close() {
+        reconnectEnabled = false
+        reconnectTarget = null
+        intentionalDisconnect = true
+        disconnectInternal(notify = false)
+        runCatching { gattServer?.close() }
+        gattServer = null
+        serverCharacteristic = null
+        handler.removeCallbacksAndMessages(null)
+    }
+
+    fun isSecure(): Boolean = sessionKey != null
+
+    fun remotePeerId(): String? = remoteDeviceId
+
+    fun localIdentityFingerprint(): String = shortFingerprint(identityFingerprint(identityKeyPair.public.encoded))
+
+    fun sendText(text: String): String? {
+        val key = sessionKey ?: return null
+        if (text.isBlank()) return null
+        val id = UUID.randomUUID().toString()
+        val encrypted = encrypt(key, text.toByteArray(Charsets.UTF_8))
+        sendFrame("M|$id|${Base64.encodeToString(encrypted, Base64.NO_WRAP)}")
+        return id
+    }
+
+    private fun disconnectInternal(notify: Boolean) {
+        handler.removeCallbacksAndMessages(null)
         reconnectAttempt = 0
-        reconnectHandler.removeCallbacksAndMessages(null)
         runCatching { clientGatt?.disconnect() }
         runCatching { clientGatt?.close() }
         clientGatt = null
@@ -124,27 +171,7 @@ class BleChatManager(
         role = Role.NONE
         clearTransportQueues()
         resetSessionCrypto()
-    }
-
-    fun close() {
-        disconnect()
-        runCatching { gattServer?.close() }
-        gattServer = null
-        serverCharacteristic = null
-    }
-
-    fun isSecure(): Boolean = sessionKey != null
-
-    fun localIdentityFingerprint(): String = shortFingerprint(identityFingerprint(identityKeyPair.public.encoded))
-
-    fun sendText(text: String): String? {
-        val key = sessionKey ?: return null
-        if (text.isBlank()) return null
-        val id = UUID.randomUUID().toString()
-        val encrypted = encrypt(key, text.toByteArray(Charsets.UTF_8))
-        val frame = "M|$id|${Base64.encodeToString(encrypted, Base64.NO_WRAP)}"
-        sendFrame(frame)
-        return id
+        if (notify) onDisconnected()
     }
 
     private fun openClient(device: BluetoothDevice, retry: Boolean) {
@@ -153,8 +180,8 @@ class BleChatManager(
         clearTransportQueues()
         resetSessionCrypto()
         onState(
-            if (retry) "Reconnect attempt $reconnectAttempt/$MAX_RECONNECT_ATTEMPTS…"
-            else "Connecting to ${safeAddress(device)}…"
+            if (retry) "Reconnecting $reconnectAttempt/$MAX_RECONNECT_ATTEMPTS"
+            else "Connecting nearby device"
         )
         clientGatt = device.connectGatt(context, false, clientCallback, BluetoothDevice.TRANSPORT_LE)
     }
@@ -188,7 +215,15 @@ class BleChatManager(
     private fun handleFrame(frame: String) {
         when {
             frame.startsWith("H2|") -> handleSignedHello(frame)
-            frame.startsWith("H|") -> onState("Peer uses older OFFGRID version · update both phones")
+            frame.startsWith("H|") -> onState("Peer needs OFFGRID Alpha v1 update")
+            frame.startsWith("R|") -> {
+                if (sessionKey == null) return
+                reconnectEnabled = false
+                reconnectTarget = null
+                intentionalDisconnect = true
+                onPeerRelease()
+                handler.postDelayed({ disconnectInternal(notify = true) }, RELEASE_DELAY_MS)
+            }
             frame.startsWith("M|") -> {
                 val parts = frame.split('|', limit = 3)
                 if (parts.size != 3) return
@@ -196,8 +231,7 @@ class BleChatManager(
                 val id = parts[1]
                 val encrypted = runCatching { Base64.decode(parts[2], Base64.NO_WRAP) }.getOrNull() ?: return
                 val plain = runCatching { decrypt(key, encrypted) }.getOrNull() ?: return
-                val text = plain.toString(Charsets.UTF_8)
-                onIncomingMessage(id, text)
+                onIncomingMessage(id, plain.toString(Charsets.UTF_8))
                 sendFrame("A|$id")
             }
             frame.startsWith("A|") -> {
@@ -219,8 +253,7 @@ class BleChatManager(
         val body = helloBody(deviceId, ephemeralPubB64, identityPubB64)
 
         if (!verifyIdentity(remoteIdentity, body.toByteArray(Charsets.UTF_8), signatureBytes)) {
-            onState("Identity signature rejected · connection blocked")
-            sessionKey = null
+            onState("Identity signature rejected")
             blockCurrentConnection()
             return
         }
@@ -228,31 +261,30 @@ class BleChatManager(
         val localPair = localEphemeralKeyPair ?: return
         sessionKey = deriveSessionKey(localPair, remoteEphemeral, remoteIdentity)
         remoteDeviceId = deviceId
-        val fingerprint = identityFingerprint(remoteIdentity)
-        val safetyCode = safetyCode(identityKeyPair.public.encoded, remoteIdentity)
         val peer = SecurePeer(
             deviceId = deviceId,
-            identityFingerprint = fingerprint,
-            safetyCode = safetyCode,
+            identityFingerprint = identityFingerprint(remoteIdentity),
+            safetyCode = safetyCode(identityKeyPair.public.encoded, remoteIdentity),
             address = activeRemote?.let { safeAddress(it) }.orEmpty()
         )
 
         if (!onSecurePeer(peer)) {
             sessionKey = null
-            onState("Known peer identity changed · connection blocked")
+            onState("Known peer identity changed · blocked")
             blockCurrentConnection()
             return
         }
 
         reconnectAttempt = 0
-        onState("Secure BLE session ready · signed identity")
+        intentionalDisconnect = false
+        onState("Connected securely")
         if (!helloSent) sendHello()
     }
 
     private fun blockCurrentConnection() {
         reconnectEnabled = false
         reconnectTarget = null
-        reconnectHandler.removeCallbacksAndMessages(null)
+        intentionalDisconnect = true
         when (role) {
             Role.CLIENT -> runCatching { clientGatt?.disconnect() }
             Role.SERVER -> activeRemote?.let { runCatching { gattServer?.cancelConnection(it) } }
@@ -294,7 +326,7 @@ class BleChatManager(
                 serverQueue.add(packet)
                 pumpServerQueue()
             }
-            Role.NONE -> onState("No active peer")
+            Role.NONE -> Unit
         }
     }
 
@@ -307,10 +339,8 @@ class BleChatManager(
         val ok = if (Build.VERSION.SDK_INT >= 33) {
             gatt.writeCharacteristic(characteristic, packet, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT) == 0
         } else {
-            @Suppress("DEPRECATION")
-            characteristic.value = packet
-            @Suppress("DEPRECATION")
-            gatt.writeCharacteristic(characteristic)
+            @Suppress("DEPRECATION") characteristic.value = packet
+            @Suppress("DEPRECATION") gatt.writeCharacteristic(characteristic)
         }
         if (!ok) {
             clientWriteInFlight = false
@@ -329,10 +359,8 @@ class BleChatManager(
         val ok = if (Build.VERSION.SDK_INT >= 33) {
             server.notifyCharacteristicChanged(device, characteristic, false, packet) == 0
         } else {
-            @Suppress("DEPRECATION")
-            characteristic.value = packet
-            @Suppress("DEPRECATION")
-            server.notifyCharacteristicChanged(device, characteristic, false)
+            @Suppress("DEPRECATION") characteristic.value = packet
+            @Suppress("DEPRECATION") server.notifyCharacteristicChanged(device, characteristic, false)
         }
         if (!ok) {
             serverNotifyInFlight = false
@@ -355,13 +383,12 @@ class BleChatManager(
         }
         assembly.parts[index] = packet.copyOfRange(HEADER_SIZE, packet.size)
         if (assembly.parts.all { it != null }) {
-            val size = assembly.parts.sumOf { it!!.size }
-            val merged = ByteArray(size)
+            val merged = ByteArray(assembly.parts.sumOf { it!!.size })
             var offset = 0
             assembly.parts.forEach { part ->
-                val p = part!!
-                System.arraycopy(p, 0, merged, offset, p.size)
-                offset += p.size
+                val data = part!!
+                System.arraycopy(data, 0, merged, offset, data.size)
+                offset += data.size
             }
             assemblers.remove(key)
             handleFrame(merged.toString(Charsets.UTF_8))
@@ -375,7 +402,7 @@ class BleChatManager(
                 return
             }
             if (newState == BluetoothProfile.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
-                onState("Connected · negotiating GATT")
+                onState("Negotiating secure link")
                 gatt.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 handleClientDisconnect(gatt, status)
@@ -384,13 +411,13 @@ class BleChatManager(
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (status != BluetoothGatt.GATT_SUCCESS) {
-                onState("GATT service discovery failed: $status")
+                onState("Service discovery failed")
                 runCatching { gatt.disconnect() }
                 return
             }
             val characteristic = gatt.getService(SERVICE_UUID)?.getCharacteristic(DATA_UUID)
             if (characteristic == null) {
-                onState("OFFGRID chat service not found")
+                onState("OFFGRID service not found")
                 runCatching { gatt.disconnect() }
                 return
             }
@@ -398,28 +425,22 @@ class BleChatManager(
             gatt.setCharacteristicNotification(characteristic, true)
             val descriptor = characteristic.getDescriptor(CCCD_UUID)
             if (descriptor == null) {
-                onState("OFFGRID notify descriptor missing")
+                onState("Notification setup failed")
                 runCatching { gatt.disconnect() }
                 return
             }
             if (Build.VERSION.SDK_INT >= 33) {
                 gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
             } else {
-                @Suppress("DEPRECATION")
-                descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                @Suppress("DEPRECATION")
-                gatt.writeDescriptor(descriptor)
+                @Suppress("DEPRECATION") descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                @Suppress("DEPRECATION") gatt.writeDescriptor(descriptor)
             }
         }
 
         override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
-            if (descriptor.uuid == CCCD_UUID && status == BluetoothGatt.GATT_SUCCESS) {
-                onState("Connected · signed identity handshake")
-                sendHello()
-            } else if (descriptor.uuid == CCCD_UUID) {
-                onState("Notify setup failed: $status")
-                runCatching { gatt.disconnect() }
-            }
+            if (descriptor.uuid != CCCD_UUID) return
+            if (status == BluetoothGatt.GATT_SUCCESS) sendHello()
+            else runCatching { gatt.disconnect() }
         }
 
         override fun onCharacteristicChanged(
@@ -437,7 +458,7 @@ class BleChatManager(
 
         override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             clientWriteInFlight = false
-            if (status != BluetoothGatt.GATT_SUCCESS) onState("BLE write status $status")
+            if (status != BluetoothGatt.GATT_SUCCESS) onState("BLE write retry needed")
             pumpClientQueue()
         }
     }
@@ -450,17 +471,15 @@ class BleChatManager(
         role = Role.NONE
         clearTransportQueues()
         resetSessionCrypto()
+        onDisconnected()
 
         val target = reconnectTarget
-        if (reconnectEnabled && target != null && reconnectAttempt < MAX_RECONNECT_ATTEMPTS) {
+        if (!intentionalDisconnect && reconnectEnabled && target != null && reconnectAttempt < MAX_RECONNECT_ATTEMPTS) {
             reconnectAttempt += 1
             val delay = RECONNECT_BASE_DELAY_MS * reconnectAttempt
-            onState("Disconnected ($status) · retry $reconnectAttempt/$MAX_RECONNECT_ATTEMPTS in ${delay / 1000}s")
-            reconnectHandler.postDelayed({
-                if (reconnectEnabled && clientGatt == null) openClient(target, true)
+            handler.postDelayed({
+                if (reconnectEnabled && clientGatt == null) openClient(target, retry = true)
             }, delay)
-        } else {
-            onState(if (reconnectEnabled) "Disconnected · reconnect limit reached" else "Disconnected")
         }
     }
 
@@ -471,21 +490,21 @@ class BleChatManager(
                     gattServer?.cancelConnection(device)
                     return
                 }
-                reconnectHandler.removeCallbacksAndMessages(null)
                 reconnectEnabled = false
                 reconnectTarget = null
                 reconnectAttempt = 0
+                intentionalDisconnect = false
                 role = Role.SERVER
                 activeRemote = device
                 clearTransportQueues()
                 resetSessionCrypto()
-                onState("Incoming OFFGRID connection · signed identity handshake")
+                onState("Incoming OFFGRID link")
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED && activeRemote?.address == device.address) {
                 activeRemote = null
                 role = Role.NONE
                 clearTransportQueues()
                 resetSessionCrypto()
-                onState("Peer disconnected")
+                onDisconnected()
             }
         }
 
@@ -517,7 +536,7 @@ class BleChatManager(
 
         override fun onNotificationSent(device: BluetoothDevice, status: Int) {
             serverNotifyInFlight = false
-            if (status != BluetoothGatt.GATT_SUCCESS) onState("BLE notify status $status")
+            if (status != BluetoothGatt.GATT_SUCCESS) onState("BLE notify retry needed")
             pumpServerQueue()
         }
     }
@@ -525,48 +544,45 @@ class BleChatManager(
     private fun loadOrCreateIdentityKeyPair(): KeyPair {
         val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         val existing = keyStore.getEntry(IDENTITY_KEY_ALIAS, null) as? KeyStore.PrivateKeyEntry
-        if (existing != null) {
-            return KeyPair(existing.certificate.publicKey, existing.privateKey)
-        }
+        if (existing != null) return KeyPair(existing.certificate.publicKey, existing.privateKey)
 
         val generator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, ANDROID_KEYSTORE)
-        val spec = KeyGenParameterSpec.Builder(
-            IDENTITY_KEY_ALIAS,
-            KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
+        generator.initialize(
+            KeyGenParameterSpec.Builder(
+                IDENTITY_KEY_ALIAS,
+                KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
+            )
+                .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
+                .setDigests(KeyProperties.DIGEST_SHA256)
+                .build()
         )
-            .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
-            .setDigests(KeyProperties.DIGEST_SHA256)
-            .build()
-        generator.initialize(spec)
         return generator.generateKeyPair()
     }
 
-    private fun generateEcKeyPair(): KeyPair {
-        val generator = KeyPairGenerator.getInstance("EC")
-        generator.initialize(ECGenParameterSpec("secp256r1"), secureRandom)
-        return generator.generateKeyPair()
-    }
+    private fun generateEcKeyPair(): KeyPair =
+        KeyPairGenerator.getInstance("EC").apply {
+            initialize(ECGenParameterSpec("secp256r1"), secureRandom)
+        }.generateKeyPair()
 
-    private fun signIdentity(payload: ByteArray): ByteArray {
-        val signature = Signature.getInstance("SHA256withECDSA")
-        signature.initSign(identityKeyPair.private)
-        signature.update(payload)
-        return signature.sign()
-    }
+    private fun signIdentity(payload: ByteArray): ByteArray =
+        Signature.getInstance("SHA256withECDSA").run {
+            initSign(identityKeyPair.private)
+            update(payload)
+            sign()
+        }
 
-    private fun verifyIdentity(publicEncoded: ByteArray, payload: ByteArray, signatureBytes: ByteArray): Boolean {
-        return runCatching {
+    private fun verifyIdentity(publicEncoded: ByteArray, payload: ByteArray, signatureBytes: ByteArray): Boolean =
+        runCatching {
             val publicKey = KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(publicEncoded))
-            val signature = Signature.getInstance("SHA256withECDSA")
-            signature.initVerify(publicKey)
-            signature.update(payload)
-            signature.verify(signatureBytes)
+            Signature.getInstance("SHA256withECDSA").run {
+                initVerify(publicKey)
+                update(payload)
+                verify(signatureBytes)
+            }
         }.getOrDefault(false)
-    }
 
     private fun deriveSessionKey(local: KeyPair, remoteEncoded: ByteArray, remoteIdentity: ByteArray): SecretKey {
-        val factory = KeyFactory.getInstance("EC")
-        val remote = factory.generatePublic(X509EncodedKeySpec(remoteEncoded))
+        val remote = KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(remoteEncoded))
         val agreement = KeyAgreement.getInstance("ECDH")
         agreement.init(local.private)
         agreement.doPhase(remote, true)
@@ -580,18 +596,15 @@ class BleChatManager(
         digest.update(shared)
         digest.update(identityPair[0].toByteArray(Charsets.UTF_8))
         digest.update(identityPair[1].toByteArray(Charsets.UTF_8))
-        val material = digest.digest()
-        return SecretKeySpec(material.copyOfRange(0, 16), "AES")
+        return SecretKeySpec(digest.digest().copyOfRange(0, 16), "AES")
     }
 
     private fun helloBody(deviceId: String, ephemeralPub: String, identityPub: String): String =
         "$HELLO_CONTEXT|$deviceId|$ephemeralPub|$identityPub"
 
-    private fun identityFingerprint(publicEncoded: ByteArray): String {
-        return MessageDigest.getInstance("SHA-256")
-            .digest(publicEncoded)
+    private fun identityFingerprint(publicEncoded: ByteArray): String =
+        MessageDigest.getInstance("SHA-256").digest(publicEncoded)
             .joinToString("") { "%02X".format(it.toInt() and 0xff) }
-    }
 
     private fun shortFingerprint(full: String): String = full.take(16).chunked(4).joinToString("-")
 
@@ -650,10 +663,11 @@ class BleChatManager(
         private const val MAGIC_2: Byte = 0x47
         private const val MAX_RECONNECT_ATTEMPTS = 3
         private const val RECONNECT_BASE_DELAY_MS = 1_500L
+        private const val RELEASE_DELAY_MS = 350L
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val IDENTITY_KEY_ALIAS = "offgrid-phase1-identity"
         private const val HELLO_CONTEXT = "OFFGRID-H2"
-        private const val SESSION_CONTEXT = "OFFGRID-PHASE1.3"
+        private const val SESSION_CONTEXT = "OFFGRID-ALPHA1"
         private const val SAFETY_CONTEXT = "OFFGRID-SAFETY1"
     }
 }
