@@ -1,11 +1,11 @@
 {
   "id": "oracly",
   "name": "ORACLY",
-  "version": 2,
+  "version": 3,
   "provider": "handcrafted",
-  "last_request_id": "oracly-v2-blank-screen-fix-20260907",
-  "last_prompt": "ORACLY v2 startup runtime fix. Preserve approved dark midnight-purple and gold layout; harden rendering and localStorage fallback.",
-  "last_build": "ready",
+  "last_request_id": "oracly-v3-runtime-qc-20260907",
+  "last_prompt": "ORACLY v3 candidate. Preserve approved dark midnight-purple and gold layout. Add runtime watchdog and full internal QC before device test.",
+  "last_build": "pending",
   "created_at": "2026-09-07T10:40:00+00:00",
-  "updated_at": "2026-09-07T11:04:27.243253+00:00"
+  "updated_at": "2026-09-07T11:30:00+00:00"
 }
