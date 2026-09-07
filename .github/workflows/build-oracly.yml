@@ -98,6 +98,7 @@ jobs:
           fi
 
           base64 -d "$GITHUB_WORKSPACE/apps/oracly/oracly-test.keystore.b64" > "$BUILD_DIR/android/app/oracly-test.keystore"
+          keytool -list -keystore "$BUILD_DIR/android/app/oracly-test.keystore" -storetype JKS -storepass oraclytest -alias oraclytest >/dev/null
 
           python3 - "$BUILD_DIR/android/app/build.gradle" "$VERSION" <<'PY'
           from pathlib import Path
@@ -106,7 +107,7 @@ jobs:
           s=re.sub(r'versionCode\s*(?:=\s*)?\d+', f'versionCode {version}', s, count=1)
           s=re.sub(r'versionName\s*(?:=\s*)?["\'][^"\']+["\']', f'versionName "0.1.{version}"', s, count=1)
           if 'oraclyTest {' not in s:
-              signing="""\n    signingConfigs {\n        oraclyTest {\n            storeFile file('oracly-test.keystore')\n            storePassword 'oraclytest'\n            keyAlias 'oraclytest'\n            keyPassword 'oraclytest'\n        }\n    }\n"""
+              signing="""\n    signingConfigs {\n        oraclyTest {\n            storeFile file('oracly-test.keystore')\n            storeType 'JKS'\n            storePassword 'oraclytest'\n            keyAlias 'oraclytest'\n            keyPassword 'oraclytest'\n        }\n    }\n"""
               s=s.replace('android {','android {'+signing,1)
           if 'signingConfig signingConfigs.oraclyTest' not in s:
               if re.search(r'buildTypes\s*\{\s*debug\s*\{',s):
