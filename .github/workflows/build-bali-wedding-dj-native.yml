@@ -11,6 +11,7 @@ on:
       - "scripts/patch_bwd_cloud_v2.py"
       - "scripts/patch_bwd_receipt_cloud.py"
       - "scripts/patch_bwd_public_client.py"
+      - "scripts/patch_bwd_client_home_luxury.py"
       - ".github/workflows/build-bali-wedding-dj-native.yml"
       - "bali-wedding-dj-native.trigger"
   workflow_dispatch:
@@ -136,6 +137,16 @@ jobs:
           set -euo pipefail
           python3 scripts/patch_bwd_public_client.py bwd-native
           ! grep -q 'ADMIN ACCESS' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+
+      - name: Apply premium client home
+        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/patch_bwd_client_home_luxury.py bwd-native
+          grep -Fq 'Your Wedding.\nOur Music.' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -Fq 'Premium wedding entertainment in Bali.' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -Fq 'addNav("MY BOOKING",this::showProfile)' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
 
       - name: Apply UI wording update
         shell: bash
