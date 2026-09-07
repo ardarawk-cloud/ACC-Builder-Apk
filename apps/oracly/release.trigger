@@ -1,2 +1,2 @@
-ORACLY stable signed interaction candidate v4
-2026-09-07T13:58:00Z
+ORACLY stable signed energy-control candidate v5
+2026-09-07T16:04:00Z
