@@ -1,2 +1,2 @@
-BWD CLIENT HOME REDESIGN — source inspection trigger
-2026-09-07
+BWD CLIENT HOME CINEMATIC V2 — full-bleed target rebuild
+2026-09-07 19:40 WITA
