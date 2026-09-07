@@ -5,7 +5,7 @@
   "provider": "handcrafted",
   "last_request_id": "oracly-v3-runtime-qc-20260907",
   "last_prompt": "ORACLY v3 candidate. Preserve approved dark midnight-purple and gold layout. Add runtime watchdog and full internal QC before device test.",
-  "last_build": "pending",
+  "last_build": "ready",
   "created_at": "2026-09-07T10:40:00+00:00",
-  "updated_at": "2026-09-07T11:30:00+00:00"
+  "updated_at": "2026-09-07T11:27:55.174118+00:00"
 }
