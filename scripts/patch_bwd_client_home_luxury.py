@@ -65,19 +65,16 @@ new_home = r'''    private void showHome(){
         FrameLayout home=new FrameLayout(this);home.setBackgroundColor(Ui.BG);content.addView(home,new FrameLayout.LayoutParams(-1,-1));
         ImageView photo=new ImageView(this);photo.setScaleType(ImageView.ScaleType.CENTER_CROP);photo.setBackgroundColor(Color.rgb(21,17,15));
         home.addView(photo,new FrameLayout.LayoutParams(-1,-1));loadHomePhoto(photo);
-        View shade=new View(this);GradientDrawable fade=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(80,4,5,7),Color.argb(25,4,5,7),Color.argb(165,4,5,7),Color.argb(242,4,5,7)});shade.setBackground(fade);home.addView(shade,new FrameLayout.LayoutParams(-1,-1));
+        View shade=new View(this);GradientDrawable fade=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(100,4,5,7),Color.argb(55,4,5,7),Color.argb(150,4,5,7),Color.argb(238,4,5,7)});shade.setBackground(fade);home.addView(shade,new FrameLayout.LayoutParams(-1,-1));
+        View sideShade=new View(this);GradientDrawable sideFade=new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,new int[]{Color.argb(205,4,5,7),Color.argb(120,4,5,7),Color.argb(30,4,5,7)});sideShade.setBackground(sideFade);home.addView(sideShade,new FrameLayout.LayoutParams(-1,-1));
         LinearLayout layer=Ui.column(this);layer.setPadding(Ui.dp(this,24),Ui.dp(this,18),Ui.dp(this,24),Ui.dp(this,16));home.addView(layer,new FrameLayout.LayoutParams(-1,-1));
-        LinearLayout head=new LinearLayout(this);head.setGravity(Gravity.CENTER_VERTICAL);
-        TextView brand=homeText("BALI WEDDING DJ",19,Ui.WARM,true);brand.setLetterSpacing(.14f);head.addView(brand,new LinearLayout.LayoutParams(0,Ui.dp(this,54),1));
-        TextView menu=homeText("☰",30,Ui.GOLD,false);menu.setGravity(Gravity.CENTER);head.addView(menu,new LinearLayout.LayoutParams(Ui.dp(this,54),Ui.dp(this,54)));layer.addView(head);
+        TextView brand=homeText("BALI WEDDING DJ",19,Ui.WARM,true);brand.setLetterSpacing(.14f);brand.setShadowLayer(8,0,2,Color.BLACK);layer.addView(brand,new LinearLayout.LayoutParams(-1,Ui.dp(this,54)));
         Space push=new Space(this);layer.addView(push,new LinearLayout.LayoutParams(1,0,1));
-        TextView title=homeText("Your\nWedding.\nOur Music.",46,Ui.WARM,false);title.setLineSpacing(0,.92f);layer.addView(title);
+        TextView title=homeText("Your\nWedding.\nOur Music.",42,Ui.WARM,false);title.setLineSpacing(0,.94f);title.setShadowLayer(12,0,3,Color.BLACK);layer.addView(title);
         View gold=new View(this);gold.setBackgroundColor(Ui.GOLD);LinearLayout.LayoutParams glp=new LinearLayout.LayoutParams(Ui.dp(this,44),Ui.dp(this,2));glp.setMargins(0,Ui.dp(this,14),0,Ui.dp(this,13));layer.addView(gold,glp);
-        TextView sub=homeText("Premium wedding\nentertainment in Bali.",17,Color.rgb(203,198,190),false);sub.setLineSpacing(0,1.18f);layer.addView(sub);
+        TextView sub=homeText("Premium wedding\nentertainment in Bali.",16,Color.rgb(220,216,208),false);sub.setLineSpacing(0,1.18f);sub.setShadowLayer(8,0,2,Color.BLACK);layer.addView(sub);
         layer.addView(Ui.space(this,18));
         Button book=luxuryButton("BOOK YOUR DATE   →",true,()->{bookingStep=1;showBooking();});layer.addView(book,new LinearLayout.LayoutParams(-1,Ui.dp(this,58)));
-        layer.addView(Ui.space(this,10));
-        Button packages=luxuryButton("VIEW PACKAGES   →",false,this::showPackages);layer.addView(packages,new LinearLayout.LayoutParams(-1,Ui.dp(this,56)));
         layer.addView(Ui.space(this,20));
         LinearLayout nav=new LinearLayout(this);nav.setGravity(Gravity.CENTER);nav.setPadding(Ui.dp(this,2),Ui.dp(this,3),Ui.dp(this,2),Ui.dp(this,3));
         TextView n1=homeNav("⌂","HOME",true,this::showHome);TextView n2=homeNav("▦","PACKAGES",false,this::showPackages);TextView n3=homeNav("□","MY BOOKING",false,this::showProfile);TextView n4=homeNav("○","PROFILE",false,this::showProfile);
@@ -86,11 +83,14 @@ new_home = r'''    private void showHome(){
 
 '''
 s = s[:start] + new_home + s[end:]
-for needle in ['loadHomePhoto(photo)','Your\\nWedding.\\nOur Music.','BOOK YOUR DATE   →','VIEW PACKAGES   →','MY BOOKING']:
+for needle in ['loadHomePhoto(photo)','Your\\nWedding.\\nOur Music.','BOOK YOUR DATE   →','MY BOOKING','sideShade']:
     if needle not in s:
-        raise SystemExit('missing home v2 token: '+needle)
+        raise SystemExit('missing home v3 token: '+needle)
+for forbidden in ['VIEW PACKAGES   →','homeText("☰"']:
+    if forbidden in s:
+        raise SystemExit('forbidden home v3 token still present: '+forbidden)
 main.write_text(s)
-print('BWD cinematic full-bleed client home v2 applied')
+print('BWD client home QC v3 applied: no hamburger, stronger scrim, single packages entry')
 
 admin_root = root.parent / 'bwd-admin'
 owner_patch = pathlib.Path(__file__).with_name('patch_bwd_owner_dashboard.py')
