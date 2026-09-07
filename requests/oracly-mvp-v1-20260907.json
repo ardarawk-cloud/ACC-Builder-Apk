@@ -1,0 +1,7 @@
+{
+  "request_id": "oracly-mvp-v1-20260907",
+  "project_id": "oracly",
+  "project_name": "ORACLY",
+  "mode": "build_existing",
+  "prompt": "Build the handcrafted ORACLY MVP exactly from apps/oracly without AI regeneration. Preserve the approved midnight-purple, black and gold layout."
+}
