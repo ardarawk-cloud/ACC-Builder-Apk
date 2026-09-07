@@ -52,13 +52,14 @@ jobs:
           BUILD_DIR="$RUNNER_TEMP/oracly-mobile"
           mkdir -p "$BUILD_DIR/www"
           cp apps/oracly/index.html "$BUILD_DIR/www/index.html"
-          if [ -f apps/oracly/v3.js ]; then
-            cp apps/oracly/v3.js "$BUILD_DIR/www/v3.js"
+
+          if [ -f apps/oracly/card-art.js ]; then
+            cp apps/oracly/card-art.js "$BUILD_DIR/www/card-art.js"
             python3 - "$BUILD_DIR/www/index.html" <<'PY'
           from pathlib import Path
           import sys
           p=Path(sys.argv[1]); s=p.read_text(encoding='utf-8')
-          marker='<script src="v3.js"></script>'
+          marker='<script src="card-art.js"></script>'
           if marker not in s:
               pos=s.lower().rfind('</body>')
               if pos < 0: raise SystemExit('index.html has no closing body')
@@ -66,6 +67,50 @@ jobs:
               p.write_text(s,encoding='utf-8')
           PY
           fi
+
+          mkdir -p "$BUILD_DIR/www/tarot"
+          python3 - "$BUILD_DIR/www/tarot" <<'PY'
+          from pathlib import Path
+          from urllib.parse import quote
+          from urllib.request import Request, urlopen
+          import shutil, sys, time
+
+          outdir=Path(sys.argv[1])
+          majors=[
+              'RWS Tarot 00 Fool.jpg','RWS Tarot 01 Magician.jpg','RWS Tarot 02 High Priestess.jpg','RWS Tarot 03 Empress.jpg',
+              'RWS Tarot 04 Emperor.jpg','RWS Tarot 05 Hierophant.jpg','RWS Tarot 06 Lovers.jpg','RWS Tarot 07 Chariot.jpg',
+              'RWS Tarot 08 Strength.jpg','RWS Tarot 09 Hermit.jpg','RWS Tarot 10 Wheel of Fortune.jpg','RWS Tarot 11 Justice.jpg',
+              'RWS Tarot 12 Hanged Man.jpg','RWS Tarot 13 Death.jpg','RWS Tarot 14 Temperance.jpg','RWS Tarot 15 Devil.jpg',
+              'RWS Tarot 16 Tower.jpg','RWS Tarot 17 Star.jpg','RWS Tarot 18 Moon.jpg','RWS Tarot 19 Sun.jpg',
+              'RWS Tarot 20 Judgement.jpg','RWS Tarot 21 World.jpg'
+          ]
+          jobs=[]
+          for i,name in enumerate(majors): jobs.append((name,f'major-{i:02d}.jpg'))
+          for prefix,src in [('cups','Cups'),('pents','Pents'),('swords','Swords'),('wands','Wands')]:
+              for i in range(1,15): jobs.append((f'{src}{i:02d}.jpg',f'{prefix}-{i:02d}.jpg'))
+          assert len(jobs)==78
+          base='https://commons.wikimedia.org/wiki/Special:FilePath/'
+          for n,(src,dst) in enumerate(jobs,1):
+              url=base+quote(src,safe='')+'?width=420'
+              req=Request(url,headers={'User-Agent':'ORACLY-build/1.0 (Android tarot app asset build)'})
+              last=None
+              for attempt in range(3):
+                  try:
+                      with urlopen(req,timeout=45) as r, open(outdir/dst,'wb') as f:
+                          shutil.copyfileobj(r,f)
+                      if (outdir/dst).stat().st_size < 12000:
+                          raise RuntimeError(f'{dst} too small')
+                      last=None
+                      break
+                  except Exception as e:
+                      last=e
+                      time.sleep(2*(attempt+1))
+              if last is not None: raise last
+              print(f'[{n:02d}/78] {dst} {(outdir/dst).stat().st_size} bytes')
+          good=[p for p in outdir.glob('*.jpg') if p.stat().st_size>=12000]
+          if len(good)!=78: raise SystemExit(f'Expected 78 tarot images, found {len(good)}')
+          PY
+
           cd "$BUILD_DIR"
           cat > package.json <<'JSON'
           {
