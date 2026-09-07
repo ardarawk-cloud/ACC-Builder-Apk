@@ -1,0 +1,28 @@
+{
+  "project": "ORACLY",
+  "version": 3,
+  "status": "CANDIDATE_PRE_DEVICE_QC_PASS",
+  "source_request_commit": "2b06128824e6e6dc35943337122e6eaf335d679b",
+  "workflow_run_id": 34116612147,
+  "artifact_id": 10016552373,
+  "artifact_digest": "sha256:9aaf9c2a63e1a5b2e4169ddf3945513fbc3d6a9a9b882eac43b9edf89ca8d3ce",
+  "apk_sha256": "e5ddab9281f7fdd7f118a690a05016ebe4a01d5fd4813e8064babf7c0ea6653b",
+  "checks": {
+    "gradle_build": "PASS",
+    "artifact_packaging": "PASS",
+    "startup_screen": "PASS",
+    "startup_watchdog": "PASS",
+    "browser_page_errors": "NONE",
+    "home_navigation": "PASS",
+    "daily_reading": "PASS",
+    "tarot_menu": "PASS",
+    "three_card_tarot": "PASS",
+    "horoscope_12_signs": "PASS",
+    "horoscope_detail": "PASS",
+    "compatibility": "PASS",
+    "birth_profile_save": "PASS",
+    "history_persistence": "PASS",
+    "layout_390x844": "PASS"
+  },
+  "notes": "QC executed against the exact web assets extracted from the built APK, not only source HTML. Physical Android device verification remains the final device-specific check."
+}
