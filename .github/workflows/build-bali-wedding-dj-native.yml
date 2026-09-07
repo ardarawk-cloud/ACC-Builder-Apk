@@ -139,6 +139,13 @@ jobs:
           from pathlib import Path
           import re
 
+          def read_app_id(path):
+              text = Path(path).read_text()
+              m = re.search(r'applicationId\s+["\']([^"\']+)["\']', text)
+              if not m:
+                  raise SystemExit(f'applicationId not found in {path}')
+              return m.group(1)
+
           gradle = Path('bwd-admin/app/build.gradle')
           s = gradle.read_text()
           s, n = re.subn(r'(?m)^(\s*)applicationId\s+["\'][^"\']+["\']', r'\1applicationId "com.baliweddingdj.owner"', s, count=1)
@@ -158,9 +165,16 @@ jobs:
           else:
               m, _ = re.subn(r'android:label="[^"]*"', 'android:label="Bali Wedding DJ Owner"', m, count=1)
               manifest.write_text(m)
+
+          client_id = read_app_id('bwd-native/app/build.gradle')
+          owner_id = read_app_id('bwd-admin/app/build.gradle')
+          print('Client source applicationId:', client_id)
+          print('Owner source applicationId:', owner_id)
+          if client_id == owner_id:
+              raise SystemExit('Client and Owner applicationIds are still identical')
+          if owner_id != 'com.baliweddingdj.owner':
+              raise SystemExit('Unexpected Owner applicationId')
           PY
-          grep -Eq 'applicationId[[:space:]]+["'"']com\.baliweddingdj\.owner["'"']' bwd-admin/app/build.gradle
-          ! grep -Eq 'applicationId[[:space:]]+["'"']com\.baliweddingdj\.owner["'"']' bwd-native/app/build.gradle
 
       - name: Apply customer safety patch
         if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
