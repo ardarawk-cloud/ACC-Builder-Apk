@@ -130,6 +130,38 @@ jobs:
           cp -a bwd-native bwd-admin
           grep -q 'ADMIN ACCESS' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
 
+      - name: Separate Owner/Admin app identity
+        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          gradle = Path('bwd-admin/app/build.gradle')
+          s = gradle.read_text()
+          s, n = re.subn(r'(?m)^(\s*)applicationId\s+["\'][^"\']+["\']', r'\1applicationId "com.baliweddingdj.owner"', s, count=1)
+          if n != 1:
+              raise SystemExit('Owner applicationId not found')
+          gradle.write_text(s)
+
+          manifest = Path('bwd-admin/app/src/main/AndroidManifest.xml')
+          m = manifest.read_text()
+          if 'android:label="@string/app_name"' in m:
+              strings = Path('bwd-admin/app/src/main/res/values/strings.xml')
+              if strings.exists():
+                  t = strings.read_text()
+                  t, changed = re.subn(r'(<string\s+name="app_name">).*?(</string>)', r'\1Bali Wedding DJ Owner\2', t, count=1)
+                  if changed:
+                      strings.write_text(t)
+          else:
+              m, _ = re.subn(r'android:label="[^"]*"', 'android:label="Bali Wedding DJ Owner"', m, count=1)
+              manifest.write_text(m)
+          PY
+          grep -Eq 'applicationId[[:space:]]+["'"']com\.baliweddingdj\.owner["'"']' bwd-admin/app/build.gradle
+          ! grep -Eq 'applicationId[[:space:]]+["'"']com\.baliweddingdj\.owner["'"']' bwd-native/app/build.gradle
+
       - name: Apply customer safety patch
         if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
         shell: bash
@@ -173,6 +205,18 @@ jobs:
             (cd bwd-native && gradle --no-daemon :app:assembleDebug --stacktrace)
             cp bwd-native/app/build/outputs/apk/debug/app-debug.apk dist/BALI-WEDDING-DJ-Native-v1.1.apk
           fi
+
+      - name: Verify separate APK identities
+        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLIENT_ID=$(apkanalyzer manifest application-id dist/BALI-WEDDING-DJ-Cloud-v2-CLIENT-debug.apk)
+          OWNER_ID=$(apkanalyzer manifest application-id dist/BALI-WEDDING-DJ-Cloud-v2-OWNER-ADMIN-debug.apk)
+          echo "Client applicationId: ${CLIENT_ID}"
+          echo "Owner applicationId: ${OWNER_ID}"
+          test "${CLIENT_ID}" != "${OWNER_ID}"
+          test "${OWNER_ID}" = "com.baliweddingdj.owner"
 
       - name: APK checksum
         shell: bash
