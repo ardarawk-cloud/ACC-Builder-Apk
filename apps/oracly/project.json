@@ -5,7 +5,7 @@
   "provider": "handcrafted",
   "last_request_id": "oracly-v2-blank-screen-fix-20260907",
   "last_prompt": "ORACLY v2 startup runtime fix. Preserve approved dark midnight-purple and gold layout; harden rendering and localStorage fallback.",
-  "last_build": "pending",
+  "last_build": "ready",
   "created_at": "2026-09-07T10:40:00+00:00",
-  "updated_at": "2026-09-07T10:55:00+00:00"
+  "updated_at": "2026-09-07T11:04:27.243253+00:00"
 }
