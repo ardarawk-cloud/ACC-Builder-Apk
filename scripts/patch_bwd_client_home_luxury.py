@@ -91,3 +91,9 @@ for needle in ['loadHomePhoto(photo)','Your\\nWedding.\\nOur Music.','BOOK YOUR 
         raise SystemExit('missing home v2 token: '+needle)
 main.write_text(s)
 print('BWD cinematic full-bleed client home v2 applied')
+
+admin_root = root.parent / 'bwd-admin'
+owner_patch = pathlib.Path(__file__).with_name('patch_bwd_owner_dashboard.py')
+if admin_root.exists() and owner_patch.exists():
+    import subprocess
+    subprocess.run([sys.executable, str(owner_patch), str(admin_root)], check=True)
