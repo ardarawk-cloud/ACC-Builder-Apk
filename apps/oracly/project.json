@@ -1,11 +1,11 @@
 {
   "id": "oracly",
   "name": "ORACLY",
-  "version": 3,
+  "version": 4,
   "provider": "handcrafted",
-  "last_request_id": "oracly-v3-runtime-qc-20260907",
-  "last_prompt": "ORACLY v3 candidate. Preserve approved dark midnight-purple and gold layout. Add runtime watchdog and full internal QC before device test.",
-  "last_build": "ready",
+  "last_request_id": "oracly-v4-interaction-fix-20260907",
+  "last_prompt": "ORACLY v4 interaction reliability candidate. Remove inert controls, use real button touch targets, make tarot cards directly tappable, wire Today/Week/Month, history filters, horoscope save, compatibility save, profile/about/reset, and preserve approved dark midnight-purple and gold visual direction.",
+  "last_build": "candidate",
   "created_at": "2026-09-07T10:40:00+00:00",
-  "updated_at": "2026-09-07T11:27:55.174118+00:00"
+  "updated_at": "2026-09-07T13:55:00+00:00"
 }
