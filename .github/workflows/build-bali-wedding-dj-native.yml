@@ -144,8 +144,9 @@ jobs:
         run: |
           set -euo pipefail
           python3 scripts/patch_bwd_client_home_luxury.py bwd-native
-          grep -Fq 'Your Wedding.\nOur Music.' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
-          grep -Fq 'Premium wedding entertainment in Bali.' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -Fq 'Your\nWedding.\nOur Music.' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -Fq 'Premium wedding\nentertainment in Bali.' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -Fq 'loadHomePhoto(photo)' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
           grep -Fq 'addNav("MY BOOKING",this::showProfile)' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
 
       - name: Apply UI wording update
