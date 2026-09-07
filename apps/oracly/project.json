@@ -1,11 +1,11 @@
 {
   "id": "oracly",
   "name": "ORACLY",
-  "version": 5,
+  "version": 6,
   "provider": "handcrafted",
-  "last_request_id": "oracly-v5-energy-controls-20260907",
-  "last_prompt": "ORACLY v5 interaction patch. Make Today's Energy Love/Career/Money/Mood controls actually tappable on Android, route each into the corresponding Daily Reading item with visible feedback, keep bottom navigation touch-safe, and improve tarot card visual realism without changing the approved dark midnight-purple and gold layout.",
+  "last_request_id": "oracly-v6-rws-real-card-art-20260907",
+  "last_prompt": "ORACLY v6 visual card overhaul on top of v5 energy-control interaction fixes. Preserve all working v5 controls and stable signing. Replace icon-only tarot faces with real Rider-Waite-Smith artwork for all 78 cards, bundle the artwork inside the APK for offline use, and keep the approved dark midnight-purple and gold interface.",
   "last_build": "candidate",
   "created_at": "2026-09-07T10:40:00+00:00",
-  "updated_at": "2026-09-07T16:02:00+00:00"
+  "updated_at": "2026-09-07T16:28:00+00:00"
 }
