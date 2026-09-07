@@ -1,0 +1,7 @@
+{
+  "request_id": "oracly-v3-runtime-qc-20260907",
+  "mode": "build_existing",
+  "project_id": "oracly",
+  "project_name": "ORACLY",
+  "prompt": "Build the existing ORACLY v3 source exactly as committed. Do not regenerate or redesign the approved midnight-purple and gold UI."
+}
