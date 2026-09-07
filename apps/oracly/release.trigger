@@ -1,2 +1,2 @@
-ORACLY stable signed energy-control candidate v5
-2026-09-07T16:04:00Z
+ORACLY stable signed real-card-art candidate v6
+2026-09-07T16:29:00Z
