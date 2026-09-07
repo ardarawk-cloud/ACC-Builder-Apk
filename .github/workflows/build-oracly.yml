@@ -1,0 +1,130 @@
+name: ORACLY - Stable Test APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/oracly/release.trigger"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oracly-stable-test
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read ORACLY version
+        id: meta
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os
+          m=json.load(open('apps/oracly/project.json',encoding='utf-8'))
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as f:
+              f.write('version='+str(int(m['version']))+'\n')
+          PY
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build stable-signed ORACLY APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.meta.outputs.version }}"
+          BUILD_DIR="$RUNNER_TEMP/oracly-mobile"
+          mkdir -p "$BUILD_DIR/www"
+          cp apps/oracly/index.html "$BUILD_DIR/www/index.html"
+          if [ -f apps/oracly/v3.js ]; then
+            cp apps/oracly/v3.js "$BUILD_DIR/www/v3.js"
+            python3 - "$BUILD_DIR/www/index.html" <<'PY'
+          from pathlib import Path
+          import sys
+          p=Path(sys.argv[1]); s=p.read_text(encoding='utf-8')
+          marker='<script src="v3.js"></script>'
+          if marker not in s:
+              pos=s.lower().rfind('</body>')
+              if pos < 0: raise SystemExit('index.html has no closing body')
+              s=s[:pos]+marker+'\n'+s[pos:]
+              p.write_text(s,encoding='utf-8')
+          PY
+          fi
+          cd "$BUILD_DIR"
+          cat > package.json <<'JSON'
+          {
+            "name":"oracly-mobile",
+            "version":"1.0.0",
+            "private":true,
+            "dependencies":{"@capacitor/core":"^7.0.0","@capacitor/android":"^7.0.0"},
+            "devDependencies":{"@capacitor/cli":"^7.0.0"}
+          }
+          JSON
+          cat > capacitor.config.json <<'JSON'
+          {
+            "appId":"com.accbuilder.oracly",
+            "appName":"ORACLY",
+            "webDir":"www",
+            "server":{"androidScheme":"https"}
+          }
+          JSON
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+
+          if [ -f "$GITHUB_WORKSPACE/apps/oracly/icon-android.xml" ]; then
+            RES="$BUILD_DIR/android/app/src/main/res"
+            mkdir -p "$RES/mipmap-anydpi"
+            find "$RES" -type f \( -name 'ic_launcher*.png' -o -name 'ic_launcher*.webp' \) -delete
+            rm -f "$RES/mipmap-anydpi-v26/ic_launcher.xml" "$RES/mipmap-anydpi-v26/ic_launcher_round.xml"
+            cp "$GITHUB_WORKSPACE/apps/oracly/icon-android.xml" "$RES/mipmap-anydpi/ic_launcher.xml"
+            cp "$GITHUB_WORKSPACE/apps/oracly/icon-android.xml" "$RES/mipmap-anydpi/ic_launcher_round.xml"
+          fi
+
+          base64 -d "$GITHUB_WORKSPACE/apps/oracly/oracly-test.keystore.b64" > "$BUILD_DIR/android/app/oracly-test.keystore"
+
+          python3 - "$BUILD_DIR/android/app/build.gradle" "$VERSION" <<'PY'
+          from pathlib import Path
+          import re, sys
+          p=Path(sys.argv[1]); version=int(sys.argv[2]); s=p.read_text(encoding='utf-8')
+          s=re.sub(r'versionCode\s*(?:=\s*)?\d+', f'versionCode {version}', s, count=1)
+          s=re.sub(r'versionName\s*(?:=\s*)?["\'][^"\']+["\']', f'versionName "0.1.{version}"', s, count=1)
+          if 'oraclyTest {' not in s:
+              signing="""\n    signingConfigs {\n        oraclyTest {\n            storeFile file('oracly-test.keystore')\n            storePassword 'oraclytest'\n            keyAlias 'oraclytest'\n            keyPassword 'oraclytest'\n        }\n    }\n"""
+              s=s.replace('android {','android {'+signing,1)
+          if 'signingConfig signingConfigs.oraclyTest' not in s:
+              if re.search(r'buildTypes\s*\{\s*debug\s*\{',s):
+                  s=re.sub(r'(buildTypes\s*\{\s*debug\s*\{)', r'\1\n            signingConfig signingConfigs.oraclyTest', s, count=1)
+              else:
+                  s=re.sub(r'(buildTypes\s*\{)', r'\1\n        debug {\n            signingConfig signingConfigs.oraclyTest\n        }', s, count=1)
+          p.write_text(s,encoding='utf-8')
+          PY
+
+          cd "$BUILD_DIR/android"
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/dist/oracly-stable-v${VERSION}.apk"
+
+      - name: Upload stable test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: oracly-stable-v${{ steps.meta.outputs.version }}.apk
+          path: dist/oracly-stable-v${{ steps.meta.outputs.version }}.apk
+          retention-days: 30
