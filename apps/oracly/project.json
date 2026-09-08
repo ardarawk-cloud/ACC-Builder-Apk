@@ -1,11 +1,11 @@
 {
   "id": "oracly",
   "name": "ORACLY",
-  "version": 7,
+  "version": 8,
   "provider": "handcrafted",
-  "last_request_id": "oracly-v7-language-settings-20260908",
-  "last_prompt": "ORACLY v7 language settings on top of v6 real 78-card RWS artwork. Preserve all working v6 interactions and stable signing. Add a real Settings entry under Profile with app language choices: System Default, Indonesia, and English. Persist the choice locally, apply it across navigation, daily reading, horoscope, compatibility, profile, history, and tarot guidance text, and keep standard tarot card names/artwork intact.",
+  "last_request_id": "oracly-v8-indonesian-tarot-meanings-20260908",
+  "last_prompt": "ORACLY v8 language completeness fix on top of v7. Preserve all v7 features, real 78-card RWS artwork, layout, interactions, and stable signing. When Bahasa Indonesia is selected, translate all Major Arcana upright/reversed meaning descriptions and all Minor Arcana upright/reversed generated meaning descriptions, while keeping standard tarot card names and artwork intact. English mode must remain unchanged.",
   "last_build": "candidate",
   "created_at": "2026-09-07T10:40:00+00:00",
-  "updated_at": "2026-09-08T00:50:00+08:00"
+  "updated_at": "2026-09-08T18:50:00+08:00"
 }
