@@ -13,6 +13,43 @@ function hash(str){var h=2166136261;for(var i=0;i<str.length;i++){h^=str.charCod
 function dateKey(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function esc(s){return String(s==null?'':s).replace(/[&<>\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]})}
 
+/* Public-safe first-install profile. Local profile data is created per device and never packaged into the APK. */
+function ensurePublicProfile(){
+  try{
+    var raw=localStorage.getItem('oracly_profile');
+    if(!raw){
+      localStorage.setItem('oracly_profile',JSON.stringify({name:'Seeker',dob:'',time:'',gender:'Prefer not to say'}));
+      localStorage.setItem('oracly_profile_setup_needed','1');
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+var seededPublicProfile=ensurePublicProfile();
+function setupNeeded(){try{return localStorage.getItem('oracly_profile_setup_needed')==='1'}catch(e){return false}}
+function profileSetupStyle(){
+  if(document.getElementById('oracly-profile-setup-style'))return;
+  var s=document.createElement('style');s.id='oracly-profile-setup-style';s.textContent='\
+.oracly-profile-overlay{position:fixed;z-index:10000;inset:0;background:#000c;display:flex;align-items:flex-end;justify-content:center}.oracly-profile-sheet{width:100%;max-width:460px;background:linear-gradient(#1b1427,#0d0a13);border:1px solid #4a385d;border-radius:26px 26px 0 0;padding:22px 18px calc(24px + env(safe-area-inset-bottom));box-shadow:0 -24px 70px #000c;color:#f6efe3}.oracly-profile-sheet h2{font:500 27px Georgia,serif;margin:0 0 7px}.oracly-profile-sheet p{color:#aea4bb;font-size:13px;line-height:1.5;margin:0 0 16px}.oracly-profile-sheet label{display:block;font-size:12px;color:#c7bccb;margin:11px 0}.oracly-profile-sheet input{width:100%;min-height:48px;margin-top:6px;border:1px solid #392d48;background:#100c17;color:#f6efe3;border-radius:12px;padding:12px}.oracly-profile-actions{display:grid;grid-template-columns:1fr 1.4fr;gap:9px;margin-top:14px}.oracly-profile-error{min-height:17px;color:#efb2b2;font-size:11px;margin-top:7px}';document.head.appendChild(s);
+}
+function closeProfileSetup(){var x=document.getElementById('oracly-profile-setup');if(x)x.remove()}
+function injectFirstRunProfile(){
+  if(!setupNeeded()||document.getElementById('oracly-profile-setup'))return;
+  if(!app.querySelector('.home-head'))return;
+  profileSetupStyle();
+  var id=isID(),max=dateKey(),wrap=document.createElement('div');wrap.className='oracly-profile-overlay';wrap.id='oracly-profile-setup';
+  wrap.innerHTML='<div class="oracly-profile-sheet"><h2>'+(id?'Isi Profil Kamu':'Set Up Your Profile')+'</h2><p>'+(id?'Profil ini hanya tersimpan di HP kamu. Nama dan tanggal lahir pemilik APK tidak ikut dibawa ke pengguna lain.':'This profile is stored only on your phone. No APK owner name or birth date is carried to other users.')+'</p><label>'+(id?'Nama':'Name')+'<input id="oracly-own-name" maxlength="40" placeholder="'+(id?'Nama kamu':'Your name')+'"></label><label>'+(id?'Tanggal Lahir':'Date of Birth')+'<input id="oracly-own-dob" type="date" max="'+max+'"></label><div id="oracly-own-error" class="oracly-profile-error"></div><div class="oracly-profile-actions"><button id="oracly-own-skip" class="btn ghostbtn">'+(id?'Lewati Dulu':'Skip for Now')+'</button><button id="oracly-own-save" class="btn goldbtn">'+(id?'Simpan Profil':'Save Profile')+'</button></div></div>';
+  document.body.appendChild(wrap);
+  wrap.querySelector('#oracly-own-save').onclick=function(){
+    var name=(wrap.querySelector('#oracly-own-name').value||'').trim(),dob=wrap.querySelector('#oracly-own-dob').value,err=wrap.querySelector('#oracly-own-error');
+    if(!dob){err.textContent=id?'Masukkan tanggal lahir terlebih dahulu.':'Please enter your birth date.';return}
+    var d=new Date(dob+'T00:00:00');if(isNaN(d.getTime())||d>new Date()){err.textContent=id?'Tanggal lahir tidak valid.':'Invalid birth date.';return}
+    try{localStorage.setItem('oracly_profile',JSON.stringify({name:name||'Seeker',dob:dob,time:'',gender:'Prefer not to say'}));localStorage.setItem('oracly_profile_setup_needed','0')}catch(e){}
+    closeProfileSetup();location.reload();
+  };
+  wrap.querySelector('#oracly-own-skip').onclick=function(){try{localStorage.setItem('oracly_profile_setup_needed','0')}catch(e){}closeProfileSetup();location.reload()};
+}
+
 /* Fix dynamic tarot meanings. Core renders card name in <b> and meaning in a separate text node beginning with ':'. */
 var majorID={
 'New beginnings, openness and a leap of faith.':'Awal baru, keterbukaan, dan keberanian untuk melangkah dengan keyakinan.',
@@ -197,8 +234,9 @@ function runOtherReading(){
  try{out.scrollIntoView({behavior:'smooth',block:'nearest'})}catch(e){}
 }
 
-var busy=false;function apply(){if(busy)return;busy=true;try{injectPanel();fixTarotMeaningNodes()}finally{busy=false}}
+var busy=false;function apply(){if(busy)return;busy=true;try{injectPanel();fixTarotMeaningNodes();injectFirstRunProfile()}finally{busy=false}}
 new MutationObserver(function(){setTimeout(apply,0)}).observe(app,{childList:true,subtree:true});
 setTimeout(apply,50);setTimeout(apply,400);
+if(seededPublicProfile){setTimeout(apply,0)}
 window.ORACLY_ENHANCEMENTS={apply:apply,translateMeaning:translateMeaning};
 })();
