@@ -1,11 +1,11 @@
 {
   "id": "oracly",
   "name": "ORACLY",
-  "version": 8,
+  "version": 9,
   "provider": "handcrafted",
-  "last_request_id": "oracly-v8-indonesian-tarot-meanings-20260908",
-  "last_prompt": "ORACLY v8 language completeness fix on top of v7. Preserve all v7 features, real 78-card RWS artwork, layout, interactions, and stable signing. When Bahasa Indonesia is selected, translate all Major Arcana upright/reversed meaning descriptions and all Minor Arcana upright/reversed generated meaning descriptions, while keeping standard tarot card names and artwork intact. English mode must remain unchanged.",
+  "last_request_id": "oracly-v9-other-person-reader-20260908",
+  "last_prompt": "ORACLY v9 on top of v8. Preserve the approved dark purple/gold layout, real 78-card RWS artwork, bilingual settings, existing interactions, history, and stable signing. Add one interactive Home panel called Baca Orang Lain / Read Someone Else. The user enters optional name plus day, month, and year of birth. Without changing the owner's profile, calculate that person's zodiac sign, element, ruling planet, life path, core personality, and deterministic daily reflection for overall energy, love, career, and money. Also fix Indonesian dynamic tarot meanings so rendered Major and Minor Arcana descriptions translate correctly even when the meaning text is a separate text node after the card name. Keep standard tarot card names/artwork intact.",
   "last_build": "candidate",
   "created_at": "2026-09-07T10:40:00+00:00",
-  "updated_at": "2026-09-08T18:50:00+08:00"
+  "updated_at": "2026-09-08T20:57:00+08:00"
 }
