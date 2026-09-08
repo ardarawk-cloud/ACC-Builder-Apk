@@ -98,6 +98,52 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     'Detailed Compatibility':'Kecocokan Lebih Detail','Premium Tarot Decks':'Deck Tarot Premium','Reading History':'Riwayat Bacaan','No Ads':'Tanpa Iklan','Start Free Trial':'Mulai Uji Coba Gratis',
     'Purchase flow is not enabled in this MVP build.':'Pembayaran belum diaktifkan pada build MVP ini.','For entertainment and personal reflection.':'Untuk hiburan dan refleksi pribadi.','Find Guidance Every Day':'Temukan Panduan Setiap Hari',
     'Tarot, Horoscope & Daily Insights':'Tarot, Horoskop & Wawasan Harian','One calm space for daily reflection.':'Satu ruang tenang untuk refleksi harian.','Continue':'Lanjutkan',
+
+    'New beginnings, openness and a leap of faith.':'Awal baru, keterbukaan, dan keberanian mengambil langkah penuh keyakinan.',
+    'Pause before acting on impulse.':'Berhenti sejenak sebelum bertindak karena dorongan sesaat.',
+    'Use your skills and resources with intention.':'Gunakan kemampuan dan sumber dayamu dengan tujuan yang jelas.',
+    'Scattered focus can weaken your progress.':'Fokus yang terpecah dapat menghambat kemajuanmu.',
+    'Trust intuition and observe what is not being said.':'Percayai intuisi dan perhatikan hal-hal yang tidak diucapkan.',
+    'Noise may be drowning out your inner voice.':'Terlalu banyak gangguan dapat menutupi suara batinmu.',
+    'Growth, comfort and creative abundance surround you.':'Pertumbuhan, kenyamanan, dan kelimpahan kreatif sedang mengelilingimu.',
+    'Restore your energy before giving more.':'Pulihkan energimu sebelum memberi lebih banyak kepada orang lain.',
+    'Structure and clear boundaries bring stability.':'Struktur dan batasan yang jelas akan membawa kestabilan.',
+    'Avoid becoming rigid or controlling.':'Hindari menjadi terlalu kaku atau ingin mengendalikan semuanya.',
+    'Wisdom comes through tradition, study or guidance.':'Kebijaksanaan dapat datang melalui tradisi, pembelajaran, atau bimbingan.',
+    'Question rules that no longer fit you.':'Tinjau kembali aturan yang sudah tidak sesuai dengan dirimu.',
+    'Alignment, meaningful choice and deep connection.':'Keselarasan, pilihan yang bermakna, dan hubungan yang mendalam.',
+    'Mixed values need an honest conversation.':'Perbedaan nilai membutuhkan percakapan yang jujur.',
+    'Focused movement can overcome obstacles.':'Langkah yang terarah dapat membantumu melewati rintangan.',
+    'Slow down and regain direction.':'Perlambat langkah dan temukan kembali arahmu.',
+    'Quiet courage and patience are your advantage.':'Keberanian yang tenang dan kesabaran adalah kekuatanmu.',
+    'Do not force what needs gentleness.':'Jangan memaksakan sesuatu yang membutuhkan kelembutan.',
+    'Step inward to find clarity before moving.':'Lihat ke dalam dirimu untuk menemukan kejelasan sebelum melangkah.',
+    'Isolation may be keeping you stuck.':'Terlalu mengisolasi diri mungkin membuatmu sulit bergerak maju.',
+    'A cycle is turning; stay adaptable.':'Sebuah siklus sedang berubah; tetaplah fleksibel.',
+    'Resistance to change may create friction.':'Menolak perubahan dapat menimbulkan hambatan.',
+    'Truth, balance and accountability matter now.':'Kebenaran, keseimbangan, dan tanggung jawab menjadi hal penting saat ini.',
+    'Check assumptions before judging.':'Periksa kembali asumsi sebelum mengambil kesimpulan.',
+    'A new perspective is more useful than pushing.':'Sudut pandang baru akan lebih berguna daripada terus memaksakan keadaan.',
+    'Delay without reflection becomes stagnation.':'Penundaan tanpa refleksi dapat berubah menjadi kebuntuan.',
+    'A necessary ending creates room for transformation.':'Sebuah akhir yang diperlukan membuka ruang untuk perubahan besar.',
+    'Holding on may delay renewal.':'Terus mempertahankan sesuatu dapat menunda pembaruan.',
+    'Balance, moderation and integration lead forward.':'Keseimbangan, sikap tidak berlebihan, dan penyatuan akan membawamu maju.',
+    'Extremes are draining your momentum.':'Sikap yang terlalu ekstrem sedang menguras momentummu.',
+    'Notice attachments, habits and tempting shortcuts.':'Perhatikan keterikatan, kebiasaan, dan jalan pintas yang menggoda.',
+    'You are ready to loosen an unhealthy pattern.':'Kamu siap melepaskan pola yang tidak sehat.',
+    'A sudden truth can clear unstable ground.':'Kebenaran yang muncul tiba-tiba dapat meruntuhkan dasar yang tidak kokoh.',
+    'Avoid rebuilding the same weak foundation.':'Jangan membangun kembali di atas fondasi lemah yang sama.',
+    'Hope, healing and renewed direction are available.':'Harapan, pemulihan, dan arah baru sedang terbuka untukmu.',
+    'Reconnect with faith in your own path.':'Bangun kembali keyakinan terhadap jalanmu sendiri.',
+    'Not everything is clear yet; move carefully.':'Belum semuanya terlihat jelas; melangkahlah dengan hati-hati.',
+    'Fear may be exaggerating uncertainty.':'Rasa takut mungkin membuat ketidakpastian terasa lebih besar dari kenyataan.',
+    'Confidence, warmth and visible progress grow.':'Kepercayaan diri, kehangatan, dan kemajuan nyata sedang bertumbuh.',
+    'Celebrate without ignoring practical details.':'Rayakan kemajuanmu tanpa mengabaikan hal-hal praktis.',
+    'Reflection brings a chance to answer a higher call.':'Refleksi memberimu kesempatan untuk menjawab panggilan yang lebih besar.',
+    'Release old self-criticism and decide.':'Lepaskan kritik lama terhadap dirimu dan ambil keputusan.',
+    'Completion, integration and earned progress.':'Penyelesaian, penyatuan, dan kemajuan yang berhasil kamu raih.',
+    'One final detail still needs closure.':'Masih ada satu hal terakhir yang perlu diselesaikan.',
+
     'A conversation you have been avoiding may finally bring clarity.':'Percakapan yang selama ini kamu hindari mungkin akhirnya membawa kejelasan.','Protect your peace without closing your heart.':'Jaga ketenanganmu tanpa menutup hati.',
     'A small sign of affection may matter more than a dramatic gesture.':'Tanda kasih sayang kecil bisa lebih berarti daripada gestur besar.','Focus on finishing one important task before starting something new.':'Fokus selesaikan satu hal penting sebelum memulai yang baru.',
     'Your consistency is more valuable than speed today.':'Konsistensimu lebih berharga daripada kecepatan hari ini.','A useful opportunity may appear through a simple conversation.':'Peluang yang berguna bisa muncul dari percakapan sederhana.',
@@ -111,14 +157,19 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   function saved(){try{return localStorage.getItem(KEY)||'auto'}catch(e){return 'auto'}}
   function resolved(){var s=saved();if(s!=='auto')return s;return (navigator.language||'en').toLowerCase().indexOf('id')===0?'id':'en'}
   function label(code){if(code==='id')return'Indonesia';if(code==='en')return'English';return resolved()==='id'?'Ikuti Bahasa Perangkat':'System Default'}
+  function rankId(r){return {Ace:'As',Two:'Dua',Three:'Tiga',Four:'Empat',Five:'Lima',Six:'Enam',Seven:'Tujuh',Eight:'Delapan',Nine:'Sembilan',Ten:'Sepuluh',Page:'Page',Knight:'Knight',Queen:'Queen',King:'King'}[r]||r}
   function mapText(t){
     if(resolved()!=='id')return t;
     if(idMap[t])return idMap[t];
     var s=t;
-    s=s.replace(/^([A-Za-z]+) energy highlights emotion, relationships and intuition\. Focus on what can grow through steady awareness\.$/,'Energi $1 menyoroti emosi, hubungan, dan intuisi. Fokus pada hal yang dapat berkembang melalui kesadaran yang konsisten.');
-    s=s.replace(/^([A-Za-z]+) energy highlights money, stability and practical matters\. Focus on what can grow through steady awareness\.$/,'Energi $1 menyoroti keuangan, kestabilan, dan hal-hal praktis. Fokus pada hal yang dapat berkembang melalui kesadaran yang konsisten.');
-    s=s.replace(/^([A-Za-z]+) energy highlights thoughts, truth and decisions\. Focus on what can grow through steady awareness\.$/,'Energi $1 menyoroti pikiran, kebenaran, dan keputusan. Fokus pada hal yang dapat berkembang melalui kesadaran yang konsisten.');
-    s=s.replace(/^([A-Za-z]+) energy highlights energy, ambition and creative action\. Focus on what can grow through steady awareness\.$/,'Energi $1 menyoroti semangat, ambisi, dan tindakan kreatif. Fokus pada hal yang dapat berkembang melalui kesadaran yang konsisten.');
+    s=s.replace(/^(Ace|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Page|Knight|Queen|King) energy highlights emotion, relationships and intuition\. Focus on what can grow through steady awareness\.$/,function(_,r){return 'Energi '+rankId(r)+' menyoroti emosi, hubungan, dan intuisi. Fokus pada hal yang dapat berkembang melalui kesadaran yang konsisten.'});
+    s=s.replace(/^(Ace|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Page|Knight|Queen|King) energy highlights money, stability and practical matters\. Focus on what can grow through steady awareness\.$/,function(_,r){return 'Energi '+rankId(r)+' menyoroti keuangan, kestabilan, dan hal-hal praktis. Fokus pada hal yang dapat berkembang melalui kesadaran yang konsisten.'});
+    s=s.replace(/^(Ace|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Page|Knight|Queen|King) energy highlights thoughts, truth and decisions\. Focus on what can grow through steady awareness\.$/,function(_,r){return 'Energi '+rankId(r)+' menyoroti pikiran, kebenaran, dan keputusan. Fokus pada hal yang dapat berkembang melalui kesadaran yang konsisten.'});
+    s=s.replace(/^(Ace|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Page|Knight|Queen|King) energy highlights energy, ambition and creative action\. Focus on what can grow through steady awareness\.$/,function(_,r){return 'Energi '+rankId(r)+' menyoroti semangat, ambisi, dan tindakan kreatif. Fokus pada hal yang dapat berkembang melalui kesadaran yang konsisten.'});
+    s=s.replace(/^The (ace|two|three|four|five|six|seven|eight|nine|ten|page|knight|queen|king) energy in emotion, relationships and intuition may feel blocked or delayed\. Reassess before pushing\.$/,function(_,r){return 'Energi '+rankId(r.charAt(0).toUpperCase()+r.slice(1))+' dalam emosi, hubungan, dan intuisi mungkin terasa terhambat atau tertunda. Tinjau kembali sebelum memaksakan keadaan.'});
+    s=s.replace(/^The (ace|two|three|four|five|six|seven|eight|nine|ten|page|knight|queen|king) energy in money, stability and practical matters may feel blocked or delayed\. Reassess before pushing\.$/,function(_,r){return 'Energi '+rankId(r.charAt(0).toUpperCase()+r.slice(1))+' dalam keuangan, kestabilan, dan hal-hal praktis mungkin terasa terhambat atau tertunda. Tinjau kembali sebelum memaksakan keadaan.'});
+    s=s.replace(/^The (ace|two|three|four|five|six|seven|eight|nine|ten|page|knight|queen|king) energy in thoughts, truth and decisions may feel blocked or delayed\. Reassess before pushing\.$/,function(_,r){return 'Energi '+rankId(r.charAt(0).toUpperCase()+r.slice(1))+' dalam pikiran, kebenaran, dan keputusan mungkin terasa terhambat atau tertunda. Tinjau kembali sebelum memaksakan keadaan.'});
+    s=s.replace(/^The (ace|two|three|four|five|six|seven|eight|nine|ten|page|knight|queen|king) energy in energy, ambition and creative action may feel blocked or delayed\. Reassess before pushing\.$/,function(_,r){return 'Energi '+rankId(r.charAt(0).toUpperCase()+r.slice(1))+' dalam semangat, ambisi, dan tindakan kreatif mungkin terasa terhambat atau tertunda. Tinjau kembali sebelum memaksakan keadaan.'});
     return s;
   }
   function translate(){
