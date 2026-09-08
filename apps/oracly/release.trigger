@@ -1,2 +1,2 @@
-ORACLY stable signed other-person reader candidate v9 QC2
-2026-09-08T21:22:00+08:00
+ORACLY stable signed public-safe profile candidate v10
+2026-09-08T23:36:00+08:00
