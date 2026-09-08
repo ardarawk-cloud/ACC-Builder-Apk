@@ -12,6 +12,8 @@ on:
       - "scripts/patch_bwd_receipt_cloud.py"
       - "scripts/patch_bwd_public_client.py"
       - "scripts/patch_bwd_client_home_luxury.py"
+      - "scripts/patch_bwd_owner_dashboard.py"
+      - "scripts/patch_bwd_owner_cloud_inbox.py"
       - ".github/workflows/build-bali-wedding-dj-native.yml"
       - "bali-wedding-dj-native.trigger"
   workflow_dispatch:
@@ -184,9 +186,11 @@ jobs:
           python3 scripts/patch_bwd_public_client.py bwd-native
           ! grep -q 'ADMIN ACCESS' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
 
-      - name: Apply premium client home
+      - name: Apply premium client home and Owner inbox
         if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
         shell: bash
+        env:
+          BWD_FIREBASE_OWNER_APP_ID: ${{ secrets.BWD_FIREBASE_OWNER_APP_ID }}
         run: |
           set -euo pipefail
           python3 scripts/patch_bwd_client_home_luxury.py bwd-native
@@ -194,6 +198,8 @@ jobs:
           grep -Fq 'Premium wedding\nentertainment in Bali.' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
           grep -Fq 'loadHomePhoto(photo)' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
           grep -Fq 'addNav("MY BOOKING",this::showProfile)' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -q 'BwdOwnerCloud.sync' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          test -f bwd-admin/app/src/main/java/com/baliweddingdj/app/BwdOwnerCloud.java
 
       - name: Apply UI wording update
         shell: bash
