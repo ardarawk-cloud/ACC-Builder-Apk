@@ -1,11 +1,11 @@
 {
   "id": "oracly",
   "name": "ORACLY",
-  "version": 9,
+  "version": 10,
   "provider": "handcrafted",
-  "last_request_id": "oracly-v9-other-person-reader-20260908",
-  "last_prompt": "ORACLY v9 on top of v8. Preserve the approved dark purple/gold layout, real 78-card RWS artwork, bilingual settings, existing interactions, history, and stable signing. Add one interactive Home panel called Baca Orang Lain / Read Someone Else. The user enters optional name plus day, month, and year of birth. Without changing the owner's profile, calculate that person's zodiac sign, element, ruling planet, life path, core personality, and deterministic daily reflection for overall energy, love, career, and money. Also fix Indonesian dynamic tarot meanings so rendered Major and Minor Arcana descriptions translate correctly even when the meaning text is a separate text node after the card name. Keep standard tarot card names/artwork intact.",
+  "last_request_id": "oracly-v10-public-safe-profile-20260908",
+  "last_prompt": "ORACLY v10 on top of v9. Preserve approved dark purple/gold layout, real 78-card RWS artwork, bilingual language settings, other-person reader, tarot meaning translation fix, history, and stable signing. Make first install public-safe: do not expose the APK owner's name or birth date to other users. Seed a generic Seeker profile per device only, then after onboarding ask the new user to enter their own name and birth date, stored only in local storage. Existing users with an already saved profile must keep their own data unchanged. Allow Skip for Now, which leaves the generic profile and can be edited later in Birth Profile.",
   "last_build": "candidate",
   "created_at": "2026-09-07T10:40:00+00:00",
-  "updated_at": "2026-09-08T20:57:00+08:00"
+  "updated_at": "2026-09-08T23:35:00+08:00"
 }
