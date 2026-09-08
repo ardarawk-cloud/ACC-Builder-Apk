@@ -34,7 +34,11 @@ jobs:
         run: npm install --ignore-scripts
 
       - name: Syntax check
-        run: node --check index.js
+        run: |
+          node --check index.js
+          node --check owner-inbox.js
+          node --check entry.js
+          node -e "const f=require('./entry'); if(!f.api||!f.ownerApi) process.exit(1); console.log('exports: api + ownerApi')"
 
       - name: Dependency tree
         run: npm ls --depth=0
