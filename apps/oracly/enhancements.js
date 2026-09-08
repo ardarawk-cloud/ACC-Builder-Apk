@@ -107,7 +107,7 @@ var zodiac=[
 ];
 var signPersonalityID=[
 'Berani, spontan, dan cenderung bergerak lebih dulu ketika sudah yakin.',
-'StabiI, setia, dan menghargai rasa aman, kenyamanan, serta konsistensi.',
+'Stabil, setia, dan menghargai rasa aman, kenyamanan, serta konsistensi.',
 'Cepat menangkap informasi, komunikatif, dan membutuhkan variasi agar tetap tertarik.',
 'Peka, protektif, dan kuat dalam membaca suasana emosional orang di sekitarnya.',
 'Hangat, ekspresif, dan biasanya berkembang ketika bisa menunjukkan kemampuan terbaiknya.',
@@ -134,7 +134,7 @@ var signPersonalityEN=[
 'Empathetic, imaginative, and tuned into subtle things beneath the surface.'
 ];
 function signIndex(day,month){
-  var cuts=[20,19,20,20,21,21,22,22,21,21,20,19];
+  var cuts=[20,19,21,20,21,21,23,23,23,23,22,22];
   var next=[10,11,0,1,2,3,4,5,6,7,8,9];
   var current=[9,10,11,0,1,2,3,4,5,6,7,8];
   return day>=cuts[month-1]?next[month-1]:current[month-1];
@@ -157,7 +157,7 @@ var readingsEN={
  career:['At work, the best result comes from finishing one important task before adding new load.','Practical ability stands out today; fact-based decisions will help.','An opportunity may come through a simple conversation or an overlooked connection.','Speed is not the priority; consistency and accuracy are more useful.'],
  money:['Money decisions are safer when made without pressure or impulse.','A good time to review small recurring expenses before making a larger decision.','A conservative, measured approach fits better than chasing quick results.','Focusing on stability and real needs helps preserve financial balance.']
 };
-function validDate(d,m,y){var dt=new Date(y,m-1,d);return dt.getFullYear()===y&&dt.getMonth()===m-1&&dt.getDate()===d&&y>=1900&&y<=new Date().getFullYear()}
+function validDate(d,m,y){var dt=new Date(y,m-1,d),now=new Date();return dt.getFullYear()===y&&dt.getMonth()===m-1&&dt.getDate()===d&&y>=1900&&dt<=now}
 function readingFor(d,m,y,kind){var sets=isID()?readingsID:readingsEN;var arr=sets[kind];return arr[hash(y+'-'+m+'-'+d+'-'+dateKey()+'-'+kind)%arr.length]}
 function injectStyle(){
  if(document.getElementById('oracly-enhance-style'))return;
