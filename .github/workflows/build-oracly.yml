@@ -68,6 +68,21 @@ jobs:
           PY
           fi
 
+          if [ -f apps/oracly/enhancements.js ]; then
+            cp apps/oracly/enhancements.js "$BUILD_DIR/www/enhancements.js"
+            python3 - "$BUILD_DIR/www/index.html" <<'PY'
+          from pathlib import Path
+          import sys
+          p=Path(sys.argv[1]); s=p.read_text(encoding='utf-8')
+          marker='<script src="enhancements.js"></script>'
+          if marker not in s:
+              pos=s.lower().rfind('</body>')
+              if pos < 0: raise SystemExit('index.html has no closing body')
+              s=s[:pos]+marker+'\n'+s[pos:]
+              p.write_text(s,encoding='utf-8')
+          PY
+          fi
+
           mkdir -p "$BUILD_DIR/www/tarot"
           python3 - "$BUILD_DIR/www/tarot" <<'PY'
           from pathlib import Path
