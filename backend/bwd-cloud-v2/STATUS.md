@@ -1,9 +1,13 @@
 # Cloud V2 Status
 
-- Android Cloud V2 compile: PASS (`run 33332046628`)
-- Android APK SHA256: `fdfe707a52dac602923994f8bef3ee2f03b44e97170b3982b4fbb61b5bd65b76`
-- Backend dependency + syntax QC: PASS (`run 33332058382`)
+- Client + Owner Android compile/build: PASS (`run 34194128929`)
+- Client applicationId: `com.baliweddingdj.app`
+- Owner applicationId: `com.baliweddingdj.owner`
+- Owner cloud Booking Inbox sync code: INTEGRATED / COMPILE PASS
+- Backend `api` + secure `ownerApi` dependency/export/syntax QC: PASS (`run 34193872518`)
 - Direct Firestore client access: DENIED by rules
-- Firebase/Cloud runtime activation: PENDING external project provisioning and CI secret injection
+- Firebase/Cloud runtime activation: PENDING external Firebase project provisioning, Functions/rules deployment, and CI secret injection
+- Required Android Firebase registrations: Client + Owner in the same Firebase project
+- Required build values include separate Client and Owner Firebase App IDs
 
-Do not label Cloud V2 as production-live until the activation checklist runtime tests pass on two physical devices.
+Do not label Client → Cloud → Owner delivery, notifications, or Cloud V2 as LIVE/VERIFIED until the activation checklist passes on two physical devices.
