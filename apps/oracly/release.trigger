@@ -1,2 +1,2 @@
-ORACLY stable signed Indonesian tarot-meanings candidate v8
-2026-09-08T18:50:00+08:00
+ORACLY stable signed other-person reader candidate v9
+2026-09-08T20:57:00+08:00
