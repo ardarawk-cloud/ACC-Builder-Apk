@@ -2,7 +2,7 @@
   "name": "bwd-cloud-v2-functions",
   "private": true,
   "engines": {"node": "20"},
-  "main": "index.js",
+  "main": "entry.js",
   "dependencies": {
     "express": "^5.1.0",
     "firebase-admin": "^14.3.0",
