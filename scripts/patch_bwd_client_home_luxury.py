@@ -97,3 +97,6 @@ owner_patch = pathlib.Path(__file__).with_name('patch_bwd_owner_dashboard.py')
 if admin_root.exists() and owner_patch.exists():
     import subprocess
     subprocess.run([sys.executable, str(owner_patch), str(admin_root)], check=True)
+    owner_cloud_patch = pathlib.Path(__file__).with_name('patch_bwd_owner_cloud_inbox.py')
+    if owner_cloud_patch.exists():
+        subprocess.run([sys.executable, str(owner_cloud_patch), str(admin_root)], check=True)
