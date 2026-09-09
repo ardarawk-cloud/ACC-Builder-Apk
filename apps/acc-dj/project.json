@@ -1,0 +1,14 @@
+{
+  "id": "acc-dj",
+  "name": "ACC DJ",
+  "version": 1,
+  "provider": "manual-wrapper-dj-am-v9",
+  "qc": "source-pinned-foundation",
+  "source_repository": "balinightlife666-web/DJ-AM",
+  "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
+  "last_request_id": "acc-dj-android-v1-20260909",
+  "last_prompt": "Build Android wrapper for verified ACC DJ v9 source without changing DJ engine behavior",
+  "last_build": "pending",
+  "created_at": "2026-09-09T12:28:00Z",
+  "updated_at": "2026-09-09T12:28:00Z"
+}

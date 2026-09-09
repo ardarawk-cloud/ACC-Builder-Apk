@@ -1,0 +1,7 @@
+{
+  "request_id": "acc-dj-android-v1-20260909",
+  "project_id": "acc-dj",
+  "project_name": "ACC DJ",
+  "mode": "build_existing",
+  "prompt": "Build the controlled ACC DJ Android v1 wrapper from the verified DJ-AM v9 source pinned to commit 90a5af34d641f29992c8ecfe245e6cda833dbf2c. Preserve the two-deck mixer, Audius browser/streaming, Web Audio engine, MASTER/SYNC beat alignment, EQ, pitch, crossfader, cue and split-cue behavior. Do not AI-regenerate or redesign the DJ engine during this build."
+}
