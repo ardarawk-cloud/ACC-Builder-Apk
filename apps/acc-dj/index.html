@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="description" content="ACC DJ — 2-deck streaming DJ mixer powered by Audius." />
+  <link rel="icon" href="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/icon-192.png" type="image/png" sizes="192x192" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/styles.css" />
+  <title>ACC DJ</title>
+</head>
+<body>
+  <!-- Android wrapper pinned to DJ-AM commit 90a5af34d641f29992c8ecfe245e6cda833dbf2c. -->
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark brand-logo"><img src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/icon-192.png" alt="ACC DJ" /></div>
+        <div>
+          <h1>DJ</h1>
+          <p>STREAM • MIX • CUE</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span id="audioStatus" class="status-dot">Audio idle</span>
+        <button id="djModeBtn" class="ghost focus-btn">DJ MODE</button>
+        <button id="installBtn" class="ghost install-btn" hidden>INSTALL</button>
+        <button id="musicBtn" class="primary music-toggle">♫ MUSIC</button>
+        <button id="settingsBtn" class="ghost api-btn">API</button>
+      </div>
+    </header>
+
+    <main>
+      <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+      <section id="musicDrawer" class="library panel music-drawer" aria-hidden="true">
+        <div class="music-drawer-head">
+          <div>
+            <strong>MUSIC BROWSER</strong>
+            <span>Audius streaming • pilih lagu lalu LOAD ke Deck A/B</span>
+          </div>
+          <button id="closeMusicBtn" class="ghost" type="button">✕</button>
+        </div>
+        <div class="quick-genres" aria-label="Quick genres">
+          <button data-genre="" class="genre-chip active">TRENDING</button>
+          <button data-genre="House" class="genre-chip">HOUSE</button>
+          <button data-genre="Tech House" class="genre-chip">TECH HOUSE</button>
+          <button data-genre="Deep House" class="genre-chip">DEEP HOUSE</button>
+          <button data-genre="Techno" class="genre-chip">TECHNO</button>
+          <button data-genre="Trance" class="genre-chip">TRANCE</button>
+          <button data-genre="Drum & Bass" class="genre-chip">DNB</button>
+          <button data-genre="Dubstep" class="genre-chip">DUBSTEP</button>
+          <button data-genre="Electronic" class="genre-chip">ELECTRONIC</button>
+          <button data-genre="Future House" class="genre-chip">FUTURE</button>
+          <button data-genre="Progressive House" class="genre-chip">PROGRESSIVE</button>
+        </div>
+        <div class="library-row">
+          <div class="search-wrap">
+            <input id="searchInput" type="search" placeholder="Cari track / artist di Audius..." autocomplete="off" />
+            <button id="searchBtn" class="primary">SEARCH</button>
+          </div>
+          <div class="filters">
+            <select id="genreSelect" aria-label="Genre">
+              <option value="">Semua genre</option>
+              <option>House</option>
+              <option>Tech House</option>
+              <option>Deep House</option>
+              <option>Techno</option>
+              <option>Trance</option>
+              <option>Drum & Bass</option>
+              <option>Dubstep</option>
+              <option>Electronic</option>
+              <option>Future House</option>
+              <option>Progressive House</option>
+            </select>
+            <button id="trendingBtn" class="ghost">TRENDING</button>
+          </div>
+        </div>
+        <div id="libraryMessage" class="library-message">Masukkan kata kunci atau buka Trending.</div>
+        <div id="results" class="results"></div>
+        <div class="browser-footer"><button id="moreBtn" class="ghost" type="button" hidden>MORE TRACKS</button></div>
+      </section>
+
+      <section class="decks-grid">
+        <article class="deck panel" data-deck="A">
+          <div class="deck-head">
+            <span class="deck-label">DECK A</span>
+            <div class="deck-head-actions"><button class="master-btn active" data-action="master" data-deck="A">MASTER</button><button class="cue-btn" data-action="cue" data-deck="A">CUE A</button></div>
+          </div>
+          <div class="track-meta">
+            <img id="coverA" class="cover" alt="Cover Deck A" src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/placeholder.svg" />
+            <div class="track-copy">
+              <h2 id="titleA">No track loaded</h2>
+              <p id="artistA">Audius</p>
+              <div class="chips"><span id="bpmA">BPM —</span><span id="keyA">KEY —</span><span id="gridA">GRID —</span></div>
+            </div>
+          </div>
+          <canvas id="waveA" class="wave" width="900" height="130"></canvas>
+          <input id="seekA" class="seek" type="range" min="0" max="1000" value="0" />
+          <div class="time-row"><span id="timeA">00:00</span><span id="durationA">00:00</span></div>
+          <div class="transport">
+            <button class="transport-btn" data-action="play" data-deck="A">▶</button>
+            <button class="transport-btn" data-action="restart" data-deck="A">↺</button>
+            <button class="transport-btn sync-btn" data-action="sync" data-deck="A">SYNC</button>
+            <button class="transport-btn" data-action="loop" data-deck="A">LOOP</button>
+          </div>
+          <div class="nudge-row">
+            <button class="nudge-btn" data-action="nudge" data-dir="-1" data-deck="A">◀ NUDGE</button>
+            <span id="syncStateA" class="sync-state">FREE</span>
+            <button class="nudge-btn" data-action="nudge" data-dir="1" data-deck="A">NUDGE ▶</button>
+          </div>
+          <div class="controls-row">
+            <label>LOW<input id="lowA" type="range" min="-18" max="12" value="0" step="1" /></label>
+            <label>MID<input id="midA" type="range" min="-18" max="12" value="0" step="1" /></label>
+            <label>HIGH<input id="highA" type="range" min="-18" max="12" value="0" step="1" /></label>
+          </div>
+          <div class="pitch-row">
+            <label>PITCH <span id="pitchLabelA">0.0%</span></label>
+            <input id="pitchA" type="range" min="-8" max="8" value="0" step="0.1" />
+          </div>
+        </article>
+
+        <article class="mixer panel">
+          <div class="mixer-title">MIXER</div>
+          <div class="meters">
+            <div><span>A</span><meter id="meterA" min="0" max="1" value="0"></meter></div>
+            <div><span>B</span><meter id="meterB" min="0" max="1" value="0"></meter></div>
+          </div>
+          <label class="master-control">MASTER
+            <input id="masterVol" type="range" min="0" max="1" value="0.85" step="0.01" />
+          </label>
+          <div class="cue-mode">
+            <button id="splitCueBtn" class="mode-btn">SPLIT CUE: OFF</button>
+            <p id="cueHelp">Normal: master stereo.</p>
+          </div>
+          <div class="xfade-wrap">
+            <div class="xfade-label"><span>A</span><strong>CROSSFADER</strong><span>B</span></div>
+            <input id="crossfader" class="crossfader" type="range" min="-1" max="1" value="0" step="0.01" />
+          </div>
+          <div class="mixer-info">
+            <strong>Split Cue</strong>
+            <span>LEFT = Master mono</span>
+            <span>RIGHT = Cue mono</span>
+          </div>
+        </article>
+
+        <article class="deck panel" data-deck="B">
+          <div class="deck-head">
+            <span class="deck-label">DECK B</span>
+            <div class="deck-head-actions"><button class="master-btn" data-action="master" data-deck="B">MASTER</button><button class="cue-btn" data-action="cue" data-deck="B">CUE B</button></div>
+          </div>
+          <div class="track-meta">
+            <img id="coverB" class="cover" alt="Cover Deck B" src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/placeholder.svg" />
+            <div class="track-copy">
+              <h2 id="titleB">No track loaded</h2>
+              <p id="artistB">Audius</p>
+              <div class="chips"><span id="bpmB">BPM —</span><span id="keyB">KEY —</span><span id="gridB">GRID —</span></div>
+            </div>
+          </div>
+          <canvas id="waveB" class="wave" width="900" height="130"></canvas>
+          <input id="seekB" class="seek" type="range" min="0" max="1000" value="0" />
+          <div class="time-row"><span id="timeB">00:00</span><span id="durationB">00:00</span></div>
+          <div class="transport">
+            <button class="transport-btn" data-action="play" data-deck="B">▶</button>
+            <button class="transport-btn" data-action="restart" data-deck="B">↺</button>
+            <button class="transport-btn sync-btn" data-action="sync" data-deck="B">SYNC</button>
+            <button class="transport-btn" data-action="loop" data-deck="B">LOOP</button>
+          </div>
+          <div class="nudge-row">
+            <button class="nudge-btn" data-action="nudge" data-dir="-1" data-deck="B">◀ NUDGE</button>
+            <span id="syncStateB" class="sync-state">FREE</span>
+            <button class="nudge-btn" data-action="nudge" data-dir="1" data-deck="B">NUDGE ▶</button>
+          </div>
+          <div class="controls-row">
+            <label>LOW<input id="lowB" type="range" min="-18" max="12" value="0" step="1" /></label>
+            <label>MID<input id="midB" type="range" min="-18" max="12" value="0" step="1" /></label>
+            <label>HIGH<input id="highB" type="range" min="-18" max="12" value="0" step="1" /></label>
+          </div>
+          <div class="pitch-row">
+            <label>PITCH <span id="pitchLabelB">0.0%</span></label>
+            <input id="pitchB" type="range" min="-8" max="8" value="0" step="0.1" />
+          </div>
+        </article>
+      </section>
+
+      <section class="notes panel">
+        <strong>ACC DJ Engine v1:</strong> live beat-anchor analysis + master/follower chase. <strong>HP / Android:</strong> Split Cue memakai satu output stereo sebagai dua jalur mono. Agar Master dan Cue benar-benar terpisah, pakai USB-C audio DAC + DJ split-cue cable (bukan splitter headphone biasa). Audio di-stream saat diputar.
+      </section>
+    </main>
+
+    <dialog id="settingsDialog">
+      <form method="dialog" class="dialog-card">
+        <div class="dialog-head">
+          <div><strong>Audius API</strong><p>API key frontend aman menurut dokumentasi Audius.</p></div>
+          <button value="cancel" class="ghost">✕</button>
+        </div>
+        <label>API Key
+          <input id="apiKeyInput" type="text" placeholder="Tempel Audius API key di sini" autocomplete="off" />
+        </label>
+        <p class="hint">Tanpa key, ACC DJ mencoba Public Mode. Untuk hasil paling stabil gunakan free Audius API key.</p>
+        <div class="dialog-actions">
+          <button id="clearKeyBtn" type="button" class="ghost">CLEAR</button>
+          <button id="saveKeyBtn" value="default" class="primary">SAVE</button>
+        </div>
+      </form>
+    </dialog>
+  </div>
+
+  <audio id="audioA" crossorigin="anonymous" preload="metadata"></audio>
+  <audio id="audioB" crossorigin="anonymous" preload="metadata"></audio>
+  <script src="https://cdn.jsdelivr.net/npm/@audius/sdk@latest/dist/sdk.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/v9-analyser-hook.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/app-v8.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/v9-bpm-overlay.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/v9-beatlink.js"></script>
+</body>
+</html>
