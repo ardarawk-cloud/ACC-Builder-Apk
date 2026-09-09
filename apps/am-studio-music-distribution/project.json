@@ -1,0 +1,12 @@
+{
+  "id": "am-studio-music-distribution",
+  "name": "AM STUDIO Music Distribution",
+  "version": 1,
+  "provider": "manual-foundation-v1",
+  "qc": "manual-foundation",
+  "last_request_id": "am-studio-music-foundation-v1-manual-20260909",
+  "last_prompt": "Controlled Foundation v1: release wizard, QC, DSP intent, royalties, payout gating and provider boundary",
+  "last_build": "building",
+  "created_at": "2026-09-09T07:10:00Z",
+  "updated_at": "2026-09-09T07:10:00Z"
+}
