@@ -6,6 +6,7 @@ on:
       - feat/bali-wedding-dj-cloud-v2
     paths:
       - "backend/bwd-cloud-v2/**"
+      - "cloudflare/bwd-booking/**"
       - ".github/workflows/bwd-cloud-v2-backend-qc.yml"
   workflow_dispatch:
 
@@ -71,6 +72,12 @@ jobs:
           grep -q '"source": "/v1/\*\*"' ../firebase.json
           grep -q '"functionId": "api"' ../firebase.json
           grep -q '"runtime": "nodejs22"' ../firebase.json
+
+      - name: Cloudflare Git-integration build check
+        run: |
+          set -euo pipefail
+          (cd ../../.. && bash cloudflare/bwd-booking/build.sh)
+          (cd ../../.. && npx --yes wrangler@latest deploy --dry-run --config cloudflare/bwd-booking/wrangler.jsonc --outdir /tmp/bwd-cloudflare-dry-run)
 
       - name: Dependency tree
         run: npm ls --depth=0
