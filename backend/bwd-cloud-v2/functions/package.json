@@ -1,7 +1,7 @@
 {
   "name": "bwd-cloud-v2-functions",
   "private": true,
-  "engines": {"node": "20"},
+  "engines": {"node": "22"},
   "main": "entry.js",
   "dependencies": {
     "express": "^5.1.0",
