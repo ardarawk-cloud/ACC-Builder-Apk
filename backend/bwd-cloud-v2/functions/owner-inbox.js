@@ -89,7 +89,7 @@ app.get('/v1/admin/bookings', async (req, res) => {
   }
 });
 
-app.patch('/v1/admin/bookings/:bookingId/status', async (req, res) => {
+app.post('/v1/admin/bookings/:bookingId/status', async (req, res) => {
   try {
     if (!(await authorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized_admin_device' });
     const bookingId = text(req.params.bookingId, 64).replace(/[^A-Za-z0-9_-]/g, '');
