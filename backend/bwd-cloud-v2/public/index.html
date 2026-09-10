@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="description" content="Premium wedding DJ and entertainment booking in Bali. Book your date online without installing an app.">
+  <title>Bali Wedding DJ — Book Your Date</title>
+  <style>
+    :root{--bg:#090909;--panel:#11110f;--panel2:#181713;--gold:#d6aa55;--gold2:#f0ce85;--text:#f7f1e7;--muted:#b8ae9e;--line:rgba(214,170,85,.22);--danger:#e06b6b;--ok:#77c294;--radius:22px;--shadow:0 24px 70px rgba(0,0,0,.45)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:none!important}
+    a{color:inherit;text-decoration:none}.shell{min-height:100svh;padding-bottom:92px}.topbar{position:fixed;z-index:40;top:0;left:0;right:0;height:68px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:linear-gradient(180deg,rgba(5,5,5,.9),rgba(5,5,5,.38),transparent);backdrop-filter:blur(4px)}.brand{font-size:12px;font-weight:800;letter-spacing:.2em;color:var(--gold2);white-space:nowrap}.desktop-nav{display:none;gap:24px;align-items:center;font-size:13px;color:#ddd4c7}.desktop-nav button{border:0;background:none;color:inherit;padding:10px 0}.desktop-nav button:hover{color:var(--gold2)}
+    .hero{position:relative;min-height:100svh;display:flex;align-items:flex-end;overflow:hidden;background:#0a0a0a}.hero-photo{position:absolute;inset:0;background-image:url('https://images.unsplash.com/photo-1693576588167-2e7148490dc5?auto=format&fit=crop&w=1800&q=88');background-size:cover;background-position:58% center;transform:scale(1.015)}.hero:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,4,4,.92) 0%,rgba(4,4,4,.68) 38%,rgba(4,4,4,.15) 78%),linear-gradient(0deg,rgba(4,4,4,.96) 0%,rgba(4,4,4,.32) 42%,rgba(4,4,4,.12) 72%)}.hero-content{position:relative;z-index:2;width:min(760px,100%);padding:120px 22px 124px}.eyebrow{font-size:11px;letter-spacing:.2em;color:var(--gold2);font-weight:800;margin-bottom:18px}.hero h1{font-family:Georgia,"Times New Roman",serif;font-size:clamp(50px,15vw,92px);line-height:.9;letter-spacing:-.055em;margin:0;max-width:690px;text-wrap:balance;text-shadow:0 4px 20px rgba(0,0,0,.55)}.divider{width:62px;height:3px;background:var(--gold);margin:28px 0 20px}.hero p{max-width:430px;color:#eee7dc;font-size:17px;line-height:1.55;margin:0 0 26px;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+    .btn{appearance:none;border:1px solid var(--line);border-radius:999px;min-height:52px;padding:0 22px;font-weight:800;letter-spacing:.055em;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:.18s ease}.btn.primary{background:linear-gradient(135deg,var(--gold2),var(--gold));border-color:transparent;color:#17120a;box-shadow:0 12px 28px rgba(214,170,85,.2)}.btn.secondary{background:rgba(18,18,16,.65);color:var(--text)}.btn.full{width:100%}.btn:disabled{opacity:.52;cursor:not-allowed}.btn:hover{transform:translateY(-1px)}
+    .section{padding:78px 18px 40px;max-width:1120px;margin:0 auto}.section-head{margin-bottom:26px}.kicker{font-size:11px;letter-spacing:.18em;color:var(--gold);font-weight:800;text-transform:uppercase}.section h2{font-family:Georgia,"Times New Roman",serif;font-size:clamp(34px,9vw,58px);line-height:1.03;margin:10px 0 12px;letter-spacing:-.035em}.lead{color:var(--muted);line-height:1.65;max-width:680px;margin:0}.grid{display:grid;grid-template-columns:1fr;gap:14px}.card{background:linear-gradient(180deg,rgba(25,24,20,.98),rgba(15,15,13,.98));border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}.package-card{position:relative;overflow:hidden}.package-card.popular{border-color:rgba(240,206,133,.55)}.badge{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(214,170,85,.13);border:1px solid rgba(214,170,85,.35);color:var(--gold2);font-size:10px;font-weight:800;letter-spacing:.12em;margin-bottom:12px}.package-name{font-family:Georgia,"Times New Roman",serif;font-size:26px;margin:0 0 6px}.price{font-size:19px;color:var(--gold2);font-weight:800;margin-bottom:14px}.features{list-style:none;padding:0;margin:0 0 18px;color:var(--muted);line-height:1.55}.features li{padding:5px 0 5px 20px;position:relative}.features li:before{content:"•";position:absolute;left:2px;color:var(--gold)}
+    .booking-wrap{max-width:800px;margin:0 auto}.progress{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:18px 0 24px}.progress span{height:4px;background:#282720;border-radius:99px}.progress span.active{background:var(--gold)}.step-title{font-size:12px;color:var(--gold2);font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:18px}.form-grid{display:grid;grid-template-columns:1fr;gap:14px}.field label{display:block;font-size:12px;font-weight:700;color:#d8d0c3;margin:0 0 7px}.field input,.field select,.field textarea{width:100%;border:1px solid rgba(214,170,85,.18);background:#0d0d0c;color:var(--text);border-radius:14px;padding:14px 14px;outline:none;min-height:50px}.field textarea{min-height:104px;resize:vertical}.field input:focus,.field select:focus,.field textarea:focus{border-color:rgba(240,206,133,.68);box-shadow:0 0 0 3px rgba(214,170,85,.08)}.field small{display:block;margin-top:6px;color:#827b70;line-height:1.4}.check-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.check{display:flex;gap:9px;align-items:center;padding:12px;border-radius:14px;background:#0d0d0c;border:1px solid rgba(214,170,85,.14);font-size:13px;color:#ddd5c8}.check input{accent-color:var(--gold)}.form-actions{display:flex;gap:10px;margin-top:20px}.form-actions .btn{flex:1}.notice{border:1px solid var(--line);background:rgba(214,170,85,.07);border-radius:15px;padding:13px 14px;color:#c9c0b3;font-size:12px;line-height:1.5;margin-top:16px}
+    .success{padding:6px 0}.success-mark{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:rgba(119,194,148,.12);border:1px solid rgba(119,194,148,.45);color:var(--ok);font-size:27px;margin-bottom:18px}.booking-id{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--gold2);font-size:17px;word-break:break-all}.private-link{margin:16px 0;background:#0a0a09;border:1px dashed rgba(214,170,85,.35);padding:12px;border-radius:14px;font-size:12px;color:#bfb6a8;word-break:break-all}.status-pill{display:inline-flex;align-items:center;padding:7px 11px;border-radius:999px;background:rgba(214,170,85,.1);color:var(--gold2);border:1px solid rgba(214,170,85,.25);font-size:11px;font-weight:800;letter-spacing:.08em}.details{display:grid;gap:1px;margin-top:18px;border:1px solid var(--line);border-radius:16px;overflow:hidden}.detail{display:grid;grid-template-columns:120px 1fr;gap:14px;padding:12px 14px;background:#10100e}.detail+.detail{border-top:1px solid rgba(214,170,85,.1)}.detail span:first-child{color:#847c70;font-size:12px}.detail span:last-child{color:#eee6d9;font-size:13px;word-break:break-word}.empty{color:var(--muted);line-height:1.6}.error{color:#f0a1a1;font-size:13px;margin-top:12px}.ok{color:#9ad1ae;font-size:13px;margin-top:12px}
+    .contact-band{margin:70px 18px 24px;border:1px solid var(--line);border-radius:26px;background:linear-gradient(135deg,#191711,#0f0f0d);padding:28px;max-width:1084px}.contact-band h3{font-family:Georgia,"Times New Roman",serif;font-size:31px;margin:0 0 10px}.contact-band p{color:var(--muted);line-height:1.6;margin:0 0 18px}.footer{padding:28px 20px 115px;text-align:center;color:#756f65;font-size:11px}.bottom-nav{position:fixed;z-index:50;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));height:68px;border-radius:22px;background:rgba(15,15,13,.94);border:1px solid rgba(214,170,85,.22);backdrop-filter:blur(16px);display:grid;grid-template-columns:repeat(4,1fr);box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden}.nav-btn{border:0;background:none;color:#8f887c;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:9px;font-weight:800;letter-spacing:.05em;padding:0}.nav-btn .ico{font-size:17px;line-height:1}.nav-btn.active{color:var(--gold2);background:linear-gradient(180deg,rgba(214,170,85,.08),transparent)}
+    .modal-backdrop{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.74);display:grid;place-items:end center;padding:18px}.modal{width:min(620px,100%);max-height:88svh;overflow:auto;background:#11110f;border:1px solid var(--line);border-radius:24px;padding:20px;box-shadow:var(--shadow)}.modal h3{font-family:Georgia,"Times New Roman",serif;font-size:28px;margin:0 0 8px}.modal p{color:var(--muted);line-height:1.55}.close{float:right;border:0;background:#1b1a17;color:#bdb5a8;width:38px;height:38px;border-radius:50%}
+    @media(min-width:720px){.topbar{padding:0 36px}.desktop-nav{display:flex}.hero-content{padding-left:7vw}.section{padding-left:28px;padding-right:28px}.grid.packages{grid-template-columns:repeat(2,1fr)}.form-grid.two{grid-template-columns:1fr 1fr}.check-grid{grid-template-columns:repeat(3,1fr)}.contact-band{margin-left:auto;margin-right:auto}.bottom-nav{left:50%;right:auto;transform:translateX(-50%);width:560px}.modal-backdrop{place-items:center}}
+    @media(min-width:1040px){.grid.packages{grid-template-columns:repeat(3,1fr)}.section{padding-top:96px}.hero-content{padding-bottom:120px}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <button class="brand" style="border:0;background:none;padding:0" data-go="home">BALI WEDDING DJ</button>
+    <nav class="desktop-nav" aria-label="Primary">
+      <button data-go="packages">Packages</button>
+      <button data-go="book">Book Your Date</button>
+      <button data-go="mybooking">My Booking</button>
+      <a href="https://wa.me/6282247972288" target="_blank" rel="noopener">WhatsApp</a>
+    </nav>
+  </header>
+
+  <main id="view-home" class="view">
+    <section class="hero">
+      <div class="hero-photo" aria-hidden="true"></div>
+      <div class="hero-content">
+        <div class="eyebrow">PREMIUM WEDDING ENTERTAINMENT · BALI</div>
+        <h1>Your Wedding.<br>Our Music.</h1>
+        <div class="divider"></div>
+        <p>Premium wedding DJ and entertainment in Bali. Check your date and send your booking request directly from your browser.</p>
+        <button class="btn primary" data-go="book">BOOK YOUR DATE <span>→</span></button>
+      </div>
+    </section>
+
+    <section class="section" id="home-packages-preview">
+      <div class="section-head"><div class="kicker">Wedding Packages</div><h2>Built around your celebration.</h2><p class="lead">From after party sets to full-day wedding entertainment. Every request is reviewed before availability is confirmed.</p></div>
+      <div class="grid packages" id="package-preview"></div>
+    </section>
+
+    <div class="contact-band">
+      <h3>No app. No account. Just your wedding.</h3>
+      <p>Send the details from this website. You will receive a private booking link, while the Bali Wedding DJ owner dashboard receives the booking request.</p>
+      <button class="btn primary" data-go="book">START BOOKING →</button>
+    </div>
+  </main>
+
+  <main id="view-packages" class="view hidden">
+    <section class="section">
+      <div class="section-head"><div class="kicker">Packages</div><h2>Choose your wedding setup.</h2><p class="lead">Prices below follow the current Bali Wedding DJ package baseline. Custom requirements are quoted after review.</p></div>
+      <div class="grid packages" id="package-list"></div>
+    </section>
+  </main>
+
+  <main id="view-book" class="view hidden">
+    <section class="section booking-wrap">
+      <div class="section-head"><div class="kicker">Book Your Date</div><h2>Tell us about your wedding.</h2><p class="lead">No download and no account required. Your request goes directly to the booking system.</p></div>
+      <div class="card" id="booking-card">
+        <div id="booking-form-wrap">
+          <div class="progress" aria-label="Booking progress"><span class="active"></span><span></span><span></span><span></span></div>
+          <form id="booking-form" novalidate>
+            <div class="booking-step" data-step="1">
+              <div class="step-title">Step 1 · Couple & Contact</div>
+              <div class="form-grid two">
+                <div class="field"><label for="bride">Bride / Partner 1 *</label><input id="bride" name="bride" required autocomplete="name"></div>
+                <div class="field"><label for="groom">Groom / Partner 2 *</label><input id="groom" name="groom" required autocomplete="name"></div>
+                <div class="field"><label for="email">Email *</label><input id="email" name="email" type="email" required autocomplete="email"></div>
+                <div class="field"><label for="whatsapp">WhatsApp *</label><input id="whatsapp" name="whatsapp" inputmode="tel" required placeholder="+62..." autocomplete="tel"></div>
+              </div>
+            </div>
+            <div class="booking-step hidden" data-step="2">
+              <div class="step-title">Step 2 · Date & Venue</div>
+              <div class="form-grid two">
+                <div class="field"><label for="wedding_date">Wedding Date *</label><input id="wedding_date" name="wedding_date" type="date" required></div>
+                <div class="field"><label for="guests">Estimated Guests</label><input id="guests" name="guests" type="number" min="0" max="10000" inputmode="numeric"></div>
+                <div class="field"><label for="venue_name">Venue Name</label><input id="venue_name" name="venue_name"></div>
+                <div class="field"><label for="venue_location">Venue Area / Location</label><input id="venue_location" name="venue_location" placeholder="Canggu, Uluwatu, Candidasa..."></div>
+                <div class="field" style="grid-column:1/-1"><label for="planner">Wedding Planner / Organizer</label><input id="planner" name="planner" placeholder="Optional"></div>
+              </div>
+            </div>
+            <div class="booking-step hidden" data-step="3">
+              <div class="step-title">Step 3 · Package & Schedule</div>
+              <div class="form-grid">
+                <div class="field"><label for="package_name">Package *</label><select id="package_name" name="package_name" required></select></div>
+                <div class="field"><label>Event Sections</label><div class="check-grid" id="sections-grid"></div></div>
+                <div class="form-grid two">
+                  <div class="field"><label for="start_time">Expected DJ Start</label><input id="start_time" name="start_time" type="time"></div>
+                  <div class="field"><label for="finish_time">Expected Finish</label><input id="finish_time" name="finish_time" type="time"></div>
+                </div>
+              </div>
+            </div>
+            <div class="booking-step hidden" data-step="4">
+              <div class="step-title">Step 4 · Music & Requests</div>
+              <div class="form-grid">
+                <div class="field"><label for="music_pref">Music Preference</label><textarea id="music_pref" name="music_pref" placeholder="Genres, vibe, crowd, references..."></textarea></div>
+                <div class="field"><label for="favorite_songs">Favorite Songs</label><textarea id="favorite_songs" name="favorite_songs"></textarea></div>
+                <div class="form-grid two">
+                  <div class="field"><label for="must_play">Must Play</label><textarea id="must_play" name="must_play"></textarea></div>
+                  <div class="field"><label for="do_not_play">Do Not Play</label><textarea id="do_not_play" name="do_not_play"></textarea></div>
+                </div>
+                <div class="field"><label for="special_requests">Special Requests</label><textarea id="special_requests" name="special_requests" placeholder="Ceremony cues, MC, sound, lighting, equipment, special moments..."></textarea></div>
+              </div>
+              <div class="notice">Submitting this form is a booking request, not an automatic confirmation. Bali Wedding DJ will review date availability and package requirements first.</div>
+            </div>
+            <div id="form-error" class="error hidden" role="alert"></div>
+            <div class="form-actions"><button type="button" class="btn secondary hidden" id="back-step">BACK</button><button type="button" class="btn primary" id="next-step">NEXT</button><button type="submit" class="btn primary hidden" id="submit-booking">SEND BOOKING REQUEST</button></div>
+          </form>
+        </div>
+        <div id="booking-success" class="success hidden"></div>
+      </div>
+    </section>
+  </main>
+
+  <main id="view-mybooking" class="view hidden">
+    <section class="section booking-wrap">
+      <div class="section-head"><div class="kicker">My Booking</div><h2>Your private booking portal.</h2><p class="lead">Open the private link created when you submitted your request. No account or app is required.</p></div>
+      <div class="card">
+        <div id="stored-booking"></div>
+        <div id="manual-open" class="hidden">
+          <div class="form-grid">
+            <div class="field"><label for="lookup-id">Booking ID</label><input id="lookup-id" placeholder="BWD-..."></div>
+            <div class="field"><label for="lookup-token">Private Access Key</label><input id="lookup-token" type="password" placeholder="Paste the private key from your booking link"></div>
+          </div>
+          <button class="btn primary full" style="margin-top:14px" id="lookup-booking">OPEN BOOKING</button>
+        </div>
+        <div id="booking-portal" class="hidden"></div>
+        <div id="portal-error" class="error hidden"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">BALI WEDDING DJ · Premium Wedding Entertainment in Bali</footer>
+</div>
+
+<nav class="bottom-nav" aria-label="Mobile navigation">
+  <button class="nav-btn active" data-go="home"><span class="ico">⌂</span><span>HOME</span></button>
+  <button class="nav-btn" data-go="packages"><span class="ico">◇</span><span>PACKAGES</span></button>
+  <button class="nav-btn" data-go="book"><span class="ico">＋</span><span>BOOK</span></button>
+  <button class="nav-btn" data-go="mybooking"><span class="ico">▣</span><span>MY BOOKING</span></button>
+</nav>
+
+<div class="modal-backdrop hidden" id="package-modal" role="dialog" aria-modal="true"><div class="modal"><button class="close" id="close-modal" aria-label="Close">×</button><div id="modal-content"></div></div></div>
+
+<script>
+(() => {
+  'use strict';
+  const API = '/v1';
+  const PACKAGES = [
+    {name:'AFTER PARTY',price:3000000,features:['DJ performance','Maximum 3 hours','DJ gear']},
+    {name:'CEREMONY',price:6000000,features:['DJ standby from beginning of event','Until after party','DJ gear']},
+    {name:'SILVER PACKAGE',price:7000000,features:['DJ 3 hours','DJ equipment','2500 Watt sound system']},
+    {name:'GOLD PACKAGE',price:10000000,badge:'POPULAR',features:['DJ 3 hours','DJ equipment','2500 Watt sound system','Standard lighting']},
+    {name:'PLATINUM PACKAGE',price:15000000,features:['DJ 3 hours','DJ equipment','5000 Watt sound system','Lighting']},
+    {name:'DIAMOND PACKAGE',price:20000000,badge:'ULTIMATE WEDDING EXPERIENCE',features:['DJ from ceremony until after party','DJ equipment','5000 Watt sound system','Lighting']},
+    {name:'CUSTOM WEDDING PACKAGE',price:0,badge:'CUSTOM QUOTE',features:['Ceremony, cocktail, reception and first dance','DJ booth, sound and lighting','Microphones and custom requirements']}
+  ];
+  const SECTION_NAMES = ['Ceremony','Cocktail','Dinner','Wedding Reception','First Dance','Party','After Party'];
+  let step = 1;
+
+  const $ = (q,root=document) => root.querySelector(q);
+  const $$ = (q,root=document) => [...root.querySelectorAll(q)];
+  const money = n => n ? new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n) : 'CUSTOM QUOTE';
+  const escapeHtml = s => String(s ?? '').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+
+  function packageCard(p, compact=false){
+    const featureList = (compact ? p.features.slice(0,3) : p.features).map(x=>`<li>${escapeHtml(x)}</li>`).join('');
+    return `<article class="card package-card ${p.badge==='POPULAR'?'popular':''}">${p.badge?`<div class="badge">${escapeHtml(p.badge)}</div>`:''}<h3 class="package-name">${escapeHtml(p.name)}</h3><div class="price">${money(p.price)}</div><ul class="features">${featureList}</ul><button class="btn secondary full" data-package-details="${escapeHtml(p.name)}">VIEW DETAILS</button><button class="btn primary full" style="margin-top:9px" data-package-book="${escapeHtml(p.name)}">${p.price?'BOOK THIS PACKAGE':'REQUEST CUSTOM QUOTE'}</button></article>`;
+  }
+
+  function renderPackages(){
+    $('#package-preview').innerHTML = PACKAGES.filter(p=>['GOLD PACKAGE','DIAMOND PACKAGE','CUSTOM WEDDING PACKAGE'].includes(p.name)).map(p=>packageCard(p,true)).join('');
+    $('#package-list').innerHTML = PACKAGES.map(p=>packageCard(p,false)).join('');
+    $('#package_name').innerHTML = `<option value="">Select package</option>` + PACKAGES.map(p=>`<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)} · ${money(p.price)}</option>`).join('');
+    $('#sections-grid').innerHTML = SECTION_NAMES.map(s=>`<label class="check"><input type="checkbox" name="sections" value="${escapeHtml(s)}"><span>${escapeHtml(s)}</span></label>`).join('');
+  }
+
+  function route(name, replace=false){
+    const valid = ['home','packages','book','mybooking'];
+    if(!valid.includes(name)) name='home';
+    $$('.view').forEach(v=>v.classList.add('hidden'));
+    $(`#view-${name}`).classList.remove('hidden');
+    $$('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.go===name));
+    const path = name==='home' ? '/' : `/${name}`;
+    if(location.pathname !== path && !location.pathname.startsWith('/booking/')) history[replace?'replaceState':'pushState']({view:name},'',path);
+    window.scrollTo({top:0,behavior:'instant'});
+    if(name==='mybooking') renderMyBooking();
+  }
+
+  function routeFromLocation(){
+    const m = location.pathname.match(/^\/booking\/([A-Za-z0-9_-]+)$/);
+    if(m){ openPrivateBookingFromUrl(m[1]); return; }
+    const name = location.pathname.replace(/^\//,'').split('/')[0] || 'home';
+    route(['home','packages','book','mybooking'].includes(name)?name:'home',true);
+  }
+
+  function showPackage(name){
+    const p = PACKAGES.find(x=>x.name===name); if(!p)return;
+    $('#modal-content').innerHTML = `<div class="kicker">Wedding Package</div><h3>${escapeHtml(p.name)}</h3><div class="price">${money(p.price)}</div><ul class="features">${p.features.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ul><button class="btn primary full" data-modal-book="${escapeHtml(p.name)}">${p.price?'BOOK THIS PACKAGE':'REQUEST CUSTOM QUOTE'}</button>`;
+    $('#package-modal').classList.remove('hidden');
+  }
+
+  function beginBooking(name=''){
+    route('book');
+    if(name){ $('#package_name').value=name; }
+    step=1; updateStep();
+  }
+
+  function updateStep(){
+    $$('.booking-step').forEach(x=>x.classList.toggle('hidden',Number(x.dataset.step)!==step));
+    $$('.progress span').forEach((x,i)=>x.classList.toggle('active',i<step));
+    $('#back-step').classList.toggle('hidden',step===1);
+    $('#next-step').classList.toggle('hidden',step===4);
+    $('#submit-booking').classList.toggle('hidden',step!==4);
+    $('#form-error').classList.add('hidden');
+  }
+
+  function validateStep(){
+    const box = $(`.booking-step[data-step="${step}"]`);
+    const required = $$('[required]',box);
+    for(const el of required){ if(!el.checkValidity()){ el.reportValidity(); return false; } }
+    if(step===1 && $('#whatsapp').value.replace(/\D/g,'').length < 7){ showFormError('Please enter a valid WhatsApp number.'); return false; }
+    return true;
+  }
+
+  function showFormError(msg){ const e=$('#form-error');e.textContent=msg;e.classList.remove('hidden'); }
+  function randomToken(){ const b=new Uint8Array(32);crypto.getRandomValues(b);return [...b].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+  function bookingId(date){ const y=(date||String(new Date().getFullYear())).slice(0,4);const r=Math.random().toString(36).slice(2,7).toUpperCase();return `BWD-${y}-${Date.now().toString(36).toUpperCase()}-${r}`; }
+  function privateLink(id,token){ return `${location.origin}/booking/${encodeURIComponent(id)}#token=${encodeURIComponent(token)}`; }
+
+  async function submitBooking(ev){
+    ev.preventDefault(); if(!validateStep())return;
+    const btn=$('#submit-booking');btn.disabled=true;btn.textContent='SENDING...';
+    const id=bookingId($('#wedding_date').value);const token=randomToken();
+    const fd=new FormData($('#booking-form'));
+    const payload={booking_id:id,client_token:token,bride:fd.get('bride'),groom:fd.get('groom'),email:fd.get('email'),whatsapp:fd.get('whatsapp'),wedding_date:fd.get('wedding_date'),venue_name:fd.get('venue_name'),venue_location:fd.get('venue_location'),planner:fd.get('planner'),guests:Number(fd.get('guests')||0),package_name:fd.get('package_name'),sections:fd.getAll('sections').join(', '),start_time:fd.get('start_time'),finish_time:fd.get('finish_time'),music_pref:fd.get('music_pref'),favorite_songs:fd.get('favorite_songs'),must_play:fd.get('must_play'),do_not_play:fd.get('do_not_play'),special_requests:fd.get('special_requests'),source:'web'};
+    try{
+      const res=await fetch(`${API}/bookings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const out=await res.json().catch(()=>({}));
+      if(!res.ok||!out.ok)throw new Error(out.error||`HTTP ${res.status}`);
+      localStorage.setItem(`bwd_booking_${id}`,token);localStorage.setItem('bwd_last_booking',id);
+      const link=privateLink(id,token);
+      $('#booking-form-wrap').classList.add('hidden');
+      const s=$('#booking-success');s.classList.remove('hidden');s.innerHTML=`<div class="success-mark">✓</div><div class="kicker">REQUEST RECEIVED</div><h2 style="font-size:38px;margin-top:9px">Your booking request is in.</h2><p class="lead">Keep this private link. It lets you return to your booking without installing an app or creating an account.</p><div style="margin-top:18px;color:#8e877b;font-size:12px">BOOKING ID</div><div class="booking-id">${escapeHtml(id)}</div><div class="private-link" id="created-link">${escapeHtml(link)}</div><button class="btn primary full" id="copy-created-link">COPY PRIVATE BOOKING LINK</button><button class="btn secondary full" style="margin-top:9px" id="open-created-booking">OPEN MY BOOKING</button><div class="notice">Your date is not confirmed until Bali Wedding DJ reviews availability and confirms the booking.</div>`;
+      $('#copy-created-link').onclick=()=>copyText(link,'Private link copied.');
+      $('#open-created-booking').onclick=()=>{history.pushState({},'',`/booking/${id}#token=${encodeURIComponent(token)}`);openPrivateBookingFromUrl(id);};
+    }catch(err){ showFormError(err.message==='Failed to fetch'?'Booking cloud is not active yet. Please contact Bali Wedding DJ via WhatsApp while activation is being completed.':`Unable to submit booking: ${err.message}`); }
+    finally{btn.disabled=false;btn.textContent='SEND BOOKING REQUEST';}
+  }
+
+  async function copyText(text,ok){ try{await navigator.clipboard.writeText(text);alert(ok);}catch(_){prompt('Copy this link:',text);} }
+
+  function extractHashToken(){ const raw=location.hash.startsWith('#token=')?decodeURIComponent(location.hash.slice(7)):'';if(raw){history.replaceState(history.state,'',location.pathname+location.search);}return raw; }
+
+  async function openPrivateBookingFromUrl(id){
+    const hashToken=extractHashToken();if(hashToken)localStorage.setItem(`bwd_booking_${id}`,hashToken);
+    localStorage.setItem('bwd_last_booking',id);route('mybooking',true);
+    const token=hashToken||localStorage.getItem(`bwd_booking_${id}`)||'';
+    if(token) await loadBooking(id,token); else showManual(id);
+  }
+
+  function showManual(prefill=''){ $('#manual-open').classList.remove('hidden');$('#stored-booking').innerHTML='';$('#booking-portal').classList.add('hidden');if(prefill)$('#lookup-id').value=prefill; }
+
+  function renderMyBooking(){
+    $('#portal-error').classList.add('hidden');$('#booking-portal').classList.add('hidden');
+    const id=localStorage.getItem('bwd_last_booking');const token=id?localStorage.getItem(`bwd_booking_${id}`):'';
+    if(id&&token){$('#manual-open').classList.add('hidden');$('#stored-booking').innerHTML=`<div class="kicker">SAVED ON THIS DEVICE</div><h3 class="package-name" style="margin-top:8px">${escapeHtml(id)}</h3><p class="empty">Open your latest booking request.</p><button class="btn primary full" id="open-saved">OPEN BOOKING</button><button class="btn secondary full" style="margin-top:9px" id="use-another">USE ANOTHER BOOKING</button>`;$('#open-saved').onclick=()=>loadBooking(id,token);$('#use-another').onclick=()=>showManual();}
+    else showManual();
+  }
+
+  async function loadBooking(id,token){
+    $('#portal-error').classList.add('hidden');$('#manual-open').classList.add('hidden');$('#stored-booking').innerHTML='<p class="empty">Loading booking…</p>';
+    try{
+      const res=await fetch(`${API}/bookings/${encodeURIComponent(id)}`,{headers:{'X-BWD-Client-Token':token,'Accept':'application/json'}});const out=await res.json().catch(()=>({}));
+      if(!res.ok||!out.ok)throw new Error(out.error||`HTTP ${res.status}`);
+      localStorage.setItem(`bwd_booking_${id}`,token);localStorage.setItem('bwd_last_booking',id);renderPortal(out.booking,id,token);
+    }catch(err){$('#stored-booking').innerHTML='';showManual(id);const e=$('#portal-error');e.textContent=err.message==='Failed to fetch'?'Booking cloud is not active yet.':'Unable to open booking. Check your private booking link or access key.';e.classList.remove('hidden');}
+  }
+
+  function renderPortal(b,id,token){
+    $('#stored-booking').innerHTML='';const p=$('#booking-portal');p.classList.remove('hidden');const link=privateLink(id,token);
+    p.innerHTML=`<div class="kicker">PRIVATE BOOKING PORTAL</div><h3 class="package-name" style="margin-top:8px">${escapeHtml(b.bride)} &amp; ${escapeHtml(b.groom)}</h3><span class="status-pill">${escapeHtml(b.status||'REQUEST RECEIVED')}</span><div class="details"><div class="detail"><span>Booking ID</span><span>${escapeHtml(id)}</span></div><div class="detail"><span>Wedding Date</span><span>${escapeHtml(b.wedding_date||'—')}</span></div><div class="detail"><span>Venue</span><span>${escapeHtml([b.venue_name,b.venue_location].filter(Boolean).join(' · ')||'—')}</span></div><div class="detail"><span>Package</span><span>${escapeHtml(b.package_name||'—')}</span></div><div class="detail"><span>DJ Time</span><span>${escapeHtml([b.start_time,b.finish_time].filter(Boolean).join(' – ')||'—')}</span></div><div class="detail"><span>Event Sections</span><span>${escapeHtml(b.sections||'—')}</span></div></div><div class="notice">Status updates are shown here after the owner dashboard syncs them to the cloud. Keep your private link confidential.</div><button class="btn primary full" style="margin-top:14px" id="refresh-booking">REFRESH STATUS</button><button class="btn secondary full" style="margin-top:9px" id="copy-portal-link">COPY PRIVATE LINK</button><a class="btn secondary full" style="margin-top:9px" href="https://wa.me/6282247972288?text=${encodeURIComponent('Hello Bali Wedding DJ, I would like to ask about booking '+id)}" target="_blank" rel="noopener">CHAT ON WHATSAPP</a>`;
+    $('#refresh-booking').onclick=()=>loadBooking(id,token);$('#copy-portal-link').onclick=()=>copyText(link,'Private link copied.');
+  }
+
+  document.addEventListener('click',e=>{
+    const go=e.target.closest('[data-go]');if(go){e.preventDefault();route(go.dataset.go);return;}
+    const det=e.target.closest('[data-package-details]');if(det){showPackage(det.dataset.packageDetails);return;}
+    const book=e.target.closest('[data-package-book]');if(book){beginBooking(book.dataset.packageBook);return;}
+    const mb=e.target.closest('[data-modal-book]');if(mb){$('#package-modal').classList.add('hidden');beginBooking(mb.dataset.modalBook);}
+  });
+  $('#close-modal').onclick=()=>$('#package-modal').classList.add('hidden');
+  $('#package-modal').onclick=e=>{if(e.target.id==='package-modal')$('#package-modal').classList.add('hidden');};
+  $('#next-step').onclick=()=>{if(validateStep()){step=Math.min(4,step+1);updateStep();window.scrollTo({top:0,behavior:'smooth'});}};
+  $('#back-step').onclick=()=>{step=Math.max(1,step-1);updateStep();};
+  $('#booking-form').addEventListener('submit',submitBooking);
+  $('#lookup-booking').onclick=()=>{const id=$('#lookup-id').value.trim();const token=$('#lookup-token').value.trim();if(id&&token)loadBooking(id,token);else{const e=$('#portal-error');e.textContent='Booking ID and private access key are required.';e.classList.remove('hidden');}};
+  window.addEventListener('popstate',routeFromLocation);
+
+  renderPackages();updateStep();routeFromLocation();
+})();
+</script>
+</body>
+</html>
