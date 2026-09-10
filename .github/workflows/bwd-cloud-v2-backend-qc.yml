@@ -58,7 +58,7 @@ jobs:
           for token in required:
               if token not in html:
                   raise SystemExit('missing web contract token: ' + token)
-          scripts = re.findall(r'<script>([\\s\\S]*?)</script>', html)
+          scripts = re.findall(r'<script>([\s\S]*?)</script>', html)
           if len(scripts) != 1:
               raise SystemExit('expected exactly one inline app script')
           Path('/tmp/bwd-web.js').write_text(scripts[0])
