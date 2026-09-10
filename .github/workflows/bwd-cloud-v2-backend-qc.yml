@@ -1,4 +1,4 @@
-name: BWD Cloud V2 Backend QC
+name: BWD Cloud V2 Backend + Web QC
 
 on:
   push:
@@ -33,12 +33,43 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts
 
-      - name: Syntax check
+      - name: Backend syntax check
         run: |
           node --check index.js
           node --check owner-inbox.js
           node --check entry.js
           node -e "const f=require('./entry'); if(!f.api||!f.ownerApi) process.exit(1); console.log('exports: api + ownerApi')"
+
+      - name: Web booking syntax and contract check
+        run: |
+          python3 -m json.tool ../firebase.json >/dev/null
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('../public/index.html').read_text()
+          required = [
+              'BOOK YOUR DATE',
+              'No app. No account.',
+              "source:'web'",
+              'X-BWD-Client-Token',
+              '/booking/',
+              'CUSTOM WEDDING PACKAGE',
+          ]
+          for token in required:
+              if token not in html:
+                  raise SystemExit('missing web contract token: ' + token)
+          scripts = re.findall(r'<script>([\\s\\S]*?)</script>', html)
+          if len(scripts) != 1:
+              raise SystemExit('expected exactly one inline app script')
+          Path('/tmp/bwd-web.js').write_text(scripts[0])
+          hero = html.split('<section class="hero">',1)[1].split('</section>',1)[0]
+          if 'VIEW PACKAGES' in hero:
+              raise SystemExit('hero must have one primary CTA only')
+          print('web booking contract: PASS')
+          PY
+          node --check /tmp/bwd-web.js
+          grep -q '"source": "/v1/\*\*"' ../firebase.json
+          grep -q '"functionId": "api"' ../firebase.json
 
       - name: Dependency tree
         run: npm ls --depth=0
