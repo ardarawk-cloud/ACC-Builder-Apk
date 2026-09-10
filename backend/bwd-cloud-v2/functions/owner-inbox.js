@@ -3,13 +3,26 @@ const express = require('express');
 const { onRequest } = require('firebase-functions/v2/https');
 const logger = require('firebase-functions/logger');
 const { getApps, initializeApp } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
 if (!getApps().length) initializeApp();
 const db = getFirestore();
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '512kb' }));
+
+const BOOKING_STATUSES = new Set([
+  'REQUEST RECEIVED',
+  'DATE CHECKING',
+  'AVAILABLE',
+  'QUOTATION SENT',
+  'WAITING FOR DEPOSIT',
+  'DEPOSIT RECEIVED',
+  'BOOKING CONFIRMED',
+  'EVENT PREPARATION',
+  'COMPLETED',
+  'CANCELLED'
+]);
 
 function text(v, max = 500) {
   return String(v || '').trim().slice(0, max);
@@ -68,9 +81,28 @@ app.get('/v1/admin/bookings', async (req, res) => {
   try {
     if (!(await authorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized_admin_device' });
     const snap = await db.collection('bwd_bookings').orderBy('created_at', 'desc').limit(100).get();
+    res.set('Cache-Control', 'no-store');
     res.json({ ok: true, bookings: snap.docs.map(bookingJson) });
   } catch (err) {
     logger.error('owner inbox fetch failed', err);
+    res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+app.patch('/v1/admin/bookings/:bookingId/status', async (req, res) => {
+  try {
+    if (!(await authorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized_admin_device' });
+    const bookingId = text(req.params.bookingId, 64).replace(/[^A-Za-z0-9_-]/g, '');
+    const status = text(req.body && req.body.status, 80).toUpperCase();
+    if (!bookingId || !BOOKING_STATUSES.has(status)) return res.status(400).json({ ok: false, error: 'invalid_status' });
+
+    const ref = db.collection('bwd_bookings').doc(bookingId);
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(404).json({ ok: false, error: 'booking_not_found' });
+    await ref.update({ status, updated_at: FieldValue.serverTimestamp() });
+    res.json({ ok: true, booking_id: bookingId, status });
+  } catch (err) {
+    logger.error('owner booking status update failed', err);
     res.status(500).json({ ok: false, error: 'server_error' });
   }
 });
