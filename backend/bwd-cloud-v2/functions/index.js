@@ -41,6 +41,34 @@ function validBooking(body) {
     text(body.client_token, 160).length >= 32;
 }
 
+function clientBookingJson(doc) {
+  const b = doc.data() || {};
+  const updated = b.updated_at && typeof b.updated_at.toDate === 'function' ? b.updated_at.toDate().toISOString() : '';
+  return {
+    booking_id: text(b.booking_id, 64),
+    bride: text(b.bride, 120),
+    groom: text(b.groom, 120),
+    email: text(b.email, 200),
+    whatsapp: text(b.whatsapp, 40),
+    wedding_date: text(b.wedding_date, 10),
+    venue_name: text(b.venue_name, 180),
+    venue_location: text(b.venue_location, 180),
+    planner: text(b.planner, 180),
+    guests: Math.max(0, Math.min(10000, Number(b.guests) || 0)),
+    package_name: text(b.package_name, 160),
+    sections: text(b.sections, 1000),
+    start_time: text(b.start_time, 40),
+    finish_time: text(b.finish_time, 40),
+    music_pref: text(b.music_pref, 1000),
+    favorite_songs: text(b.favorite_songs, 2000),
+    must_play: text(b.must_play, 2000),
+    do_not_play: text(b.do_not_play, 2000),
+    special_requests: text(b.special_requests, 3000),
+    status: text(b.status, 80) || 'REQUEST RECEIVED',
+    updated_at: updated
+  };
+}
+
 async function notifyAdmins({ title, body, data = {} }) {
   const snap = await db.collection('bwd_admin_devices').where('enabled', '==', true).limit(100).get();
   const tokens = snap.docs.map((d) => d.get('token')).filter(Boolean);
@@ -140,6 +168,27 @@ app.post('/v1/bookings', async (req, res) => {
     res.status(existing.exists ? 200 : 201).json({ ok: true, booking_id: bookingId, duplicate: existing.exists, push });
   } catch (err) {
     logger.error('booking submit failed', err);
+    res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+app.get('/v1/bookings/:bookingId', async (req, res) => {
+  try {
+    const bookingId = text(req.params.bookingId, 64).replace(/[^A-Za-z0-9_-]/g, '');
+    const clientToken = text(req.get('X-BWD-Client-Token'), 160);
+    if (!bookingId || clientToken.length < 32) return res.status(401).json({ ok: false, error: 'unauthorized_booking' });
+
+    const snap = await db.collection('bwd_bookings').doc(bookingId).get();
+    if (!snap.exists) return res.status(404).json({ ok: false, error: 'booking_not_found' });
+    const expectedHash = text(snap.get('client_token_hash'), 128);
+    if (!expectedHash || !safeEqual(expectedHash, sha256(clientToken))) {
+      return res.status(403).json({ ok: false, error: 'unauthorized_booking' });
+    }
+
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true, booking: clientBookingJson(snap) });
+  } catch (err) {
+    logger.error('booking portal fetch failed', err);
     res.status(500).json({ ok: false, error: 'server_error' });
   }
 });
