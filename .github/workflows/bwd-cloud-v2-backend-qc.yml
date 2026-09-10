@@ -23,10 +23,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: backend/bwd-cloud-v2/functions/package.json
 
@@ -70,6 +70,7 @@ jobs:
           node --check /tmp/bwd-web.js
           grep -q '"source": "/v1/\*\*"' ../firebase.json
           grep -q '"functionId": "api"' ../firebase.json
+          grep -q '"runtime": "nodejs22"' ../firebase.json
 
       - name: Dependency tree
         run: npm ls --depth=0
