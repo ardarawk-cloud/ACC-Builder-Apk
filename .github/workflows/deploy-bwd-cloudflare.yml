@@ -1,0 +1,130 @@
+name: Deploy BWD Web Booking to Cloudflare
+
+on:
+  push:
+    branches:
+      - feat/bali-wedding-dj-cloud-v2
+    paths:
+      - "backend/bwd-cloud-v2/public/**"
+      - "cloudflare/bwd-booking/**"
+      - ".github/workflows/deploy-bwd-cloudflare.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bwd-cloudflare-pages-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BWD_API_ORIGIN: ${{ secrets.BWD_CLOUD_BASE_URL }}
+      CF_PROJECT_NAME: bali-wedding-dj-booking
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Assemble Cloudflare Pages project
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf cloudflare/bwd-booking/public
+          mkdir -p cloudflare/bwd-booking/public
+          cp -a backend/bwd-cloud-v2/public/. cloudflare/bwd-booking/public/
+
+          cat > cloudflare/bwd-booking/public/_redirects <<'EOF'
+          /booking/* /index.html 200
+          EOF
+
+          cat > cloudflare/bwd-booking/public/_routes.json <<'EOF'
+          {
+            "version": 1,
+            "include": ["/v1/*"],
+            "exclude": []
+          }
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          p = Path('cloudflare/bwd-booking/functions/v1/[[path]].js')
+          s = p.read_text()
+          origin = os.environ.get('BWD_API_ORIGIN', '').strip()
+          if origin and not origin.startswith('https://'):
+              raise SystemExit('BWD_CLOUD_BASE_URL must use https://')
+          s = s.replace('__BWD_API_ORIGIN__', origin)
+          p.write_text(s)
+          print('Cloudflare web assembled')
+          print('booking_backend_configured=', bool(origin))
+          PY
+
+          python3 -m json.tool cloudflare/bwd-booking/wrangler.jsonc >/dev/null
+          python3 -m json.tool cloudflare/bwd-booking/public/_routes.json >/dev/null
+          node --check 'cloudflare/bwd-booking/functions/v1/[[path]].js'
+          grep -q 'BOOK YOUR DATE' cloudflare/bwd-booking/public/index.html
+          grep -q '/booking/\* /index.html 200' cloudflare/bwd-booking/public/_redirects
+
+      - name: Check Cloudflare credentials
+        id: cf
+        shell: bash
+        run: |
+          if [ -n "${CLOUDFLARE_API_TOKEN:-}" ] && [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Cloudflare credentials: configured"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Cloudflare deploy skipped: CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not configured in this repository."
+          fi
+
+      - name: Ensure Cloudflare Pages project exists
+        if: steps.cf.outputs.ready == 'true'
+        working-directory: cloudflare/bwd-booking
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@latest pages project list --json > /tmp/bwd-cf-projects.json
+          if jq -e --arg n "$CF_PROJECT_NAME" '.. | objects | select(.name? == $n)' /tmp/bwd-cf-projects.json >/dev/null; then
+            echo "Cloudflare Pages project exists: $CF_PROJECT_NAME"
+          else
+            npx --yes wrangler@latest pages project create "$CF_PROJECT_NAME" --production-branch "$GITHUB_REF_NAME"
+          fi
+
+      - name: Deploy production to Cloudflare Pages
+        if: steps.cf.outputs.ready == 'true'
+        working-directory: cloudflare/bwd-booking
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@latest pages deploy public \
+            --project-name "$CF_PROJECT_NAME" \
+            --branch "$GITHUB_REF_NAME" \
+            --commit-hash "$GITHUB_SHA" \
+            --commit-message "BWD web booking ${GITHUB_SHA::7}" | tee /tmp/bwd-cloudflare-deploy.log
+          {
+            echo "## Bali Wedding DJ — Cloudflare Pages"
+            echo '```'
+            cat /tmp/bwd-cloudflare-deploy.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deployment state
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.cf.outputs.ready }}" = "true" ]; then
+            echo "Cloudflare deployment command executed. Check the deploy step for the production URL."
+          else
+            echo "SOURCE READY / CLOUDFLARE AUTH PENDING"
+          fi
