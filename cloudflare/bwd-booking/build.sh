@@ -9,9 +9,19 @@ rm -rf "$PUBLIC"
 mkdir -p "$PUBLIC"
 cp -a "$REPO_ROOT/backend/bwd-cloud-v2/public/." "$PUBLIC/"
 
-# Decode Arda's original wedding-DJ photo into the public build.
-base64 --decode "$HERE/assets/hero-wedding-dj.b64" > "$PUBLIC/hero-wedding-dj.jpg"
+# Reconstruct Arda's original wedding-DJ photo from text-safe repo chunks.
+cat \
+  "$HERE/assets/hero-wedding-dj.part00.b64" \
+  "$HERE/assets/hero-wedding-dj.part01.b64" \
+  "$HERE/assets/hero-wedding-dj.part02.b64" \
+  "$HERE/assets/hero-wedding-dj.part03.b64" \
+  "$HERE/assets/hero-wedding-dj.part04.b64" \
+  "$HERE/assets/hero-wedding-dj.part05.b64" \
+  "$HERE/assets/hero-wedding-dj.part06.b64" \
+  "$HERE/assets/hero-wedding-dj.part07.b64" \
+  | base64 --decode > "$PUBLIC/hero-wedding-dj.jpg"
 test -s "$PUBLIC/hero-wedding-dj.jpg"
+echo "03790f1bd449d1eb17a210c9b31482c031c3ee4b190b123066e51602b021ed73  $PUBLIC/hero-wedding-dj.jpg" | sha256sum -c -
 
 BWD_PUBLIC="$PUBLIC" python3 - <<'PY'
 from pathlib import Path
