@@ -1,13 +1,13 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 2,
-  "provider": "ai",
-  "model": "nvidia/nemotron-3-super-120b-a12b:free",
+  "version": 3,
+  "provider": "manual-hotfix",
+  "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-hotfix-v2-20260911",
-  "last_prompt": "CLEAN REBUILD HOTFIX V2 for Papa Sauce Lab Android internal accounting app. Do not reuse broken v1 source. Produce one complete raw HTML document only, beginning exactly with <!DOCTYPE html> and ending with </html>; absolutely no markdown fences, filename headings, prose, or text outside HTML. JavaScript must be complete and syntactically valid, with every visible button functional. Indonesian UI. Use the existing local asset icon.svg as the Papa Sauce Lab logo in the header; visual identity should follow the existing Papa Sauce Lab red/white/cream brand, clean and professional. Core architecture: append-only transaction ledger persisted in IndexedDB, daily snapshots, reports, audit corrections, roles OWNER/STAFF, offline-first; Supabase settings adapter may remain not connected until credentials are configured. HARD LOCK formulas: Total Sales = Cash + QRIS + Gojek + Grab. Total Register = House Bank + Total Sales - Total Out. On Tutup Hari, today's Total Register MUST automatically become the next business day's House Bank. Dashboard cards: House Bank, Cash, QRIS, Gojek, Grab, Total Sales, Total Out, Total Register, Total Stock; every number must drill down to its source transactions. Working quick actions: Input Sales, Pengeluaran, Restock, Stock Keluar, Laporan, Riwayat, Periode Baru, Tutup Hari. Working bottom navigation: Dashboard, Transaksi, Stock, Laporan, Riwayat. Settings gear must work. Sales transactions store date/time, amount, channel, note, user. Expense categories: bahan baku, packaging, operasional, transport, kebersihan, peralatan, lainnya. Raw-material purchases are expenses only, never automatic finished-goods stock. Products exactly: Ayam Woku, Cumi, Tongkol, Babi Rica, Babi Kecap, Sup Brenebone, Sup Grangasem. Stock = stock in - stock out, with timestamps and auditability. Daily report date picker: opening HB, sales channels, total sales, expense detail, total out, total register, opening stock, restock, stock out, ending stock, reconciliation expected/actual/variance. Weekly and monthly report. Tutup Hari must create permanent snapshot and next-day HB rollover. Corrections are non-destructive: old transaction remains CORRECTED, new value and reason/user/time are stored. History filters by date/type/search. Reconciliation variance is always visible and stored. OWNER can close day, correct, export, audit, start new period; STAFF can input sales/expenses/stock but cannot delete history or close/start period. START NEW ACCOUNTING PERIOD archives prior period and starts HB/Sales/Out/Register/Stock/Restock at zero without deleting history. Export CSV, printable PDF, Share WhatsApp, JSON backup export/import. Acceptance gate: app boots with no stray markdown/debug text; Input Sales opens and saves; all quick actions work; bottom tabs work; settings works; dashboard updates instantly; Tutup Hari rolls register into next-day HB; no referenced onclick/function may be missing; source must not end mid-function. Keep implementation compact enough to finish completely rather than truncating.",
-  "last_build": "ready",
+  "last_request_id": "papa-sauce-lab-logo-fix-v3-20260911",
+  "last_prompt": "Launcher icon correction only. Replace incorrect F-like launcher glyph with a clear PSL monogram for Papa Sauce Lab. Keep existing v2 application source and accounting behavior unchanged.",
+  "last_build": "building",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
-  "updated_at": "2026-09-11T14:58:37.045265+00:00"
+  "updated_at": "2026-09-11T15:13:00+00:00"
 }
