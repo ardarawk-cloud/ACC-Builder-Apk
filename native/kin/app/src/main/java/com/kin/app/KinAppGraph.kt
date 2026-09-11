@@ -1,0 +1,109 @@
+package com.kin.app
+
+import android.content.Context
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import com.kin.app.auth.KinAuthRepository
+import com.kin.app.auth.KinTokenStore
+import com.kin.app.auth.LocalKinAuthRepository
+import com.kin.app.auth.RemoteKinAuthRepository
+import com.kin.app.data.KinChatRepository
+import com.kin.app.data.KinDatabase
+import com.kin.app.data.KinPostRepository
+import com.kin.app.data.KinProfileRepository
+import com.kin.app.data.KinRelationshipRepository
+import com.kin.app.data.LocalKinChatRepository
+import com.kin.app.data.LocalKinPostRepository
+import com.kin.app.data.LocalKinProfileRepository
+import com.kin.app.data.LocalKinRelationshipRepository
+import com.kin.app.data.RemoteKinChatRepository
+import com.kin.app.data.RemoteKinPostRepository
+import com.kin.app.data.RemoteKinRelationshipRepository
+import com.kin.app.network.KinApiClient
+import com.kin.app.session.KinSessionStore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+private val Context.kinAppearanceDataStore by preferencesDataStore(name = "kin_appearance")
+
+data class KinAppearance(
+    val background: String = "Soft",
+    val cards: String = "Rounded",
+    val font: String = "Clean",
+    val layout: String = "Classic",
+)
+
+class KinAppearanceStore(private val context: Context) {
+    private object Keys {
+        val BACKGROUND = stringPreferencesKey("background")
+        val CARDS = stringPreferencesKey("cards")
+        val FONT = stringPreferencesKey("font")
+        val LAYOUT = stringPreferencesKey("layout")
+    }
+
+    val appearance: Flow<KinAppearance> = context.kinAppearanceDataStore.data.map { preferences ->
+        KinAppearance(
+            background = preferences[Keys.BACKGROUND] ?: "Soft",
+            cards = preferences[Keys.CARDS] ?: "Rounded",
+            font = preferences[Keys.FONT] ?: "Clean",
+            layout = preferences[Keys.LAYOUT] ?: "Classic",
+        )
+    }
+
+    suspend fun save(appearance: KinAppearance) {
+        context.kinAppearanceDataStore.edit { preferences ->
+            preferences[Keys.BACKGROUND] = appearance.background
+            preferences[Keys.CARDS] = appearance.cards
+            preferences[Keys.FONT] = appearance.font
+            preferences[Keys.LAYOUT] = appearance.layout
+        }
+    }
+}
+
+class KinAppGraph private constructor(context: Context) {
+    private val appContext = context.applicationContext
+    private val database = KinDatabase.create(appContext)
+    private val dao = database.kinDao()
+    private val tokenStore = KinTokenStore(appContext)
+    private val apiBaseUrl = BuildConfig.KIN_API_BASE_URL.trim()
+    private val apiClient: KinApiClient? = apiBaseUrl.takeIf { it.isNotBlank() }?.let { configuredUrl ->
+        require(configuredUrl.startsWith("https://")) { "KIN_API_BASE_URL must use HTTPS" }
+        KinApiClient(configuredUrl, tokenStore)
+    }
+
+    val sessionStore = KinSessionStore(appContext)
+    val appearanceStore = KinAppearanceStore(appContext)
+    val profileRepository: KinProfileRepository = LocalKinProfileRepository(dao)
+
+    val postRepository: KinPostRepository = apiClient?.let { client ->
+        RemoteKinPostRepository(dao = dao, apiClient = client)
+    } ?: LocalKinPostRepository(dao)
+
+    val relationshipRepository: KinRelationshipRepository = apiClient?.let { client ->
+        RemoteKinRelationshipRepository(dao = dao, apiClient = client)
+    } ?: LocalKinRelationshipRepository(dao)
+
+    val chatRepository: KinChatRepository = apiClient?.let { client ->
+        RemoteKinChatRepository(dao = dao, apiClient = client)
+    } ?: LocalKinChatRepository(dao)
+
+    val authRepository: KinAuthRepository = apiClient?.let { client ->
+        RemoteKinAuthRepository(
+            apiClient = client,
+            dao = dao,
+            sessionStore = sessionStore,
+        )
+    } ?: LocalKinAuthRepository(
+        dao = dao,
+        sessionStore = sessionStore,
+    )
+
+    companion object {
+        @Volatile private var instance: KinAppGraph? = null
+
+        fun from(context: Context): KinAppGraph = instance ?: synchronized(this) {
+            instance ?: KinAppGraph(context.applicationContext).also { instance = it }
+        }
+    }
+}

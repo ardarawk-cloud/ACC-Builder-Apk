@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: kin-api-alpha
+    runtime: docker
+    plan: free
+    region: singapore
+    rootDir: kin/backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: sh -c 'uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-10000}"'
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: KIN_ENVIRONMENT
+        value: production
+      - key: KIN_DATABASE_URL
+        fromDatabase:
+          name: kin-postgres-alpha
+          property: connectionString
+      - key: KIN_JWT_SECRET
+        generateValue: true
+      - key: KIN_ACCESS_TOKEN_MINUTES
+        value: "30"
+      - key: KIN_REFRESH_TOKEN_DAYS
+        value: "30"
+
+databases:
+  - name: kin-postgres-alpha
+    plan: free
+    region: singapore
+    databaseName: kin
+    user: kin
