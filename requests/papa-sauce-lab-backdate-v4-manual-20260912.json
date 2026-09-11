@@ -1,0 +1,8 @@
+{
+  "request_id": "papa-sauce-lab-backdate-v4-manual-20260912",
+  "project_id": "papa-sauce-lab",
+  "project_name": "Papa Sauce Lab",
+  "mode": "build_existing",
+  "created_at": "2026-09-11T17:12:10+00:00",
+  "prompt": "Build the existing Papa Sauce Lab v4 source exactly as committed. Manual runtime patch v3.js adds backdate accounting workflow. Do not regenerate source."
+}
