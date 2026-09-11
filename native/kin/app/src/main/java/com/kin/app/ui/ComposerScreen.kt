@@ -22,6 +22,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +68,7 @@ fun ComposerScreen(
     val sharedContent by KinShareInbox.sharedContent.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val skinId = profile?.skinId ?: "kin-original"
+    val tokens = kinSkinTokens(skinId)
     val scope = rememberCoroutineScope()
 
     var text by rememberSaveable { mutableStateOf("") }
@@ -111,16 +113,39 @@ fun ComposerScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            Text("New post", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text("Share real life with the right people.", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "New post",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = tokens.textPrimary,
+            )
+            Text(
+                "Share real life with the right people.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = tokens.textSecondary,
+            )
         }
 
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(onClick = { photoPicker.launch("image/*") }, enabled = !publishing) { Text("▣  Photo") }
-                OutlinedButton(onClick = { videoPicker.launch("video/*") }, enabled = !publishing) { Text("▶  Video") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Button(
+                    onClick = { photoPicker.launch("image/*") },
+                    enabled = !publishing,
+                    modifier = Modifier.weight(1f),
+                ) { Text("Photo", maxLines = 1) }
+                OutlinedButton(
+                    onClick = { videoPicker.launch("video/*") },
+                    enabled = !publishing,
+                    modifier = Modifier.weight(1f),
+                ) { Text("Video", maxLines = 1) }
                 if (selectedMedia.isNotEmpty()) {
-                    OutlinedButton(onClick = { selectedMedia = emptyList() }, enabled = !publishing) { Text("Clear") }
+                    OutlinedButton(
+                        onClick = { selectedMedia = emptyList() },
+                        enabled = !publishing,
+                    ) { Text("Clear", maxLines = 1) }
                 }
             }
         }
@@ -131,11 +156,14 @@ fun ComposerScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = kinCardShape(skinId),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                        colors = CardDefaults.cardColors(containerColor = tokens.surfaceVariant),
                     ) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("▶ Video selected", fontWeight = FontWeight.Bold)
-                            Text("One video per post in this alpha. KIN uploads it privately when you publish.")
+                            Text("▶ Video selected", fontWeight = FontWeight.Bold, color = tokens.textPrimary)
+                            Text(
+                                "One video per post in this alpha. KIN uploads it privately when you publish.",
+                                color = tokens.textSecondary,
+                            )
                         }
                     }
                 } else {
@@ -168,7 +196,7 @@ fun ComposerScreen(
         }
 
         item {
-            Text("Moment", fontWeight = FontWeight.Bold)
+            Text("Moment", fontWeight = FontWeight.Bold, color = tokens.textPrimary)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Happy", "Chill", "Excited").forEach { option ->
                     FilterChip(
@@ -190,20 +218,21 @@ fun ComposerScreen(
         }
 
         item {
-            Text("Listening", fontWeight = FontWeight.Bold)
+            Text("Listening", fontWeight = FontWeight.Bold, color = tokens.textPrimary)
             if (listening.isBlank()) {
                 Text(
                     "From Spotify / YouTube Music: Share → KIN. Music stays privacy-safe without notification access.",
                     style = MaterialTheme.typography.bodySmall,
+                    color = tokens.textSecondary,
                 )
             } else {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = kinCardShape(skinId),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    colors = CardDefaults.cardColors(containerColor = tokens.surfaceVariant),
                 ) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("♫ $listening", fontWeight = FontWeight.Bold)
+                        Text("♫ $listening", fontWeight = FontWeight.Bold, color = tokens.textPrimary)
                         OutlinedButton(onClick = { listening = "" }) { Text("Remove") }
                     }
                 }
@@ -222,9 +251,13 @@ fun ComposerScreen(
         }
 
         item {
-            Text("With", fontWeight = FontWeight.Bold)
+            Text("With", fontWeight = FontWeight.Bold, color = tokens.textPrimary)
             if (people.isEmpty()) {
-                Text("Connect with someone to tag them here.", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "Connect with someone to tag them here.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = tokens.textSecondary,
+                )
             } else {
                 people.take(8).chunked(2).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -241,8 +274,12 @@ fun ComposerScreen(
         }
 
         item {
-            Text("Who can see this?", fontWeight = FontWeight.Bold)
-            Text("Pick the people this moment belongs to.", style = MaterialTheme.typography.bodySmall)
+            Text("Who can see this?", fontWeight = FontWeight.Bold, color = tokens.textPrimary)
+            Text(
+                "Pick the people this moment belongs to.",
+                style = MaterialTheme.typography.bodySmall,
+                color = tokens.textSecondary,
+            )
             KinAudiencePicker(
                 selected = audience,
                 onSelected = {
@@ -254,7 +291,7 @@ fun ComposerScreen(
 
         if (audience == "Circle") {
             item {
-                Text("Choose Circles", fontWeight = FontWeight.Bold)
+                Text("Choose Circles", fontWeight = FontWeight.Bold, color = tokens.textPrimary)
                 circles.chunked(2).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         row.forEach { circle ->
@@ -268,7 +305,11 @@ fun ComposerScreen(
                         }
                     }
                 }
-                Text("${allowedUserIds.size} connection(s) will receive this post.", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "${allowedUserIds.size} connection(s) will receive this post.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = tokens.textSecondary,
+                )
             }
         }
 
@@ -350,7 +391,21 @@ fun ComposerScreen(
                 Text(if (publishing) "Publishing…" else "Share to KIN")
             }
             if (status.isNotBlank()) {
-                Text(status, modifier = Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodySmall)
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    shape = kinCardShape(skinId),
+                    color = tokens.surfaceVariant,
+                    contentColor = tokens.textPrimary,
+                ) {
+                    Text(
+                        status,
+                        modifier = Modifier.padding(10.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = tokens.textPrimary,
+                    )
+                }
             }
         }
     }
