@@ -1,0 +1,759 @@
+## 1:index.html
+
+```html
+  <!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,maximum-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#1b3a2a">
+<title>PAPA SAUCE LAB — Akuntansi Internal</title>
+<style>
+:root{
+  --green-900:#0f2419;--green-800:#1b3a2a;--green-700:#245038;--green-600:#2e6344;
+  --cream-100:#faf6ec;--cream-200:#f5efe0;--cream-300:#ede4cc;
+  --gold-400:#d4a832;--gold-500:#c9a227;--gold-600:#a8841e;
+  --red:#b3372b;--amber:#c8821a;--blue:#2d6a8f;--gray:#6b7280;--gray-light:#9ca3af;
+  --text:#1a1a1a;--text-inv:#faf6ec;
+  --shadow:0 2px 8px rgba(0,0,0,.15);--radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--cream-200);color:var(--text);overflow:hidden}
+body{display:flex;flex-direction:column}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:480px;margin:0 auto;width:100%;background:var(--cream-100);position:relative;box-shadow:0 0 30px rgba(0,0,0,.2)}
+header{background:var(--green-800);color:var(--text-inv);padding:10px 14px;padding-top:max(10px,env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;gap:8px;z-index:10;flex-shrink:0}
+header h1{font-size:15px;font-weight:700;letter-spacing:.5px;white-space:nowrap}
+header .sub{font-size:10px;opacity:.75;font-weight:400}
+.hdr-right{display:flex;align-items:center;gap:6px}
+.badge{font-size:9px;padding:2px 6px;border-radius:8px;font-weight:600;letter-spacing:.3px}
+.badge-cloud-off{background:var(--red);color:#fff}.badge-cloud-on{background:#2e7d32;color:#fff}.badge-role{background:var(--gold-500);color:#1a1a1a}
+.btn-icon{background:rgba(255,255,255,.12);border:none;color:var(--text-inv);width:34px;height:34px;border-radius:8px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.btn-icon:active{background:rgba(255,255,255,.25)}
+main{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 12px;padding-bottom:70px;scroll-behavior:smooth}
+.page{display:none}.page.active{display:block}
+.bottom-nav{position:absolute;bottom:0;left:0;right:0;background:var(--green-900);display:flex;justify-content:space-around;padding:4px 0 max(6px,env(safe-area-inset-bottom));z-index:20;border-top:1px solid rgba(255,255,255,.08)}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 8px;color:var(--gray-light);font-size:10px;cursor:pointer;border:none;background:none;flex:1}
+.nav-item.active{color:var(--gold-400)}
+.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.card{background:#fff;border-radius:var(--radius);padding:12px;margin-bottom:10px;box-shadow:var(--shadow)}
+.card-title{font-size:11px;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;font-weight:600}
+.grid-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.money-card{background:var(--green-800);color:var(--text-inv);border-radius:var(--radius);padding:10px 12px;cursor:pointer;position:relative;overflow:hidden}
+.money-card:active{transform:scale(.97)}
+.money-card .lbl{font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.5px}
+.money-card .val{font-size:18px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+.money-card.gold{background:linear-gradient(135deg,var(--gold-500),var(--gold-600));color:#1a1a1a}
+.money-card.red{background:var(--red)}
+.money-card.blue{background:var(--blue)}
+.money-card .drill-hint{font-size:8px;opacity:.6;margin-top:2px}
+.section-title{font-size:13px;font-weight:700;color:var(--green-800);margin:14px 0 8px;display:flex;align-items:center;justify-content:space-between}
+.quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.qa-btn{background:var(--green-700);color:var(--text-inv);border:none;border-radius:8px;padding:10px 4px;font-size:11px;font-weight:600;cursor:pointer;text-align:center;line-height:1.3}
+.qa-btn:active{background:var(--green-600)}
+.qa-btn.stock{background:var(--blue)}
+.qa-btn.report{background:var(--gold-600);color:#fff}
+.qa-btn.history{background:var(--gray)}
+.qa-btn.newperiod{background:var(--amber);color:#1a1a1a}
+.form-group{margin-bottom:10px}
+.form-group label{display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:9px 10px;border:1px solid #d4cbb5;border-radius:8px;font-size:14px;background:#fff;color:var(--text);font-family:inherit}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--green-600);box-shadow:0 0 0 2px rgba(46,99,68,.15)}
+.btn-primary{background:var(--green-700);color:#fff;border:none;border-radius:8px;padding:11px 16px;font-size:14px;font-weight:600;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-primary:active{background:var(--green-600)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-secondary{background:var(--cream-300);color:var(--text);border:1px solid #d4cbb5;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;width:100%}
+.btn-danger{background:var(--red);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;width:100%}
+.btn-gold{background:var(--gold-500);color:#1a1a1a;border:none;border-radius:8px;padding:11px 16px;font-size:14px;font-weight:700;cursor:pointer;width:100%}
+.btn-sm{padding:6px 12px;font-size:12px;width:auto;border-radius:6px}
+.btn-row{display:flex;gap:8px;margin-top:8px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #eee;font-size:13px}
+.row:last-child{border:none}
+.row .r-label{color:var(--gray);font-size:12px}
+.row .r-value{font-weight:600;font-variant-numeric:tabular-nums}
+.txn-list{list-style:none}
+.txn-item{background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow)}
+.txn-item .t-left{flex:1}
+.txn-item .t-time{font-size:11px;color:var(--gray);font-variant-numeric:tabular-nums}
+.txn-item .t-desc{font-size:13px;font-weight:600;margin-top:1px}
+.txn-item .t-amt{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.txn-item .t-amt.neg{color:var(--red)}
+.txn-item .t-amt.pos{color:#2e7d32}
+.txn-item .t-channel{font-size:9px;background:var(--cream-300);padding:1px 5px;border-radius:4px;color:var(--gray);margin-top:2px;display:inline-block}
+.txn-item.corrected{opacity:.5;border-left:3px solid var(--gray)}
+.txn-item.audit{border-left:3px solid var(--gold-500)}
+.tag{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.tag-active{background:#d4edda;color:#155724}.tag-corrected{background:#f8d7da;color:#721c24}.tag-closed{background:#e2e3e5;color:#383d41}.tag-open{background:#d1ecf1;color:#0c5460}
+.tag-in{background:#d4edda;color:#155724}.tag-out{background:#f8d7da;color:#721c24}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:none;align-items:flex-end;justify-content:center;animation:fadeIn .2s}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;padding:18px 16px;padding-bottom:max(18px,env(safe-area-inset-bottom));animation:slideUp .25s;position:relative}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal h2{font-size:16px;color:var(--green-800);margin-bottom:12px}
+.modal .close-x{position:absolute;top:10px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--gray);z-index:5}
+.toast{position:fixed;top:max(60px,env(safe-area-inset-top)+50px);left:50%;transform:translateX(-50%);background:var(--green-800);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:200;display:none;max-width:90%;text-align:center;box-shadow:var(--shadow)}
+.toast.show{display:block;animation:fadeIn .3s}
+.toast.error{background:var(--red)}
+input[type=number],input[type=text],input[type=date],input[type=password],input[type=email]{font-size:14px}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.empty-state{text-align:center;padding:30px 20px;color:var(--gray)}
+.empty-state .icon{font-size:36px;margin-bottom:8px}
+.empty-state p{font-size:13px;line-height:1.5}
+.search-bar{display:flex;gap:6px;margin-bottom:10px}
+.search-bar input{flex:1;padding:9px 10px;border:1px solid #d4cbb5;border-radius:8px;font-size:14px;background:#fff}
+.search-bar input:focus{outline:none;border-color:var(--green-600)}
+.cloud-bar{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);padding:4px 8px;border-radius:6px;font-size:10px}
+.cloud-dot{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0}
+.cloud-dot.on{background:#4caf50}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.detail-grid .dg{background:var(--cream-200);padding:8px;border-radius:6px}
+.detail-grid .dg .dg-l{font-size:9px;color:var(--gray);text-transform:uppercase}
+.detail-grid .dg .dg-v{font-size:14px;font-weight:700;margin-top:1px}
+.variance-box{padding:12px;border-radius:8px;text-align:center;margin:10px 0}
+.variance-box.neg{background:#fde8e6;color:var(--red)}
+.variance-box.pos{background:#e6f7e6;color:#2e7d32}
+.variance-box .v-l{font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.variance-box .v-v{font-size:22px;font-weight:700;margin-top:2px}
+.stock-bar{display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:6px}
+.stock-bar .sb-name{flex:1;font-weight:600}
+.stock-bar .sb-qty{font-variant-numeric:tabular-nums;min-width:40px;text-align:right}
+.stock-bar .sb-track{flex:2;height:6px;background:var(--cream-300);border-radius:3px;overflow:hidden}
+.stock-bar .sb-fill{height:100%;background:var(--green-600);border-radius:3px}
+.stock-bar.low .sb-fill{background:var(--red)}
+.tabs{display:flex;gap:4px;margin-bottom:10px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab-btn{flex-shrink:0;padding:6px 12px;border-radius:6px;border:1px solid #d4cbb5;background:#fff;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)}
+.tab-btn.active{background:var(--green-700);color:#fff;border-color:var(--green-700)}
+.recon-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px dashed #ddd}
+.recon-row.total{border-top:2px solid var(--green-800);border-bottom:none;font-weight:700;margin-top:4px;padding-top:8px}
+.audit-entry{background:var(--cream-200);border-left:3px solid var(--gold-500);padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:6px;font-size:12px}
+.audit-entry .ae-time{font-size:10px;color:var(--gray)}
+.audit-entry .ae-action{font-weight:600;margin:2px 0}
+.disabled-overlay{opacity:.4;pointer-events:none}
+.schema-box{font-size:11px;line-height:1.6;max-height:200px;overflow-y:auto;background:#f8f6f0;padding:10px;border-radius:8px;white-space:pre-wrap;word-break:break-all;font-family:monospace}
+@media(min-width:481px){#app{border-left:1px solid #ddd;border-right:1px solid #ddd}}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div>
+    <h1>PAPA SAUCE LAB</h1>
+    <div class="sub" id="hdr-sub">Akuntansi Internal</div>
+  </div>
+  <div class="hdr-right">
+    <div class="cloud-bar" id="cloud-bar"><span class="cloud-dot" id="cloud-dot"></span><span id="cloud-text">CLOUD: NOT CONNECTED</span></div>
+    <span class="badge badge-role" id="role-badge">OWNER</span>
+    <button class="btn-icon" onclick="openSettings()" title="Pengaturan" aria-label="Pengaturan">⚙</button>
+  </div>
+</header>
+<main id="main">
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="section-title">
+    <span id="dash-date">—</span>
+    <span style="font-size:11px;color:var(--gray);font-weight:400" id="dash-period"></span>
+  </div>
+  <div class="grid-cards" id="dash-cards"></div>
+  <div class="section-title">Aksi Cepat</div>
+  <div class="quick-actions">
+    <button class="qa-btn" onclick="openSalesModal()">💵 Input Sales</button>
+    <button class="qa-btn" onclick="openExpenseModal()">💸 Pengeluaran</button>
+    <button class="qa-btn stock" onclick="openRestockModal()">📦 Restock</button>
+    <button class="qa-btn stock" onclick="openStockOutModal()">📤 Stock Keluar</button>
+    <button class="qa-btn report" onclick="switchTab('laporan')">📊 Laporan</button>
+    <button class="qa-btn history" onclick="switchTab('riwayat')">📜 Riwayat</button>
+    <button class="qa-btn newperiod" onclick="openNewPeriod()" id="qa-newperiod" style="background:var(--amber)">🔄 Periode Baru</button>
+    <button class="qa-btn" onclick="openTutupHari()" id="qa-tutup" style="background:var(--amber)">🌙 Tutup Hari</button>
+  </div>
+  <div class="section-title">Ringkasan Stok Produk</div>
+  <div id="dash-stock-mini"></div>
+</div>
+<!-- TRANSAKSI -->
+<div class="page" id="page-transaksi">
+  <div class="section-title">Transaksi Terakhir</div>
+  <div class="tabs" id="txn-tabs">
+    <button class="tab-btn active" data-t="all" onclick="filterTxn('all',this)">Semua</button>
+    <button class="tab-btn" data-t="sales" onclick="filterTxn('sales',this)">Penjualan</button>
+    <button class="tab-btn" data-t="expense" onclick="filterTxn('expense',this)">Pengeluaran</button>
+    <button class="tab-btn" data-t="stock" onclick="filterTxn('stock',this)">Stok</button>
+  </div>
+  <div class="search-bar"><input type="text" id="txn-search" placeholder="Cari transaksi..." oninput="renderTxnList()"></div>
+  <ul class="txn-list" id="txn-list"></ul>
+</div>
+<!-- STOCK -->
+<div class="page" id="page-stock">
+  <div class="section-title">Katalog Produk</div>
+  <div id="stock-list"></div>
+  <div class="section-title">Gerakan Stok Hari Ini</div>
+  <ul class="txn-list" id="stock-txn-list"></ul>
+</div>
+<!-- LAPORAN -->
+<div class="page" id="page-laporan">
+  <div class="section-title">Laporan</div>
+  <div class="tabs" id="report-tabs">
+    <button class="tab-btn active" data-r="daily" onclick="filterReport('daily',this)">Harian</button>
+    <button class="tab-btn" data-r="weekly" onclick="filterReport('weekly',this)">Mingguan</button>
+    <button class="tab-btn" data-r="monthly" onclick="filterReport('monthly',this)">Bulanan</button>
+  </div>
+  <div class="card">
+    <div class="form-group" style="margin-bottom:6px">
+      <label>Tanggal / Minggu / Bulan</label>
+      <input type="date" id="report-date" onchange="renderReport()">
+    </div>
+    <button class="btn-primary" onclick="renderReport()">Tampilkan</button>
+  </div>
+  <div id="report-content"></div>
+</div>
+<!-- RIWAYAT -->
+<div class="page" id="page-riwayat">
+  <div class="section-title">Riwayat & Audit Trail</div>
+  <div class="search-bar"><input type="text" id="hist-search" placeholder="Cari..." oninput="renderHistory()"></div>
+  <div class="tabs" id="hist-tabs">
+    <button class="tab-btn active" onclick="filterHist('all',this)">Semua</button>
+    <button class="tab-btn" onclick="filterHist('sales',this)">Penjualan</button>
+    <button class="tab-btn" onclick="filterHist('expense',this)">Pengeluaran</button>
+    <button class="tab-btn" onclick="filterHist('stock',this)">Stok</button>
+    <button class="tab-btn" onclick="filterHist('audit',this)">Audit</button>
+  </div>
+  <ul class="txn-list" id="hist-list"></ul>
+</div>
+</main>
+<nav class="bottom-nav">
+  <button class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')" aria-label="Dashboard">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dashboard
+  </button>
+  <button class="nav-item" data-tab="transaksi" onclick="switchTab('transaksi')" aria-label="Transaksi">
+    <svg viewBox="0 0 24 24"><path d="M9 1v22M15 1v22M5 8h14M5 16h14"/></svg>
+    Transaksi
+  </button>
+  <button class="nav-item" data-tab="stock" onclick="switchTab('stock')" aria-label="Stock">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a1 1 0 01-1 1H4a1 1 0 01-1-1V9z"/><path d="M9 21V12h6v9"/></svg>
+    Stock
+  </button>
+  <button class="nav-item" data-tab="laporan" onclick="switchTab('laporan')" aria-label="Laporan">
+    <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
+    Laporan
+  </button>
+  <button class="nav-item" data-tab="riwayat" onclick="switchTab('riwayat')" aria-label="Riwayat">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    Riwayat
+  </button>
+</nav>
+<div class="modal-overlay" id="modal-overlay"><div class="modal" id="modal-content"></div></div>
+<div class="toast" id="toast"></div>
+</div>
+<script>
+// ===================== CONFIG & CONSTANTS =====================
+const DB_NAME='papa_sauce_lab_v2';
+const DB_VER=2;
+const PRODUCTS=['Ayam Woku','Cumi','Tongkol','Babi Rica','Babi Kecap','Sup Brenebone','Sup Grangasem'];
+const EXP_CAT=['bahan baku','packaging','operasional','transport','kebersihan','peralatan','lainnya'];
+const CHANNELS=['cash','qris','gojek','grab'];
+const CH_LABEL={cash:'Cash',qris:'QRIS',gojek:'Gojek',grab:'Grab'};
+let DB=null, currentTab='dashboard', currentRole='OWNER', currentUser='Admin', cloudState='off';
+let histFilter='all', txnFilter='all', reportMode='daily';
+
+// ===================== UTILITY =====================
+function fmtRp(n){const v=Number(n)||0;return 'Rp'+v.toLocaleString('id-ID',{minimumFractionDigits:0,maximumFractionDigits:0});}
+function fmtDate(d){if(!d)return'—';const dt=new Date(d+'T00:00:00+08:00');return dt.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'});}
+function fmtTime(d){if(!d)return'—';return new Date(d).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',hour12:false});}
+function fmtDateTime(d){if(!d)return'—';const dt=new Date(d);return dt.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'})+' '+dt.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',hour12:false});}
+function todayStr(){return new Date().toLocaleDateString('id-ID',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:'Asia/Makassar'}).replace(/\//g,'-');}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).substr(2,6);}
+function nowISO(){return new Date().toISOString();}
+function addDays(d,days){const dt=new Date(d+'T00:00:00+08:00');dt.setDate(dt.getDate()+days);return dt.toISOString().slice(0,10);}
+function calcSales(channels){let c=0,q=0,g=0,gr=0;for(const s of channels){if(s.status==='CORRECTED')continue;const a=s.amount||0;if(s.channel==='cash')c+=a;else if(s.channel==='qris')q+=a;else if(s.channel==='gojek')g+=a;else if(s.channel==='grab')gr+=a;}return{cash:c,qris:q,gojek:g,grab:gr,total:c+q+g+gr};}
+function calcExpenses(exps){let t=0;for(const e of exps){if(e.status==='CORRECTED')continue;t+=e.nominal||0;}return t;}
+function calcStock(product,stockMv){let opening=0,inQ=0,outQ=0;for(const sm of stockMv){if(sm.product!==product)continue;if(sm.type==='STOCK_IN'||sm.type==='RESTOCK')inQ+=(sm.qty||0);else if(sm.type==='STOCK_OUT')outQ+=(sm.qty||0);}return{opening,inQ,outQ,closing:opening+inQ-outQ};}
+function getPeriodHB(period,stockMv){if(!period)return 0;const sd=period.startDate;const td=todayStr();if(sd===td)return period.hbOpen||0;let hb=period.hbOpen||0;const snaps=await dbGetAll('daily_snapshots');for(const s of snaps){if(s.periodId===period.id&&s.date<td&&s.date>=sd){hb=s.totalRegister;}}return hb;}
+
+// ===================== INDEXEDDB =====================
+function openDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(DB_NAME,DB_VER);
+    req.onerror=()=>rej(req.error);
+    req.onsuccess=()=>res(req.result);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      const mk=(name,keys)=>{const s=db.createObjectStore(name,{keyPath:keys[0],autoIncrement:true});keys.slice(1).forEach(k=>s.createIndex(k,k,{unique:false}));return s;};
+      mk('accounting_periods',['id']);
+      mk('transactions',['id','period_id','date']);
+      mk('expenses',['id','period_id','date']);
+      mk('stock_movements',['id','period_id','product','date']);
+      mk('products',['id']);
+      mk('daily_snapshots',['id','period_id','date']);
+      mk('snapshot_stock_lines',['id','snapshot_id']);
+      mk('audit_events',['id','period_id']);
+      mk('sync_queue',['id']);
+      mk('settings',['key']);
+      mk('cloud_meta',['key']);
+      mk('daily_hb',['date']);
+    };
+  });
+}
+function tx(store,mode){return DB.transaction(store,mode).objectStore(store);}
+function dbPut(store,val){return new Promise((res,rej)=>{const t=tx(store,'readwrite');const r=t.put(val);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+function dbGet(store,key){return new Promise((res,rej)=>{const t=tx(store,'readonly');const r=t.get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+function dbGetAll(store){return new Promise((res,rej)=>{const t=tx(store,'readonly');const r=t.getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+function dbDelete(store,key){return new Promise((res,rej)=>{const t=tx(store,'readwrite');const r=t.delete(key);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
+function dbClear(store){return new Promise((res,rej)=>{const t=tx(store,'readwrite');const r=t.clear();r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
+function dbCount(store){return new Promise((res,rej)=>{const t=tx(store,'readonly');const r=t.count();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+
+// ===================== INIT =====================
+async function init(){
+  DB=await openDB();
+  await ensureSettings();
+  await ensurePeriod();
+  await ensureProducts();
+  await loadCloudState();
+  renderDashboard();
+  toast('PAPA SAUCE LAB siap. Offline mode aktif.');
+}
+async function ensureSettings(){
+  let s=await dbGet('settings','app');
+  if(!s){
+    s={key:'app',role:'OWNER',user:'Admin',cloudUrl:'',cloudKey:'',cloudEmail:'',cloudPassword:'',lastSync:null,pendingChanges:0,createdAt:nowISO()};
+    await dbPut('settings',s);
+  }
+  currentRole=s.role||'OWNER';currentUser=s.user||'Admin';
+  document.getElementById('role-badge').textContent=currentRole;
+}
+async function ensurePeriod(){
+  let p=await getActivePeriod();
+  if(!p){
+    p={id:'PER-'+uid(),startDate:todayStr(),endDate:null,hbOpen:0,currentHB:0,status:'active',createdAt:nowISO()};
+    await dbPut('accounting_periods',p);
+  }
+  currentPeriodId=p.id;
+}
+async function getActivePeriod(){
+  const all=await dbGetAll('accounting_periods');
+  return all.find(p=>p.status==='active')||null;
+}
+async function ensureProducts(){
+  for(const name of PRODUCTS){const ex=await dbGet('products',name);if(!ex)await dbPut('products',{id:name,name,createdAt:nowISO()});}
+}
+async function loadCloudState(){
+  const meta=await dbGet('cloud_meta','state');
+  cloudState=(meta&&meta.state==='connected')?'connected':'off';
+  updateCloudUI();
+}
+function updateCloudUI(){
+  const dot=document.getElementById('cloud-dot'),txt=document.getElementById('cloud-text');
+  if(cloudState==='connected'){dot.classList.add('on');txt.textContent='CLOUD: TERHUBUNG';}
+  else{dot.classList.remove('on');txt.textContent='CLOUD: NOT CONNECTED';}
+}
+
+// ===================== NAVIGATION =====================
+function switchTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const pg=document.getElementById('page-'+tab);
+  if(pg)pg.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.tab===tab));
+  if(tab==='dashboard')renderDashboard();
+  if(tab==='transaksi')renderTxnList();
+  if(tab==='stock')renderStockPage();
+  if(tab==='laporan'){document.getElementById('report-date').value=todayStr();renderReport();}
+  if(tab==='riwayat')renderHistory();
+}
+
+// ===================== DASHBOARD =====================
+async function renderDashboard(){
+  const period=await getActivePeriod();
+  const date=todayStr();
+  document.getElementById('dash-date').textContent=fmtDate(date);
+  document.getElementById('dash-period').textContent='Periode: '+(period?period.startDate:'—')+' · Aktif';
+  document.getElementById('hdr-sub').textContent=fmtDate(date)+' · '+currentUser+' · '+currentRole;
+  const sales=await dbGetAll('transactions');
+  const expenses=await dbGetAll('expenses');
+  const stockMv=await dbGetAll('stock_movements');
+  const {cash,qris,gojek,grab,total:totalSales}=calcSales(sales);
+  const totalOut=calcExpenses(expenses);
+  const hb=period?period.hbOpen:0;
+  const totalRegister=hb+totalSales-totalOut;
+  let totalStock=0;const stockData=[];
+  for(const pn of PRODUCTS){const s=calcStock(pn,stockMv);totalStock+=s.closing;stockData.push({name:pn,...s});}
+  const cards=document.getElementById('dash-cards');
+  cards.innerHTML=`
+    <div class="money-card" onclick="drillDown('housebank')"><div class="lbl">House Bank</div><div class="val">${fmtRp(hb)}</div><div class="drill-hint">ketuk untuk detail</div></div>
+    <div class="money-card gold" onclick="drillDown('totalsales')"><div class="lbl">Total Sales</div><div class="val">${fmtRp(totalSales)}</div><div class="drill-hint">C+Q+Gj+Gr</div></div>
+    <div class="money-card" onclick="drillDown('cash')"><div class="lbl">Cash</div><div class="val">${fmtRp(cash)}</div><div class="drill-hint">ketuk detail</div></div>
+    <div class="money-card" onclick="drillDown('qris')"><div class="lbl">QRIS</div><div class="val">${fmtRp(qris)}</div></div>
+    <div class="money-card" onclick="drillDown('gojek')"><div class="lbl">Gojek</div><div class="val">${fmtRp(gojek)}</div></div>
+    <div class="money-card" onclick="drillDown('grab')"><div class="lbl">Grab</div><div class="val">${fmtRp(grab)}</div></div>
+    <div class="money-card red" onclick="drillDown('totalout')"><div class="lbl">Total Out</div><div class="val">${fmtRp(totalOut)}</div><div class="drill-hint">ketuk detail</div></div>
+    <div class="money-card blue" onclick="drillDown('register')"><div class="lbl">Total Register</div><div class="val">${fmtRp(totalRegister)}</div><div class="drill-hint">HB+Sales-Out</div></div>
+    <div class="money-card" onclick="drillDown('stock')" style="grid-column:span 2"><div class="lbl">Total Stock</div><div class="val">${totalStock} unit</div><div class="drill-hint">ketuk detail stok</div></div>
+  `;
+  const mini=document.getElementById('dash-stock-mini');
+  mini.innerHTML=stockData.map(s=>`<div class="row"><span class="r-label">${s.name}</span><span class="r-value">${s.closing} unit</span></div>`).join('')||'<div class="empty-state"><p>Belum ada data stok</p></div>';
+  const tutupBtn=document.getElementById('qa-tutup');
+  const newPerBtn=document.getElementById('qa-newperiod');
+  if(currentRole!=='OWNER'){tutupBtn.style.opacity='.4';tutupBtn.title='Hanya OWNER';newPerBtn.style.opacity='.4';newPerBtn.title='Hanya OWNER';}
+  else{tutupBtn.style.opacity='1';tutupBtn.title='';newPerBtn.style.opacity='1';newPerBtn.title='';}
+}
+async function drillDown(type){
+  const period=await getActivePeriod();
+  const sales=await dbGetAll('transactions');
+  const expenses=await dbGetAll('expenses');
+  const stockMv=await dbGetAll('stock_movements');
+  let html='';
+  if(type==='housebank'){
+    html=`<h2>House Bank</h2><div class="row"><span class="r-label">Saldo HB (awal periode)</span><span class="r-value">${fmtRp(period?period.hbOpen:0)}</span></div><p style="font-size:12px;color:var(--gray);margin-top:8px">House Bank berasal dari closing hari sebelumnya. Tidak bisa diubah manual.</p>`;
+  }else if(['cash','qris','gojek','grab'].includes(type)){
+    const label=CH_LABEL[type];
+    const items=sales.filter(s=>s.channel===type&&s.status==='ACTIVE');
+    html=`<h2>Detail ${label}</h2>`;
+    if(!items.length)html+='<div class="empty-state"><p>Belum ada transaksi '+label+'</p></div>';
+    else html+=items.map(s=>`<div class="txn-item"><div class="t-left"><div class="t-time">${fmtTime(s.createdAt)}</div><div class="t-desc">${s.note||'Penjualan'}</div><span class="t-channel">${label}</span></div><div class="t-amt pos">${fmtRp(s.amount)}</div></div>`).join('');
+  }else if(type==='totalsales'){
+    html='<h2>Total Sales (Cash + QRIS + Gojek + Grab)</h2>';
+    for(const ch of CHANNELS){const items=sales.filter(s=>s.channel===ch&&s.status==='ACTIVE');const tot=items.reduce((a,b)=>a+b.amount,0);html+=`<div class="card-title">${CH_LABEL[ch]} = ${fmtRp(tot)}</div>`;html+=items.length?items.map(s=>`<div class="txn-item"><div class="t-left"><div class="t-time">${fmtTime(s.createdAt)}</div><div class="t-desc">${s.note||'Penjualan'}</div></div><div class="t-amt pos">${fmtRp(s.amount)}</div></div>`).join(''):'<div class="empty-state"><p>Belum ada</p></div>';}
+  }else if(type==='totalout'){
+    const items=expenses.filter(e=>e.status==='ACTIVE');
+    html='<h2>Total Pengeluaran</h2>';
+    if(!items.length)html+='<div class="empty-state"><p>Belum ada pengeluaran</p></div>';
+    else html+=items.map(e=>`<div class="txn-item"><div class="t-left"><div class="t-time">${fmtTime(e.createdAt)}</div><div class="t-desc">${e.name}</div><span class="t-channel">${e.category}</span></div><div class="t-amt neg">${fmtRp(e.nominal)}</div></div>`).join('');
+  }else if(type==='register'){
+    const {cash,qris,gojek,grab,total:ts}=calcSales(sales);const to=calcExpenses(expenses);const hb=period?period.hbOpen:0;const tr=hb+ts-to;
+    html=`<h2>Total Register</h2><div class="detail-grid"><div class="dg"><div class="dg-l">House Bank</div><div class="dg-v">${fmtRp(hb)}</div></div><div class="dg"><div class="dg-l">Total Sales</div><div class="dg-v">${fmtRp(ts)}</div></div><div class="dg"><div class="dg-l">Total Out</div><div class="dg-v">${fmtRp(to)}</div></div><div class="dg"><div class="dg-l">Register</div><div class="dg-v">${fmtRp(tr)}</div></div></div><p style="font-size:11px;color:var(--gray)">Formula: HB + Total Sales - Total Out. Otomatis, tidak bisa ditimpa.</p>`;
+  }else if(type==='stock'){
+    html='<h2>Detail Total Stok</h2>';
+    for(const pn of PRODUCTS){const s=calcStock(pn,stockMv);html+=`<div class="stock-bar ${s.closing<5?'low':''}" style="margin-bottom:8px"><span class="sb-name">${pn}</span><span class="sb-qty">${s.closing}</span><div class="sb-track"><div class="sb-fill" style="width:${Math.min(100,s.closing*10)}%"></div></div></div>`;}
+  }
+  openModal(html);
+}
+
+// ===================== SALES =====================
+function openSalesModal(){
+  openModal(`<h2>Input Penjualan</h2>
+    <div class="form-group"><label>Channel</label><select id="s-channel">${CHANNELS.map(c=>`<option value="${c}">${CH_LABEL[c]}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Nominal (Rp)</label><input type="number" id="s-amount" placeholder="0" min="0"></div>
+    <div class="form-group"><label>Catatan</label><input type="text" id="s-note" placeholder="Deskripsi penjualan"></div>
+    <div class="form-group"><label>Tanggal</label><input type="date" id="s-date" value="${todayStr()}"></div>
+    <button class="btn-primary" onclick="saveSales()">Simpan</button>
+    <button class="btn-secondary" onclick="closeModal()" style="margin-top:6px">Batal</button>`);
+}
+async function saveSales(){
+  const channel=document.getElementById('s-channel').value;
+  const amount=parseInt(document.getElementById('s-amount').value)||0;
+  const note=document.getElementById('s-note').value;
+  const date=document.getElementById('s-date').value;
+  if(!amount){toast('Nominal harus diisi','error');return;}
+  const txn={id:'TXN-'+uid(),periodId:currentPeriodId,date,amount,channel,note,user:currentUser,createdAt:nowISO(),status:'ACTIVE',correctionOf:null,type:'sales'};
+  await dbPut('transactions',txn);
+  await addSyncQueue('transactions','upsert',txn);
+  closeModal();toast('Penjualan tersimpan');renderDashboard();
+}
+
+// ===================== EXPENSES =====================
+function openExpenseModal(){
+  openModal(`<h2>Input Pengeluaran</h2>
+    <div class="form-group"><label>Nama Pengeluaran</label><input type="text" id="e-name" placeholder="Contoh: Babi 2 kg"></div>
+    <div class="form-group"><label>Nominal (Rp)</label><input type="number" id="e-amount" placeholder="0" min="0"></div>
+    <div class="form-group"><label>Kategori</label><select id="e-cat">${EXP_CAT.map(c=>`<option value="${c}">${c}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Catatan</label><input type="text" id="e-note" placeholder="Detail"></div>
+    <div class="form-group"><label>Tanggal</label><input type="date" id="e-date" value="${todayStr()}"></div>
+    <button class="btn-primary" onclick="saveExpense()">Simpan</button>
+    <button class="btn-secondary" onclick="closeModal()" style="margin-top:6px">Batal</button>`);
+}
+async function saveExpense(){
+  const name=document.getElementById('e-name').value;
+  const amount=parseInt(document.getElementById('e-amount').value)||0;
+  const cat=document.getElementById('e-cat').value;
+  const note=document.getElementById('e-note').value;
+  const date=document.getElementById('e-date').value;
+  if(!name||!amount){toast('Nama dan nominal wajib','error');return;}
+  const exp={id:'EXP-'+uid(),periodId:currentPeriodId,date,name,nominal:amount,category:cat,note,user:currentUser,createdAt:nowISO(),status:'ACTIVE',correctionOf:null};
+  await dbPut('expenses',exp);
+  await addSyncQueue('expenses','upsert',exp);
+  closeModal();toast('Pengeluaran tersimpan');renderDashboard();
+}
+
+// ===================== STOCK =====================
+function openRestockModal(){
+  openModal(`<h2>Restock / Stock Masuk</h2>
+    <div class="form-group"><label>Produk</label><select id="r-product">${PRODUCTS.map(p=>`<option value="${p}">${p}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Jumlah (unit/pax)</label><input type="number" id="r-qty" placeholder="0" min="1"></div>
+    <div class="form-group"><label>Catatan</label><input type="text" id="r-note" placeholder="Detail restock"></div>
+    <div class="form-group"><label>Tanggal</label><input type="date" id="r-date" value="${todayStr()}"></div>
+    <button class="btn-primary" onclick="saveRestock()">Simpan</button>
+    <button class="btn-secondary" onclick="closeModal()" style="margin-top:6px">Batal</button>`);
+}
+async function saveRestock(){
+  const product=document.getElementById('r-product').value;
+  const qty=parseInt(document.getElementById('r-qty').value)||0;
+  const note=document.getElementById('r-note').value;
+  const date=document.getElementById('r-date').value;
+  if(!qty){toast('Jumlah wajib','error');return;}
+  const sm={id:'SM-'+uid(),periodId:currentPeriodId,product,type:'STOCK_IN',qty,date,note,user:currentUser,createdAt:nowISO(),status:'ACTIVE',correctionOf:null};
+  await dbPut('stock_movements',sm);
+  await addSyncQueue('stock_movements','upsert',sm);
+  closeModal();toast('Restock tersimpan');renderDashboard();
+}
+function openStockOutModal(){
+  openModal(`<h2>Stock Keluar</h2>
+    <div class="form-group"><label>Produk</label><select id="so-product">${PRODUCTS.map(p=>`<option value="${p}">${p}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Jumlah (unit/pax)</label><input type="number" id="so-qty" placeholder="0" min="1"></div>
+    <div class="form-group"><label>Catatan</label><input type="text" id="so-note" placeholder="Detail stock keluar"></div>
+    <div class="form-group"><label>Tanggal</label><input type="date" id="so-date" value="${todayStr()}"></div>
+    <button class="btn-primary" onclick="saveStockOut()">Simpan</button>
+    <button class="btn-secondary" onclick="closeModal()" style="margin-top:6px">Batal</button>`);
+}
+async function saveStockOut(){
+  const product=document.getElementById('so-product').value;
+  const qty=parseInt(document.getElementById('so-qty').value)||0;
+  const note=document.getElementById('so-note').value;
+  const date=document.getElementById('so-date').value;
+  if(!qty){toast('Jumlah wajib','error');return;}
+  const stockMv=await dbGetAll('stock_movements');
+  const {closing:current}=calcStock(product,stockMv);
+  if(current-qty<0){
+    if(currentRole!=='OWNER'){toast('STAFF tidak bisa override stok negatif','error');return;}
+    if(!confirm(`Stok ${product} hanya ${current} unit. Keluar ${qty} akan menyebabkan stok negatif. Konfirmasi override sebagai OWNER?`))return;
+    await addAudit('stock_override',`Stock out ${product}: ${qty} (stok sebelumnya ${current})`,note,currentRole);
+  }
+  const sm={id:'SM-'+uid(),periodId:currentPeriodId,product,type:'STOCK_OUT',qty,date,note,user:currentUser,createdAt:nowISO(),status:'ACTIVE',correctionOf:null};
+  await dbPut('stock_movements',sm);
+  await addSyncQueue('stock_movements','upsert',sm);
+  closeModal();toast('Stock keluar tersimpan');renderDashboard();
+}
+
+// ===================== TRANSACTIONS LIST =====================
+async function renderTxnList(){
+  const search=(document.getElementById('txn-search')?.value||'').toLowerCase();
+  const allSales=await dbGetAll('transactions');
+  const allExp=await dbGetAll('expenses');
+  const allStock=await dbGetAll('stock_movements');
+  let items=[];
+  for(const s of allSales)items.push({...s,type:'sales',display:'Penjualan',amt:s.amount,channelLabel:CH_LABEL[s.channel]});
+  for(const e of allExp)items.push({...e,type:'expense',display:'Pengeluaran',amt:-e.nominal,channelLabel:e.category});
+  for(const s of allStock)items.push({...s,type:'stock',display:'STOCK '+s.type.replace('_',' '),amt:-(s.qty||0),channelLabel:s.product});
+  items=items.filter(i=>i.status!=='CORRECTED'||search.length>0);
+  if(search)items=items.filter(i=>(i.note||'').toLowerCase().includes(search)||(i.user||'').toLowerCase().includes(search)||(i.name||'').toLowerCase().includes(search)||(i.product||'').toLowerCase().includes(search));
+  if(txnFilter!=='all')items=items.filter(i=>{if(txnFilter==='stock')return i.type==='stock';if(txnFilter==='sales')return i.type==='sales';if(txnFilter==='expense')return i.type==='expense';return true;});
+  items.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const list=document.getElementById('txn-list');
+  if(!items.length){list.innerHTML='<div class="empty-state"><div class="icon">📋</div><p>Belum ada transaksi</p></div>';return;}
+  list.innerHTML=items.map(i=>`<div class="txn-item ${i.status==='CORRECTED'?'corrected':''}" onclick="showTxnDetail('${i.id}','${i.type}')">
+    <div class="t-left"><div class="t-time">${fmtDateTime(i.createdAt)}</div><div class="t-desc">${i.display}</div><span class="t-channel">${i.channelLabel||''}</span></div>
+    <div class="t-amt ${i.amt<0?'neg':'pos'}">${i.amt<0?'-':''}${fmtRp(Math.abs(i.amt))}</div>
+  </div>`).join('');
+}
+function filterTxn(f,el){txnFilter=f;document.querySelectorAll('#txn-tabs .tab-btn').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderTxnList();}
+async function showTxnDetail(id,type){
+  let item;
+  if(type==='sales')item=await dbGet('transactions',id);
+  else if(type==='expense')item=await dbGet('expenses',id);
+  else item=await dbGet('stock_movements',id);
+  if(!item)return;
+  let html=`<h2>Detail Transaksi</h2>`;
+  html+=`<div class="detail-grid">
+    <div class="dg"><div class="dg-l">ID</div><div class="dg-v" style="font-size:11px">${item.id}</div></div>
+    <div class="dg"><div class="dg-l">Status</div><div class="dg-v">${item.status}</div></div>
+    <div class="dg"><div class="dg-l">Tanggal</div><div class="dg-v">${item.date||fmtDate(item.createdAt)}</div></div>
+    <div class="dg"><div class="dg-l">Waktu</div><div class="dg-v">${fmtTime(item.createdAt)}</div></div>
+    <div class="dg"><div class="dg-l">User</div><div class="dg-v">${item.user}</div></div>
+    <div class="dg"><div class="dg-l">Periode</div><div class="dg-v" style="font-size:11px">${item.periodId}</div></div>
+  </div>`;
+  if(item.amount!==undefined)html+=`<div class="row"><span class="r-label">Nominal</span><span class="r-value">${fmtRp(item.amount)}</span></div>`;
+  if(item.nominal!==undefined)html+=`<div class="row"><span class="r-label">Nominal</span><span class="r-value">${fmtRp(item.nominal)}</span></div>`;
+  if(item.qty!==undefined)html+=`<div class="row"><span class="r-label">Jumlah</span><span class="r-value">${item.qty} unit</span></div>`;
+  if(item.channel)html+=`<div class="row"><span class="r-label">Channel</span><span class="r-value">${CH_LABEL[item.channel]}</span></div>`;
+  if(item.product)html+=`<div class="row"><span class="r-label">Produk</span><span class="r-value">${item.product}</span></div>`;
+  if(item.type)html+=`<div class="row"><span class="r-label">Tipe</span><span class="r-value">${item.type}</span></div>`;
+  if(item.note)html+=`<div class="row"><span class="r-label">Catatan</span><span class="r-value">${item.note}</span></div>`;
+  if(item.correctionOf)html+=`<div class="row"><span class="r-label">Koreksi dari</span><span class="r-value">${item.correctionOf}</span></div>`;
+  const period=await getActivePeriod();
+  const canCorrect=currentRole==='OWNER'&&item.status==='ACTIVE'&&(!period||period.status!=='closed');
+  if(canCorrect){
+    html+=`<div class="btn-row"><button class="btn-danger btn-sm" onclick="openCorrection('${item.id}','${type}')">Koreksi</button></div>`;
+  }
+  openModal(html);
+}
+
+// ===================== CORRECTION =====================
+async function openCorrection(id,type){
+  let oldItem;
+  if(type==='sales')oldItem=await dbGet('transactions',id);
+  else if(type==='expense')oldItem=await dbGet('expenses',id);
+  else oldItem=await dbGet('stock_movements',id);
+  if(!oldItem)return;
+  const oldVal=oldItem.amount!==undefined?fmtRp(oldItem.amount):oldItem.nominal!==undefined?fmtRp(oldItem.nominal):oldItem.qty+' unit';
+  openModal(`<h2>Koreksi Transaksi</h2>
+    <p style="font-size:12px;color:var(--gray);margin-bottom:10px">Nilai lama dipertahankan sebagai CORRECTED. Buat nilai baru.</p>
+    <div class="row"><span class="r-label">ID</span><span class="r-value" style="font-size:11px">${oldItem.id}</span></div>
+    <div class="row"><span class="r-label">Nilai Lama</span><span class="r-value">${oldVal}</span></div>
+    <div class="form-group"><label>Nilai Baru (Rp)</label><input type="number" id="corr-new" placeholder="0" min="0"></div>
+    <div class="form-group"><label>Alasan Koreksi</label><input type="text" id="corr-reason" placeholder="Jelaskan koreksi"></div>
+    <button class="btn-primary" onclick="confirmCorrection('${id}','${type}')">Simpan Koreksi</button>
+    <button class="btn-secondary" onclick="closeModal()" style="margin-top:6px">Batal</button>`);
+}
+async function confirmCorrection(id,type){
+  const newVal=parseInt(document.getElementById('corr-new').value)||0;
+  const reason=document.getElementById('corr-reason').value;
+  if(!newVal){toast('Nilai baru wajib','error');return;}
+  let oldItem;
+  if(type==='sales')oldItem=await dbGet('transactions',id);
+  else if(type==='expense')oldItem=await dbGet('expenses',id);
+  else oldItem=await dbGet('stock_movements',id);
+  if(!oldItem)return;
+  const storeName=type==='sales'?'transactions':type==='expense'?'expenses':'stock_movements';
+  oldItem.status='CORRECTED';oldItem.correctionOf=oldItem.id+'-orig';oldItem.correctedAt=nowISO();oldItem.correctedBy=currentUser;
+  await dbPut(storeName,oldItem);
+  const replacement={...oldItem,id:'TXN-'+uid(),status:'ACTIVE',correctionOf:oldItem.id,createdAt:nowISO()};
+  if(type==='sales')replacement.amount=newVal;
+  else if(type==='expense')replacement.nominal=newVal;
+  else replacement.qty=newVal;
+  await dbPut(storeName,replacement);
+  await addAudit('correction',`Koreksi ${type} ${oldItem.id}: ${oldItem.amount||oldItem.nominal||oldItem.qty} → ${newVal}`,reason,currentRole);
+  await addSyncQueue(storeName,'upsert',replacement);
+  closeModal();toast('Koreksi tersimpan, entri lama dipertahankan sebagai CORRECTED');renderDashboard();
+}
+
+// ===================== STOCK PAGE =====================
+async function renderStockPage(){
+  const stockMv=await dbGetAll('stock_movements');
+  const list=document.getElementById('stock-list');
+  let html='';
+  for(const pn of PRODUCTS){
+    const s=calcStock(pn,stockMv);
+    html+=`<div class="card" onclick="showProductDetail('${pn}')" style="cursor:pointer">
+      <div class="row"><span class="r-label" style="font-weight:700;font-size:14px">${pn}</span><span class="r-value" style="font-size:18px">${s.closing} unit</span></div>
+      <div style="font-size:11px;color:var(--gray);margin-top:4px">Masuk: ${s.inQ} | Keluar: ${s.outQ} | Awal: ${s.opening}</div>
+    </div>`;
+  }
+  list.innerHTML=html||'<div class="empty-state"><div class="icon">📦</div><p>Belum ada data stok</p></div>';
+  const today=todayStr();
+  const todayMv=stockMv.filter(s=>s.date===today&&s.status!=='CORRECTED').sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const stl=document.getElementById('stock-txn-list');
+  stl.innerHTML=todayMv.length?todayMv.map(s=>`<div class="txn-item" onclick="showTxnDetail('${s.id}','stock')"><div class="t-left"><div class="t-time">${fmtTime(s.createdAt)}</div><div class="t-desc">${s.type.replace('_',' ')} — ${s.product}</div><div class="t-channel">${s.qty} ${s.note||'unit'}</div></div><div class="t-amt ${s.type==='STOCK_OUT'?'neg':'pos'}">${s.type==='STOCK_OUT'?'-':'+'}${s.qty}</div></div>`).join(''):'<div class="empty-state"><p>Belum ada gerakan stok hari ini</p></div>';
+}
+async function showProductDetail(name){
+  const stockMv=await dbGetAll('stock_movements');
+  let html=`<h2>Detail Stok: ${name}</h2>`;
+  let opening=0,inQty=0,outQty=0;const items=[];
+  for(const sm of stockMv){if(sm.product!==name)continue;items.push(sm);if(sm.type==='STOCK_IN'||sm.type==='RESTOCK')inQty+=(sm.qty||0);else if(sm.type==='STOCK_OUT')outQty+=(sm.qty||0);}
+  html+=`<div class="detail-grid"><div class="dg"><div class="dg-l">Opening</div><div class="dg-v">${opening}</div></div><div class="dg"><div class="dg-l">Masuk</div><div class="dg-v">${inQty}</div></div><div class="dg"><div class="dg-l">Keluar</div><div class="dg-v">${outQty}</div></div><div class="dg"><div class="dg-l">Sisa</div><div class="dg-v">${opening+inQty-outQty}</div></div></div>`;
+  const sorted=[...items].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  html+=sorted.map(s=>`<div class="txn-item" onclick="showTxnDetail('${s.id}','stock')"><div class="t-left"><div class="t-time">${fmtDateTime(s.createdAt)}</div><div class="t-desc">${s.type}</div><div class="t-channel">${s.note||s.product}</div></div><div class="t-amt ${s.type==='STOCK_OUT'?'neg':'pos'}">${s.type==='STOCK_OUT'?'-':'+'}${s.qty}</div></div>`).join('')||'<div class="empty-state"><p>Belum ada riwayat</p></div>';
+  openModal(html);
+}
+
+// ===================== REPORT =====================
+async function renderReport(){
+  const date=document.getElementById('report-date').value;
+  if(!date){toast('Pilih tanggal','error');return;}
+  const period=await getActivePeriod();
+  const sales=await dbGetAll('transactions');
+  const expenses=await dbGetAll('expenses');
+  const stockMv=await dbGetAll('stock_movements');
+  const daySales=sales.filter(s=>s.date===date&&s.status!=='CORRECTED');
+  const dayExp=expenses.filter(e=>e.date===date&&s.status!=='CORRECTED');
+  const {cash,qris,gojek,grab,total:totalSales}=calcSales(sales.filter(s=>s.date===date));
+  const totalOut=calcExpenses(expenses.filter(e=>e.date===date));
+  // HB for this date
+  let hb=period?period.hbOpen:0;
+  const snaps=await dbGetAll('daily_snapshots');
+  const prevSnap=snaps.filter(s=>s.periodId===period?.id&&s.date<date).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  if(prevSnap)hb=prevSnap.totalRegister;
+  const totalRegister=hb+totalSales-totalOut;
+  if(reportMode==='daily'){
+    let html=`<div class="card"><div class="card-title">Laporan Harian — ${fmtDate(date)}</div>`;
+    html+=`<div class="detail-grid"><div class="dg"><div class="dg-l">House Bank Awal</div><div class="dg-v">${fmtRp(hb)}</div></div><div class="dg"><div class="dg-l">Total Sales</div><div class="dg-v">${fmtRp(totalSales)}</div></div></div>`;
+    html+=`<div class="row"><span class="r-label">Cash</span><span class="r-value">${fmtRp(cash)}</span></div>`;
+    html+=`<div class="row"><span class="r-label">QRIS</span><span class="r-value">${fmtRp(qris)}</span></div>`;
+    html+=`<div class="row"><span class="r-label">Gojek</span><span class="r-value">${fmtRp(gojek)}</span></div>`;
+    html+=`<div class="row"><span class="r-label">Grab</span><span class="r-value">${fmtRp(grab)}</span></div>`;
+    html+=`<div class="card-title" style="margin-top:8px">Pengeluaran Detail</div>`;
+    for(const e of dayExp){html+=`<div class="row"><span class="r-label">${e.name} (${e.category})</span><span class="r-value">${fmtRp(e.nominal)}</span></div>`;}
+    html+=`<div class="row"><span class="r-label">Total Out</span><span class="r-value">${fmtRp(totalOut)}</span></div>`;
+    html+=`<div class="row" style="font-weight:700;border-top:2px solid var(--green-800);margin-top:4px;padding-top:6px"><span class="r-label">Total Register</span><span class="r-value">${fmtRp(totalRegister)}</span></div>`;
+    html+=`</div>`;
+    // Stock per product
+    html+=`<div class="card"><div class="card-title">Stok Per Produk (${fmtDate(date)})</div>`;
+    for(const pn of PRODUCTS){
+      let oi=0,oi2=0,oo=0,ri=0,ro=0;
+      for(const sm of stockMv){if(sm.product!==pn||sm.date>date)continue;if(sm.type==='STOCK_IN'||sm.type==='RESTOCK'){if(sm.date===date)ri+=(sm.qty||0);oi+=(sm.qty||0);}else if(sm.type==='STOCK_OUT'){if(sm.date===date)ro+=(sm.qty||0);oo+=(sm.qty||0);}}
+      const end=oi-oo;
+      html+=`<div class="row"><span class="r-label">${pn}</span><span class="r-value">Awal:${oi} Restock:${ri} Keluar:${ro} Akhir:${end}</span></div>`;
+    }
+    html+=`</div>`;
+    // Reconciliation
+    const snap=snaps.find(s=>s.periodId===period?.id&&s.date===date);
+    html+=`<div class="card"><div class="card-title">Reconciliation</div>`;
+    html+=`<div class="recon-row"><span>Expected Register</span><span>${fmtRp(totalRegister)}</span></div>`;
+    if(snap){html+=`<div class="recon-row"><span>Actual Register</span><span>${fmtRp(snap.actualRegister||snap.totalRegister)}</span></div>`;
+    html+=`<div class="recon-row"><span>Variance</span><span style="font-weight:700;color:${snap.variance<0?'var(--red)':'#2e7d32'}">${fmtRp(snap.variance)}</span></div>`;}
+    html+=`</div>`;
+    // Close status
+    html+=`<div class="card"><div class="card-title">Status Tutup Hari</div>`;
+    html+=`<div class="row"><span class="r-label">Snapshot</span><span class="r-value">${snap?'✅ Sudah ditutup':'⬜ Belum ditutup'}</span></div>`;
+    if(snap)html+=`<div class="row"><span class="r-label">Variance</span><span class="r-value">${fmtRp(snap.variance)}</span></div><div class="row"><span class="r-label">Ditutup oleh</span><span class="r-value">${snap.closedBy||'—'}</span></div>`;
+    html+=`</div>`;
+    // Export
+    html+=`<div class="btn-row"><button class="btn-primary" onclick="exportReportPDF('${date}')">📄 Export PDF (Print)</button><button class="btn-secondary" onclick="exportReportCSV('${date}')">📊 Export CSV</button><button class="btn-secondary" onclick="shareWhatsApp('${date}')">💬 Share WA</button></div>`;
+    document.getElementById('report-content').innerHTML=html;
+  }else if(reportMode==='weekly'){
+    const weekStart=date;const weekEnd=addDays(date,6);
+    const weekSales=sales.filter(s=>s.date>=weekStart&&s.date<=weekEnd&&s.status!=='CORRECTED');
+    const weekExp=expenses.filter(e=>e.date>=weekStart&&e.date<=weekEnd&&e.status!=='CORRECTED');
+    const w=calcSales(weekSales);const we=calcExpenses(weekExp);
+    let html=`<div class="card"><div class="card-title">Laporan Mingguan ${fmtDate(weekStart)} — ${fmtDate(weekEnd)}</div>`;
+    html+=`<div class="detail-grid"><div class="dg"><div class="dg-l">Omzet</div><div class="dg-v">${fmtRp(w.total)}</div></div><div class="dg"><div class="dg-l">Total Out</div><div class="dg-v">${fmtRp(we)}</div></div></div>`;
+    html+=`<div class="row"><span class="r-label">Cash</span><span class="r-value">${fmtRp(w.cash)}</span></div>`;
+    html+=`<div class="row"><span class="r-label">QRIS</span><span class="r-value">${fmtRp(w.qris)}</span></div>`;
+    html+=`<div class="row"><span class="r-label">Gojek</span><span class="r-value">${fmtRp(w.gojek)}</span></div>`;
+    html+=`<div class="row"><span class="r-label">Grab</span><span class="r-value">${fmtRp(w.grab)}</span></div>`;
+    html+=`<div class="card-title" style="margin-top:8px">Biaya Bahan Baku</div>`;
+    const rawMat=weekExp.filter(e=>e.category==='bahan baku');const rmCost=rawMat.reduce((a,e)=>a+e.nominal,0);
+    html+=`<div class="row"><span class="r-label">Bahan Baku</span><span class="r-value">${fmtRp(rmCost)}</span></div>`;
+    html+=`<div class="card-title" style="margin-top:8px">Stok Masuk/Keluar</div>`;
+    for(const pn of PRODUCTS){let inQ=0,outQ=0;for(const sm of stockMv){if(sm.product!==pn||sm.date<weekStart||sm.date>weekEnd)continue;if(sm.type==='STOCK_IN'||sm.type==='RESTOCK')inQ+=(sm.qty||0);else if(sm.type==='STOCK_OUT')outQ+=(sm.qty||0);}html+=`<div class="row"><span class="r-label">${pn}</span><span class="r-value">Masuk:${inQ} Keluar:${outQ}</span></div>`;}
+    html+=`</div>`;
+    document.getElementById('report-content').innerHTML=html;
+  }else if(reportMode==='monthly'){
+    const [yy,mm]=date.split('-');const monthStart=`${yy}-${mm}-01`;const lastDay=new Date(parseInt(yy),parseInt(mm),0).getDate();const monthEnd=`${yy}-${mm}-${String(lastDay).padStart(2,'0')}`;
+    const mSales=sales.filter(s=>s.date>=monthStart&&s.date<=monthEnd&&s.status!=='CORRECTED');
+    const mExp=expenses.filter(e=>e.date>=monthStart&&e.date<=monthEnd&&e.status!=='CORRECTED');
+    const m=calcSales(mSales);const me=calcExpenses(mExp);
+    let html=`<div class="card"><div class="card-title">Laporan Bulanan ${fmtDate(monthStart)} — ${fmtDate(monthEnd)}</div>`;
+    html+=`<div class="detail-grid"><div class="dg"><div class="dg-l">Omzet</div><div class="dg-v">${fmtRp(m.total)}</div></div><div class="dg"><div class="dg-l">Total Out</div><div class="dg-v">${fmtRp(me)}</div></div></div>`;
+    html+=`<div class="row"><span class="r-label">Cash</span><span class="r-value">${fmtRp(m.cash)}</span></div>`;
+    html+=`<div class="row"><span class="r-label">QRIS</span><span class="r-value">${fmtRp(m.qris)}</span></div>`;
+    html+=`<div class="row"><span class="r-label">Gojek</span><span class="r-value">${fmtRp(m.gojek)}</span></div>`;
+    html+=`<div class="row"><span class="r-label">Grab</span><span class="r-value">${fmtRp(m.grab)}</span></div>`;
+    html+=`<div class="card-title" style="margin-top:8px">Biaya Bahan Baku</div>`;
+    const rawMat=mExp.filter(e=>e.category==='bahan baku');const rmCost=rawMat.reduce((a,e)=>a+e.nominal,0);
+    html+=`<div class="row"><span class="r-label">Bahan Baku</span><span class="r-value">${fmtRp(rmCost)}</span></div>`;
+    html+=`<div class="card-title" style="margin-top:8px">Stok Masuk/Keluar</div>`;
+    for(const pn of PRODUCTS){let inQ=0,outQ=0;for(const sm of stockMv){if(sm.product!==pn||sm.date<monthStart||sm.date>monthEnd)continue;if(sm.type==='STOCK_IN'||sm.type==='RESTOCK')inQ+=(sm.qty||0);else if(sm.type==='STOCK_OUT')outQ+=(sm.qty||0);}html+=`<div class="row"><span class="r-label">${pn}</span><span class="r-value">Masuk:${inQ} Keluar:${outQ}</span></div>`;}
+    html+=`</div>`;
+    document.getElementById('report-content').innerHTML=html;
+  }
+}
+function filterReport(mode,el){reportMode=mode;document.querySelectorAll('#report-tabs .tab-btn').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderReport();}
+function exportReportPDF(date){
+  const content=document.getElementById('report-content');
+  const win=window.open('','_blank');
+  if(win){
+    win.document.write('<html><head><title>Laporan Harian '+date+'</title><style>body{font-family:sans-serif;padding:20px;max-width:600px;margin:auto;color:#1a1a1a}h1{color:#1b3a2a}.row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee}.card-title{font-weight:700;text-transform:uppercase;font-size:11px;color:#666;margin:8px 0}table{width:100%}@media print{body{padding:0}}</style></head><body>'+content.innerText.replace(/\n/g,'<br>')+'<br><br><p style="text-align:center;font-size:11px;color:#999">Dicetak dari PAPA SAUCE LAB Akuntansi Internal · '+new Date().toLocaleString('id-ID')+'</p></body></html>');
+    win.document.close();setTimeout(()=>{win.print();},500);toast('Membuka dialog cetak...');
+  }else{toast('Print tidak tersedia','error');}
+}
+function exportReportCSV(date){
+  (async()=>{
+    const allS=await dbGetAll('transactions');const allE=await dbGetAll('expenses');const allSm=await dbGetAll('stock_movements');
+    let csv='Tanggal,Kategori,Deskripsi,Channel/Kategori,Nominal\n';
+    const dayS=allS.filter(s=>s.date===date&&s.status!=='CORRECTED');
+    const dayE=allE.filter(e=>e.date===date&&e.status!=='CORRECTED');
+    for(const s of dayS){csv+=`${s.date},Penjualan,${s.note||''},${CH_LABEL[s.channel]},${s.amount}\n`;}
+    for(const e of dayE){csv+=`${e.date},Pengeluaran,${e.name},${e.category},${e.nominal}\n`;}
+    for(const sm of allSm){if(sm.date===date)csv+=`${sm.date},Stok,${sm.type},${sm.product},${sm.qty}\n`;}
+    const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='laporan-'+date+'.csv';a.click();URL.revokeObjectURL(url);toast('CSV didownload');
+  })();
+}
+function shareWhatsApp
