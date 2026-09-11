@@ -1,0 +1,77 @@
+name: Deploy BWD Firebase Backend
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Validate Firebase deployment secrets
+        shell: bash
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.BWD_FIREBASE_PROJECT_ID }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.BWD_FIREBASE_SERVICE_ACCOUNT_JSON }}
+          BWD_ADMIN_ENROLL_TOKEN: ${{ secrets.BWD_ADMIN_ENROLL_TOKEN }}
+          BWD_STORAGE_BUCKET: ${{ secrets.BWD_STORAGE_BUCKET }}
+        run: |
+          set -euo pipefail
+          test -n "$FIREBASE_PROJECT_ID" || { echo "Missing BWD_FIREBASE_PROJECT_ID"; exit 1; }
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON" || { echo "Missing BWD_FIREBASE_SERVICE_ACCOUNT_JSON"; exit 1; }
+          test -n "$BWD_ADMIN_ENROLL_TOKEN" || { echo "Missing BWD_ADMIN_ENROLL_TOKEN"; exit 1; }
+          test -n "$BWD_STORAGE_BUCKET" || { echo "Missing BWD_STORAGE_BUCKET"; exit 1; }
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/bwd-firebase-sa.json"
+          python3 -m json.tool "$RUNNER_TEMP/bwd-firebase-sa.json" >/dev/null
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/bwd-cloud-v2/functions/package-lock.json
+
+      - name: Install Firebase CLI and Functions dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g firebase-tools
+          cd backend/bwd-cloud-v2/functions
+          npm ci
+
+      - name: Configure Firebase runtime params
+        shell: bash
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/bwd-firebase-sa.json
+          FIREBASE_PROJECT_ID: ${{ secrets.BWD_FIREBASE_PROJECT_ID }}
+          BWD_ADMIN_ENROLL_TOKEN: ${{ secrets.BWD_ADMIN_ENROLL_TOKEN }}
+          BWD_STORAGE_BUCKET: ${{ secrets.BWD_STORAGE_BUCKET }}
+        run: |
+          set -euo pipefail
+          cd backend/bwd-cloud-v2
+          printf '%s' "$BWD_ADMIN_ENROLL_TOKEN" | firebase functions:secrets:set BWD_ADMIN_ENROLL_TOKEN --project "$FIREBASE_PROJECT_ID" --data-file=-
+          printf '%s\n' "BWD_STORAGE_BUCKET=$BWD_STORAGE_BUCKET" > .env."$FIREBASE_PROJECT_ID"
+
+      - name: Deploy Functions and rules
+        shell: bash
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/bwd-firebase-sa.json
+          FIREBASE_PROJECT_ID: ${{ secrets.BWD_FIREBASE_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          cd backend/bwd-cloud-v2
+          firebase deploy --project "$FIREBASE_PROJECT_ID" --only functions,firestore:rules,storage
+
+      - name: Print expected function URLs
+        shell: bash
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.BWD_FIREBASE_PROJECT_ID }}
+        run: |
+          echo "API: https://asia-southeast2-${FIREBASE_PROJECT_ID}.cloudfunctions.net/api"
+          echo "Owner API: https://asia-southeast2-${FIREBASE_PROJECT_ID}.cloudfunctions.net/ownerApi"
+          echo "Set Cloudflare BWD_API_ORIGIN to the API URL above."
