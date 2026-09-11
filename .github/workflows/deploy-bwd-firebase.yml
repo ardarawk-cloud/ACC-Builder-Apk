@@ -33,8 +33,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: backend/bwd-cloud-v2/functions/package-lock.json
 
       - name: Install Firebase CLI and Functions dependencies
         shell: bash
@@ -42,7 +40,7 @@ jobs:
           set -euo pipefail
           npm install -g firebase-tools
           cd backend/bwd-cloud-v2/functions
-          npm ci
+          npm install
 
       - name: Configure Firebase runtime params
         shell: bash
@@ -54,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           cd backend/bwd-cloud-v2
-          printf '%s' "$BWD_ADMIN_ENROLL_TOKEN" | firebase functions:secrets:set BWD_ADMIN_ENROLL_TOKEN --project "$FIREBASE_PROJECT_ID" --data-file=-
+          printf '%s\n' "$BWD_ADMIN_ENROLL_TOKEN" | firebase functions:secrets:set BWD_ADMIN_ENROLL_TOKEN --project "$FIREBASE_PROJECT_ID"
           printf '%s\n' "BWD_STORAGE_BUCKET=$BWD_STORAGE_BUCKET" > .env."$FIREBASE_PROJECT_ID"
 
       - name: Deploy Functions and rules
