@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -47,6 +48,7 @@ fun HomeScreen(
 ) {
     val posts by repository.observePosts().collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
+    val tokens = kinSkinTokens(skinId)
     var refreshing by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
     var editingId by remember { mutableStateOf<String?>(null) }
@@ -75,7 +77,7 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .kinY2kBorder(skinId),
                 shape = kinCardShape(skinId),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)),
+                colors = CardDefaults.cardColors(containerColor = tokens.surface.copy(alpha = 0.96f)),
             ) {
                 Column(
                     modifier = Modifier.padding(14.dp),
@@ -87,17 +89,41 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Share your day…", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text("Choose who gets to see it.", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                "Share your day…",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = tokens.textPrimary,
+                            )
+                            Text(
+                                "Choose who gets to see it.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = tokens.textSecondary,
+                            )
                         }
                         TextButton(onClick = { scope.launch { refresh() } }, enabled = !refreshing) {
                             Text(if (refreshing) "…" else "↻")
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = onCreate, modifier = Modifier.weight(1f)) { Text("▣ Photo") }
-                        OutlinedButton(onClick = onCreate, modifier = Modifier.weight(1f)) { Text("▶ Video") }
-                        OutlinedButton(onClick = onCreate, modifier = Modifier.weight(1f)) { Text("☺ Moment") }
+                        Button(
+                            onClick = onCreate,
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 44.dp),
+                        ) { Text("Photo", maxLines = 1) }
+                        OutlinedButton(
+                            onClick = onCreate,
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 44.dp),
+                        ) { Text("Video", maxLines = 1) }
+                        OutlinedButton(
+                            onClick = onCreate,
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 44.dp),
+                        ) { Text("Moment", maxLines = 1) }
                     }
                 }
             }
@@ -107,9 +133,15 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .padding(top = 8.dp),
                     shape = kinCardShape(skinId),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.86f),
+                    color = tokens.error.copy(alpha = if (skinId == "midnight") 0.16f else 0.10f),
+                    contentColor = tokens.error,
                 ) {
-                    Text(status, modifier = Modifier.padding(10.dp), style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        status,
+                        modifier = Modifier.padding(10.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = tokens.error,
+                    )
                 }
             }
         }
@@ -119,14 +151,22 @@ fun HomeScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = kinCardShape(skinId),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)),
+                    colors = CardDefaults.cardColors(containerColor = tokens.surface.copy(alpha = 0.96f)),
                 ) {
                     Column(
                         modifier = Modifier.padding(22.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Text("Your KIN starts here", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text("Share a photo, video or small moment with people who actually matter to you.")
+                        Text(
+                            "Your KIN starts here",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = tokens.textPrimary,
+                        )
+                        Text(
+                            "Share a photo, video or small moment with people who actually matter to you.",
+                            color = tokens.textSecondary,
+                        )
                         Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text("Share first moment") }
                     }
                 }
@@ -200,12 +240,13 @@ fun KinFeedPostCard(
     compact: Boolean = false,
 ) {
     val media = remember(post.mediaJson) { kinPostMediaFromJson(post.mediaJson) }
+    val tokens = kinSkinTokens(skinId)
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .kinY2kBorder(skinId),
         shape = kinCardShape(skinId),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)),
+        colors = CardDefaults.cardColors(containerColor = tokens.surface.copy(alpha = 0.97f)),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
@@ -216,17 +257,28 @@ fun KinFeedPostCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(post.authorDisplayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("@${post.authorUsername} · ${kinFormatPostTime(post.createdAt)}", style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        post.authorDisplayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = tokens.textPrimary,
+                    )
+                    Text(
+                        "@${post.authorUsername} · ${kinFormatPostTime(post.createdAt)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = tokens.textMuted,
+                    )
                 }
                 Surface(
                     shape = kinCardShape(skinId),
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                    color = tokens.accent.copy(alpha = if (skinId == "midnight") 0.18f else 0.13f),
+                    contentColor = tokens.textPrimary,
                 ) {
                     Text(
                         audienceLabel(post.audience),
                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
                         style = MaterialTheme.typography.labelSmall,
+                        color = tokens.textPrimary,
                     )
                 }
             }
@@ -255,7 +307,7 @@ fun KinFeedPostCard(
                         OutlinedButton(onClick = onCancelEdit, enabled = !busy) { Text("Cancel") }
                     }
                 } else if (post.text.isNotBlank()) {
-                    Text(post.text, style = MaterialTheme.typography.bodyLarge)
+                    Text(post.text, style = MaterialTheme.typography.bodyLarge, color = tokens.textPrimary)
                 }
 
                 val contextParts = buildList {
@@ -265,7 +317,11 @@ fun KinFeedPostCard(
                     post.withPeople?.takeIf { it.isNotBlank() }?.let { add("With $it") }
                 }
                 if (contextParts.isNotEmpty()) {
-                    Text(contextParts.joinToString("   ·   "), style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        contextParts.joinToString("   ·   "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = tokens.textSecondary,
+                    )
                 }
 
                 if (mine && !editing) {
