@@ -1,13 +1,13 @@
 {
   "id": "kai-3d-free",
   "name": "KAI 3D FREE",
-  "version": 1,
+  "version": 2,
   "provider": "self-hosted",
   "engine": "Hunyuan3D-2.1 via KAI 3D Bridge",
   "mode": "personal",
-  "last_request_id": "kai3d-free-v1-20260829",
-  "last_prompt": "Personal self-hosted image-to-3D Android client with no paid generation credits.",
-  "last_build": "ready",
+  "last_request_id": "kai3d-free-v2-logo-20260911",
+  "last_prompt": "Build existing KAI 3D FREE client with official web and Android launcher branding.",
+  "last_build": "building",
   "created_at": "2026-08-29T07:19:00Z",
-  "updated_at": "2026-08-29T07:28:07.095988+00:00"
+  "updated_at": "2026-09-11T15:37:00Z"
 }
