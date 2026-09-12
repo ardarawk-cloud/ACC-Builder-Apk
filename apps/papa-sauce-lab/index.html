@@ -1559,7 +1559,22 @@ bottom-nav{background:rgba(255,253,250,.96)!important;border-top:1px solid #e9e3
     await dbPut('stock_movements',{id:uidV5(),date,datetime:new Date().toISOString(),product,qty,type:'restock',note:'Restock',user:currentRole,status:'ACTIVE'});
     UI.closeModal('restock');operationalDateV5=date;document.getElementById('operationalDateV5').value=date;await refreshV5();alert('Restock berhasil');
   };
-  Stock.stockOut=async function(){ const date=stockoutDateV5.value||operationalDateV5,product=stockoutProduct.value,qty=Number(stockoutQty.value),note=stockoutReason.value;if(qty<=0||!note)return alert('Isi jumlah dan alasan');if(!await ensureOpenV5(date))return;await dbPut('stock_movements',{id:uidV5(),date,datetime:new Date().toISOString(),product,qty,type:'stockout',note,user:currentRole,status:'ACTIVE'});UI.closeModal('stockout');operationalDateV5=date;document.getElementById('operationalDateV5').value=date;await refreshV5();alert('Stock keluar berhasil');};
+  // PSL_V13_CLOSED_STOCKOUT_CORRECTION
+  Stock.stockOut=async function(){
+    const date=stockoutDateV5.value||operationalDateV5,product=stockoutProduct.value,qty=Number(stockoutQty.value),note=(stockoutReason.value||'').trim();
+    if(qty<=0||!note)return alert('Isi jumlah dan alasan');
+    const closed=await isClosedV5(date);
+    if(closed){
+      if(currentRole!=='OWNER')return alert('Tanggal '+date+' sudah CLOSED. Hanya OWNER yang dapat membuat koreksi stock keluar.');
+      const ok=confirm('Tanggal '+date+' sudah CLOSED. Tambahkan Stock Keluar sebagai KOREKSI tanpa menimpa snapshot lama?');
+      if(!ok)return;
+      await dbPut('stock_movements',{id:uidV5(),date,datetime:new Date().toISOString(),product,qty,type:'stockout',note,user:currentRole,status:'ACTIVE',isCorrection:true,correctionKind:'late_stockout_after_close',snapshotUnchanged:true});
+      UI.closeModal('stockout');operationalDateV5=date;document.getElementById('operationalDateV5').value=date;await refreshV5();alert('Koreksi Stock Keluar '+date+' berhasil. Snapshot CLOSED lama tetap tidak ditimpa.');
+      return;
+    }
+    await dbPut('stock_movements',{id:uidV5(),date,datetime:new Date().toISOString(),product,qty,type:'stockout',note,user:currentRole,status:'ACTIVE'});
+    UI.closeModal('stockout');operationalDateV5=date;document.getElementById('operationalDateV5').value=date;await refreshV5();alert('Stock keluar berhasil');
+  };
 
   UI.updateDashboard=async function(){
     const c=await calcV5(operationalDateV5), levels=await stockAtV5(operationalDateV5), totalStock=Object.values(levels).reduce((a,x)=>a+Number(x||0),0), sn=await snapshotV5(operationalDateV5);
