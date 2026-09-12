@@ -1,0 +1,77 @@
+name: PSL v7 Freeze Hotfix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/psl_v7_freeze_fix.py'
+      - '.github/workflows/psl-v7-freeze-hotfix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply freeze/logo hotfix
+        run: python3 scripts/psl_v7_freeze_fix.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V5_BACKDATE_HB_PATCH' "$F"
+          grep -q 'PSL_V6_PRO_POLISH' "$F"
+          grep -q 'psl-safe-logo' "$F"
+          ! grep -q 'const obs=new MutationObserver' "$F"
+          grep -q 'Tambah HB' "$F"
+          grep -q 'operationalDateV5' "$F"
+          test "$(head -c 15 "$F")" = '<!DOCTYPE html>'
+          tail -n 5 "$F" | grep -q '</html>'
+
+      - name: Prepare v7 metadata and request
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          meta_path=Path('apps/papa-sauce-lab/project.json')
+          meta=json.loads(meta_path.read_text())
+          meta['version']=7
+          meta['provider']='manual-hotfix'
+          meta['model']='none'
+          meta['qc']='passed'
+          meta['last_request_id']='papa-sauce-lab-freeze-hotfix-v7-20260912'
+          meta['last_prompt']='Fix v6 UI freeze caused by MutationObserver feedback loop; make polish bounded/idempotent; stabilize inline PSL header logo; preserve v5 accounting logic.'
+          meta['last_build']='pending'
+          meta['updated_at']=datetime.now(timezone.utc).isoformat()
+          meta_path.write_text(json.dumps(meta,indent=2,ensure_ascii=False)+'\n')
+          req={
+            'request_id':'papa-sauce-lab-freeze-hotfix-v7-20260912',
+            'project_id':'papa-sauce-lab',
+            'project_name':'Papa Sauce Lab',
+            'mode':'build_existing',
+            'created_at':datetime.now(timezone.utc).isoformat(),
+            'prompt':'Build existing PSL v7 source. No AI regeneration. Preserve v5 accounting/backdate/HB logic and v6 visual polish except freeze fix and safe logo.'
+          }
+          Path('requests/papa-sauce-lab-freeze-hotfix-v7-20260912.json').write_text(json.dumps(req,indent=2,ensure_ascii=False)+'\n')
+          PY
+
+      - name: Commit hotfix and trigger APK build
+        shell: bash
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json requests/papa-sauce-lab-freeze-hotfix-v7-20260912.json
+          git commit -m "PSL v7: fix UI freeze and stabilize logo" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
