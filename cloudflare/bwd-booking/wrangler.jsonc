@@ -3,6 +3,12 @@
   "name": "bali-wedding-dj-booking",
   "main": "./src/index.js",
   "compatibility_date": "2026-09-10",
+  "d1_databases": [
+    {
+      "binding": "BWD_DB",
+      "database_name": "bwd-booking-prod"
+    }
+  ],
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
