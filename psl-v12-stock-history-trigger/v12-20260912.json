@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-stock-history-fix-v12-20260912",
+  "project_id": "papa-sauce-lab",
+  "version": 12,
+  "mode": "patch_then_stable_signed_update",
+  "reason": "Restock/Stock Keluar missing from Riwayat and stock detail needs explicit total/per-product drilldown"
+}
