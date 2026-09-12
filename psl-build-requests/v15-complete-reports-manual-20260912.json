@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-stable-v15-complete-reports-manual-20260912",
+  "project_id": "papa-sauce-lab",
+  "version": 15,
+  "mode": "stable_signed_update",
+  "reason": "Build v15 complete weekly/monthly/all-data reports including sales, expenses, production, stock out, stock opening/closing and per-product summary"
+}
