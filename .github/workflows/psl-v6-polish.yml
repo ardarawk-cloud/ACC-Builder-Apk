@@ -4,13 +4,16 @@ on:
   workflow_run:
     workflows: ["ACC Builder - Generate and Build APK"]
     types: [completed]
+  push:
+    paths:
+      - "triggers/psl-v6-polish.trigger"
 
 permissions:
   contents: write
 
 jobs:
   polish:
-    if: ${{ github.event.workflow_run.id == 34670492102 && github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || (github.event.workflow_run.id == 34670492102 && github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout latest main
