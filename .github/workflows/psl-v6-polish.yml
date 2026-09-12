@@ -1,0 +1,77 @@
+name: PSL v6 Professional Polish
+
+on:
+  workflow_run:
+    workflows: ["ACC Builder - Generate and Build APK"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    if: ${{ github.event.workflow_run.id == 34670492102 && github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply professional UI polish
+        run: python3 scripts/psl_v6_polish.py
+
+      - name: Validate functional source and polish markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V5_BACKDATE_HB_PATCH' "$F"
+          grep -q 'PSL_V6_PRO_POLISH' "$F"
+          grep -q 'operationalDateV5' "$F"
+          grep -q 'Tambah HB' "$F"
+          grep -q 'Set HB Awal' "$F"
+          grep -q 'totalRegister:houseBank+totalSales-totalOut' "$F"
+          grep -q 'ACCOUNTING · DAILY REPORT' "$F"
+          test "$(head -c 15 "$F")" = '<!DOCTYPE html>'
+          tail -n 5 "$F" | grep -q '</html>'
+
+      - name: Prepare v6 metadata and build request
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          meta_path=Path('apps/papa-sauce-lab/project.json')
+          meta=json.loads(meta_path.read_text())
+          meta['version']=6
+          meta['provider']='manual-hotfix'
+          meta['model']='none'
+          meta['qc']='passed'
+          meta['last_request_id']='papa-sauce-lab-professional-polish-v6-20260912'
+          meta['last_prompt']='Deterministic professional UI/UX polish over verified v5 accounting logic; no accounting behavior changes.'
+          meta['last_build']='pending'
+          meta['updated_at']=datetime.now(timezone.utc).isoformat()
+          meta_path.write_text(json.dumps(meta,indent=2,ensure_ascii=False)+'\n')
+          req={
+            'request_id':'papa-sauce-lab-professional-polish-v6-20260912',
+            'project_id':'papa-sauce-lab',
+            'project_name':'Papa Sauce Lab',
+            'mode':'build_existing',
+            'created_at':datetime.now(timezone.utc).isoformat(),
+            'prompt':'Build existing PSL v6 source. Preserve v5 backdate, HB ledger and rollover logic. No AI regeneration.'
+          }
+          Path('requests/papa-sauce-lab-professional-polish-v6-20260912.json').write_text(json.dumps(req,indent=2,ensure_ascii=False)+'\n')
+          PY
+
+      - name: Commit polish and trigger v6 APK build
+        shell: bash
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json requests/papa-sauce-lab-professional-polish-v6-20260912.json
+          git commit -m "PSL v6: professional app polish" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
