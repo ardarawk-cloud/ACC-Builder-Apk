@@ -1,0 +1,81 @@
+name: PSL v15 Complete Reports
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-v15-complete-reports-trigger/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply v15 complete reports patch
+        run: python3 scripts/psl_v15_complete_reports.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V15_COMPLETE_REPORTS' "$F"
+          grep -q 'Rangkuman Semua Data' "$F"
+          grep -q 'Total Produksi Periode' "$F"
+          grep -q 'Total Stock Out Periode' "$F"
+          grep -q 'Jumlah Entri Sales' "$F"
+          grep -q 'PSL_V14_STOCK_TOTALS' "$F"
+          grep -q 'PSL_V13_CLOSED_STOCKOUT_CORRECTION' "$F"
+          grep -q 'PSL_V12_STOCK_HISTORY_FIX' "$F"
+          grep -q 'PSL_V11_SMART_SALE_PREMIUM' "$F"
+          grep -q 'PSL_V10_TRANSACTION_EDIT' "$F"
+          grep -q 'PSL_V5_BACKDATE_HB_PATCH' "$F"
+          grep -q 'MutationObserver' "$F" && { echo 'Unsafe observer found'; exit 1; } || true
+          test "$(head -c 15 "$F")" = '<!DOCTYPE html>'
+          tail -n 8 "$F" | grep -q '</html>'
+
+      - name: Bump v15 metadata and stable request
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          p=Path('apps/papa-sauce-lab/project.json')
+          m=json.loads(p.read_text())
+          m['version']=15
+          m['provider']='manual-hotfix'
+          m['model']='none'
+          m['qc']='passed'
+          m['last_request_id']='papa-sauce-lab-complete-reports-v15-20260912'
+          m['last_prompt']='Replace ambiguous generic monthly transaction count with complete weekly/monthly/all-data summaries: sales by channel, expenses, production, stock out, opening/closing stock, entry counts and per-product breakdown. Keep report date synced to operational date.'
+          m['last_build']='pending'
+          m['updated_at']=datetime.now(timezone.utc).isoformat()
+          p.write_text(json.dumps(m,indent=2,ensure_ascii=False)+'\n')
+          r=Path('psl-build-requests/v15-complete-reports-20260912.json')
+          r.parent.mkdir(exist_ok=True)
+          r.write_text(json.dumps({
+            'request_id':'papa-sauce-lab-stable-v15-complete-reports-20260912',
+            'project_id':'papa-sauce-lab','version':15,'mode':'stable_signed_update',
+            'reason':'Build stable v15 complete summary reports with sales, expenses, production, stock out, stock balances and per-product breakdown'
+          },indent=2)+'\n')
+          PY
+
+      - name: Commit v15 patch and trigger stable build
+        shell: bash
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json psl-build-requests/v15-complete-reports-20260912.json
+          git commit -m "PSL v15: complete weekly monthly all-data reports" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
