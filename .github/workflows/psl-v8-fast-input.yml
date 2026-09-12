@@ -1,0 +1,70 @@
+name: PSL v8 Fast Input
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-fast-input-trigger/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply fast input patch
+        run: python3 scripts/psl_v8_fast_input.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V5_BACKDATE_HB_PATCH' "$F"
+          grep -q 'PSL_V8_FAST_INPUT' "$F"
+          grep -q 'fastSalesAmount' "$F"
+          grep -q 'fastExpenseAmount' "$F"
+          grep -q 'data-ch="qris"' "$F"
+          grep -q 'MutationObserver' "$F" && { echo 'Unsafe observer found'; exit 1; } || true
+          test "$(head -c 15 "$F")" = '<!DOCTYPE html>'
+          tail -n 8 "$F" | grep -q '</html>'
+
+      - name: Bump v8 and create stable build request
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          meta_path=Path('apps/papa-sauce-lab/project.json')
+          meta=json.loads(meta_path.read_text())
+          meta['version']=8
+          meta['provider']='manual-hotfix'
+          meta['model']='none'
+          meta['qc']='passed'
+          meta['last_request_id']='papa-sauce-lab-fast-input-v8-20260912'
+          meta['last_prompt']='Add fast daily input: one amount + one-tap sales channel and compact expense entry; preserve v7 freeze fix and v5 accounting/backdate/HB logic.'
+          meta['last_build']='pending'
+          meta['updated_at']=datetime.now(timezone.utc).isoformat()
+          meta_path.write_text(json.dumps(meta,indent=2,ensure_ascii=False)+'\n')
+          req={'request_id':'papa-sauce-lab-stable-v8-fast-input-20260912','project_id':'papa-sauce-lab','version':8,'mode':'stable_signed_update','created_at':datetime.now(timezone.utc).isoformat()}
+          Path('psl-build-requests/v8-fast-input-20260912.json').write_text(json.dumps(req,indent=2,ensure_ascii=False)+'\n')
+          PY
+
+      - name: Commit patch and trigger stable v8 build
+        shell: bash
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json psl-build-requests/v8-fast-input-20260912.json
+          git commit -m "PSL v8: fast daily input" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
