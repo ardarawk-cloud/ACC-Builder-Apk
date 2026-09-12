@@ -1,13 +1,13 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 6,
+  "version": 7,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-professional-polish-v6-20260912",
-  "last_prompt": "Deterministic professional UI/UX polish over verified v5 accounting logic; no accounting behavior changes.",
-  "last_build": "ready",
+  "last_request_id": "papa-sauce-lab-freeze-hotfix-v7-20260912",
+  "last_prompt": "Fix v6 UI freeze caused by MutationObserver feedback loop; make polish bounded/idempotent; stabilize inline PSL header logo; preserve v5 accounting logic.",
+  "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
-  "updated_at": "2026-09-12T03:34:41.778999+00:00"
+  "updated_at": "2026-09-12T03:59:48.891891+00:00"
 }
