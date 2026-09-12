@@ -1,0 +1,70 @@
+name: PSL v12 Stock History Fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-v12-stock-history-trigger/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply v12 stock history fix
+        run: python3 scripts/psl_v12_stock_history_fix.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V12_STOCK_HISTORY_FIX' "$F"
+          grep -q 'dbGetAll.(.stock_movements.' "$F" || grep -q "dbGetAll('stock_movements')" "$F"
+          grep -q 'KETUK UNTUK RINCIAN STOK' "$F"
+          grep -q 'AUTO SALE' "$F"
+          grep -q 'PSL_V11_SMART_SALE_PREMIUM' "$F"
+          grep -q 'PSL_V10_TRANSACTION_EDIT' "$F"
+          grep -q 'PSL_V5_BACKDATE_HB_PATCH' "$F"
+          grep -q 'MutationObserver' "$F" && { echo 'Unsafe observer found'; exit 1; } || true
+          test "$(head -c 15 "$F")" = '<!DOCTYPE html>'
+          tail -n 8 "$F" | grep -q '</html>'
+
+      - name: Bump v12 metadata
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          p=Path('apps/papa-sauce-lab/project.json')
+          m=json.loads(p.read_text())
+          m['version']=12
+          m['provider']='manual-hotfix'
+          m['model']='none'
+          m['qc']='passed'
+          m['last_request_id']='papa-sauce-lab-stock-history-fix-v12-20260912'
+          m['last_prompt']='Fix missing Restock/Stock Keluar history by merging stock_movements into Riwayat; add visible total-stock summary and detailed per-product drilldown; preserve v11 Smart Sale, v10 corrections, v9 closed restock correction and all accounting formulas.'
+          m['last_build']='pending'
+          m['updated_at']=datetime.now(timezone.utc).isoformat()
+          p.write_text(json.dumps(m,indent=2,ensure_ascii=False)+'\n')
+          PY
+
+      - name: Commit v12 patch
+        shell: bash
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json
+          git commit -m "PSL v12: fix stock history and drilldown" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
