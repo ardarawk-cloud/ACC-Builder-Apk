@@ -77,9 +77,8 @@ new_js = r'''<script id="PSL_V6_PRO_POLISH_JS">
 pat = re.compile(r'<script id="PSL_V6_PRO_POLISH_JS">[\s\S]*?</script>')
 if not pat.search(s):
     raise SystemExit('v6 polish JS block not found')
-s = pat.sub(new_js, s, count=1)
+s = pat.sub(lambda _m: new_js, s, count=1)
 
-# Safety: remove any remaining MutationObserver in the polish block/path to prevent main-thread mutation loops.
 if 'const obs=new MutationObserver' in s:
     raise SystemExit('unsafe observer still present')
 
