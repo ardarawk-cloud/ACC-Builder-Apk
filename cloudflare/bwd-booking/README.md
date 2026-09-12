@@ -1,10 +1,12 @@
-# Bali Wedding DJ — Cloudflare Git Integration
+# Bali Wedding DJ — Cloudflare Booking Backend
 
-Public delivery model:
+Active delivery model:
 
-`Guest browser -> Cloudflare Worker + Static Assets -> /v1 proxy -> Firebase api -> Firestore/FCM -> Owner APK`
+`Guest browser -> Cloudflare Worker -> Cloudflare D1 -> FCM -> Owner APK`
 
 The public Client APK is no longer the guest distribution target. Guests use the web booking portal; the Owner APK remains the operational app.
+
+Firebase Cloud Functions / Blaze are not required for the active booking path.
 
 ## Cloudflare project
 
@@ -14,25 +16,43 @@ The public Client APK is no longer the guest distribution target. Guests use the
 - Root directory: repository root
 - Build command: `bash cloudflare/bwd-booking/build.sh`
 - Deploy command: `npx wrangler@latest deploy --config cloudflare/bwd-booking/wrangler.jsonc --keep-vars`
-- Non-production branch builds: optional; production does not depend on them.
+- Public origin: `https://bali-wedding-dj-booking.ardarawk.workers.dev`
 
-## Cloudflare runtime variable
+## D1
 
-Configure in Cloudflare project Settings -> Variables and Secrets:
+Wrangler config declares a D1 binding named `BWD_DB` with database name `bwd-booking-prod`.
+Wrangler 4 automatic resource provisioning can create and bind the database during deploy when no database ID is committed.
 
-- `BWD_API_ORIGIN` = HTTPS base URL of the deployed Firebase `api` function, without a trailing slash.
+The Worker lazily creates the required tables with `CREATE TABLE IF NOT EXISTS`:
 
-Example shape only:
+- `bookings`
+- `admin_devices`
 
-`https://<region>-<firebase-project>.cloudfunctions.net/api`
+No client access token or admin enrollment credential is stored in the public website.
 
-Do not put Firebase admin credentials, service-account JSON, or `BWD_ADMIN_ENROLL_TOKEN` in the public site or repository.
+## Cloudflare secrets
 
-## Routing
+Configure these in Cloudflare project Settings -> Variables and Secrets as encrypted secrets:
 
-- Static website and `/booking/...` private-link navigation are served by Workers Static Assets in SPA mode.
-- `/v1/*` invokes `src/index.js` first and is proxied to `BWD_API_ORIGIN`.
-- The browser therefore talks to the same Cloudflare origin and does not need cross-origin Firebase access.
+- `BWD_FIREBASE_SERVICE_ACCOUNT_JSON` — Firebase/Google service-account JSON used only by the Worker to obtain an OAuth token for FCM HTTP v1.
+- `BWD_ADMIN_ENROLL_TOKEN` — private one-time Owner device enrollment code. Use a strong random value of at least 12 characters.
+
+Do not commit either value to GitHub and do not put them in the web UI or APK.
+
+The Firebase Android client identifiers used by the Owner APK are public Firebase app configuration and are compiled into the Owner build. Server credentials are not.
+
+## API
+
+Same-origin endpoints:
+
+- `GET /v1/health`
+- `POST /v1/bookings`
+- `GET /v1/bookings/:bookingId` with `X-BWD-Client-Token`
+- `POST /v1/admin/devices` with `X-BWD-Admin-Enroll`
+- `GET /v1/admin/bookings` with `X-BWD-Admin-Device`
+- `POST /v1/admin/bookings/:bookingId/status` with `X-BWD-Admin-Device`
+
+Booking persistence is independent from push delivery: if FCM is temporarily unavailable, the booking remains stored in D1.
 
 ## Source of public web UI
 
@@ -42,6 +62,15 @@ Canonical web UI source remains:
 
 `build.sh` copies that source into `cloudflare/bwd-booking/public` before every Cloudflare deployment.
 
-## Verification gate
+## Activation gate
 
-A successful Cloudflare build/deploy proves hosting only. Do not call guest booking LIVE/VERIFIED until a real web submission reaches Firestore, appears in Owner Inbox, and triggers the Owner notification on a physical phone.
+Do not call the flow LIVE/VERIFIED until all of these have real evidence:
+
+1. Cloudflare deployment succeeds with D1 bound.
+2. `/v1/health` returns `ok: true` and `database: true`.
+3. Both Cloudflare secrets are configured and `push_configured` becomes `true`.
+4. Owner APK installs and obtains an FCM token.
+5. Owner device enrollment succeeds and receives the enrollment push.
+6. A real web booking creates exactly one D1 booking row.
+7. Owner phone receives `New Wedding Booking` and Owner Inbox syncs the same booking.
+8. Owner status change is visible in the guest private booking portal.
