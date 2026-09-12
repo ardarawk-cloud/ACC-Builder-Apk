@@ -1,13 +1,13 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 9,
+  "version": 10,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-closed-restock-correction-v9-20260912",
-  "last_prompt": "Allow OWNER to append an audited missed-restock correction to a CLOSED business date without overwriting the immutable daily snapshot; preserve v8 fast input and all accounting formulas.",
+  "last_request_id": "papa-sauce-lab-transaction-edit-v10-20260912",
+  "last_prompt": "Add tap-to-edit nominal corrections for sales/expense with immutable audit trail, while keeping v9 closed-day restock correction, v8 fast input, and all accounting formulas.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
-  "updated_at": "2026-09-12T05:46:58.414408+00:00"
+  "updated_at": "2026-09-12T05:49:47.587664+00:00"
 }
