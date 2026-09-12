@@ -1,0 +1,68 @@
+name: PSL v9 Closed Restock Correction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-v9-correction-trigger/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply closed restock correction patch
+        run: python3 scripts/psl_v9_closed_restock_correction.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V5_BACKDATE_HB_PATCH' "$F"
+          grep -q 'PSL_V8_FAST_INPUT' "$F"
+          grep -q 'PSL_V9_CLOSED_RESTOCK_CORRECTION' "$F"
+          grep -q 'ADD_MISSED_RESTOCK' "$F"
+          grep -q 'KOREKSI CLOSED' "$F"
+          grep -q 'MutationObserver' "$F" && { echo 'Unsafe observer found'; exit 1; } || true
+          test "$(head -c 15 "$F")" = '<!DOCTYPE html>'
+          tail -n 8 "$F" | grep -q '</html>'
+
+      - name: Bump v9 metadata
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          meta_path=Path('apps/papa-sauce-lab/project.json')
+          meta=json.loads(meta_path.read_text())
+          meta['version']=9
+          meta['provider']='manual-hotfix'
+          meta['model']='none'
+          meta['qc']='passed'
+          meta['last_request_id']='papa-sauce-lab-closed-restock-correction-v9-20260912'
+          meta['last_prompt']='Allow OWNER to append an audited missed-restock correction to a CLOSED business date without overwriting the immutable daily snapshot; preserve v8 fast input and all accounting formulas.'
+          meta['last_build']='pending'
+          meta['updated_at']=datetime.now(timezone.utc).isoformat()
+          meta_path.write_text(json.dumps(meta,indent=2,ensure_ascii=False)+'\n')
+          PY
+
+      - name: Commit v9 patch
+        shell: bash
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json
+          git commit -m "PSL v9: audited restock correction for closed day" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
