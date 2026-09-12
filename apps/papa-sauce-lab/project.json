@@ -1,13 +1,13 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 14,
+  "version": 15,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-stock-totals-v14-20260912",
-  "last_prompt": "Add automatic Total Produksi and Total Stock Out for selected operational date, with per-product drilldown and report summary; preserve v13 closed stockout correction and all prior accounting locks.",
+  "last_request_id": "papa-sauce-lab-complete-reports-v15-20260912",
+  "last_prompt": "Replace ambiguous generic monthly transaction count with complete weekly/monthly/all-data summaries: sales by channel, expenses, production, stock out, opening/closing stock, entry counts and per-product breakdown. Keep report date synced to operational date.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
-  "updated_at": "2026-09-12T07:42:28.705480+00:00"
+  "updated_at": "2026-09-12T08:00:27.734320+00:00"
 }
