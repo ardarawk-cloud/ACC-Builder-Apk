@@ -1,0 +1,149 @@
+name: PSL Stable Update Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-build-requests/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: psl-stable-update-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Restore stable PSL signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.psl-signing
+          key: psl-stable-signing-v1
+
+      - name: Ensure stable signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.psl-signing"
+          KEY="$HOME/.psl-signing/papa-sauce-lab.jks"
+          if [ ! -f "$KEY" ]; then
+            keytool -genkeypair -v \
+              -keystore "$KEY" \
+              -storepass "PapaSauceLabStable2026" \
+              -alias "papasaucelab" \
+              -keypass "PapaSauceLabStable2026" \
+              -keyalg RSA -keysize 4096 -validity 10000 \
+              -dname "CN=Papa Sauce Lab, OU=ACC, O=ACC, L=Bali, ST=Bali, C=ID"
+          fi
+          keytool -list -keystore "$KEY" -storepass "PapaSauceLabStable2026" -alias "papasaucelab" >/dev/null
+
+      - name: Build stable update-compatible APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROJECT="papa-sauce-lab"
+          APP_NAME="Papa Sauce Lab"
+          APP_ID="com.accbuilder.papasaucelab"
+          VERSION="$(python3 -c "import json;print(int(json.load(open('apps/papa-sauce-lab/project.json'))['version']))")"
+          BUILD_DIR="$RUNNER_TEMP/psl-stable-mobile"
+          mkdir -p "$BUILD_DIR/www"
+          cp "apps/$PROJECT/index.html" "$BUILD_DIR/www/index.html"
+          [ ! -f "apps/$PROJECT/icon.svg" ] || cp "apps/$PROJECT/icon.svg" "$BUILD_DIR/www/icon.svg"
+          cd "$BUILD_DIR"
+          cat > package.json <<'JSON'
+          {
+            "name":"papa-sauce-lab",
+            "version":"1.0.0",
+            "private":true,
+            "dependencies":{"@capacitor/core":"^7.0.0","@capacitor/android":"^7.0.0"},
+            "devDependencies":{"@capacitor/cli":"^7.0.0"}
+          }
+          JSON
+          python3 - <<PY
+          import json
+          open('capacitor.config.json','w',encoding='utf-8').write(json.dumps({
+            'appId':'$APP_ID','appName':'$APP_NAME','webDir':'www','server':{'androidScheme':'https'}
+          },ensure_ascii=False,indent=2))
+          PY
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+
+          RES="$BUILD_DIR/android/app/src/main/res"
+          mkdir -p "$RES/mipmap-anydpi"
+          find "$RES" -type f \( -name 'ic_launcher*.png' -o -name 'ic_launcher*.webp' \) -delete
+          rm -f "$RES/mipmap-anydpi-v26/ic_launcher.xml" "$RES/mipmap-anydpi-v26/ic_launcher_round.xml"
+          cp "$GITHUB_WORKSPACE/apps/$PROJECT/icon-android.xml" "$RES/mipmap-anydpi/ic_launcher.xml"
+          cp "$GITHUB_WORKSPACE/apps/$PROJECT/icon-android.xml" "$RES/mipmap-anydpi/ic_launcher_round.xml"
+
+          export PSL_KEYSTORE_PATH="$HOME/.psl-signing/papa-sauce-lab.jks"
+          python3 - "$BUILD_DIR/android/app/build.gradle" "$VERSION" <<'PY'
+          from pathlib import Path
+          import re, sys
+          p=Path(sys.argv[1]); version=int(sys.argv[2]); s=p.read_text()
+          s=re.sub(r'versionCode\s+\d+', f'versionCode {version}', s, count=1)
+          s=re.sub(r'versionName\s+["\'][^"\']+["\']', f'versionName "{version}.0"', s, count=1)
+          marker='android {'
+          block='''android {\n    signingConfigs {\n        debug {\n            storeFile file(System.getenv("PSL_KEYSTORE_PATH"))\n            storePassword "PapaSauceLabStable2026"\n            keyAlias "papasaucelab"\n            keyPassword "PapaSauceLabStable2026"\n        }\n    }'''
+          if marker not in s:
+              raise SystemExit('android block not found')
+          s=s.replace(marker,block,1)
+          p.write_text(s)
+          PY
+
+          cd "$BUILD_DIR/android"
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/dist/papa-sauce-lab-stable-v${VERSION}.apk"
+          echo "$VERSION" > "$GITHUB_WORKSPACE/.psl-version"
+
+      - name: Verify package identity and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(cat .psl-version)"
+          APK="dist/papa-sauce-lab-stable-v${VERSION}.apk"
+          $ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner verify --print-certs "$APK"
+          unzip -p "$APK" assets/public/index.html | grep -q 'PSL_V5_BACKDATE_HB_PATCH'
+          unzip -p "$APK" assets/public/index.html | grep -q 'Tambah HB'
+
+      - name: Upload stable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: papa-sauce-lab-stable.apk
+          path: dist/papa-sauce-lab-stable-v*.apk
+          retention-days: 30
+
+      - name: Publish stable update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          VERSION="$(cat .psl-version)"
+          APK="dist/papa-sauce-lab-stable-v${VERSION}.apk"
+          TAG="psl-stable-v${VERSION}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --clobber
+          else
+            gh release create "$TAG" "$APK" --title "Papa Sauce Lab Stable v${VERSION}" --notes "Stable-signed update-compatible APK. Install this baseline once; later stable builds can update over it without uninstalling." --target "$GITHUB_SHA"
+          fi
