@@ -1,0 +1,80 @@
+name: PSL v14 Stock Totals
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-v14-stock-totals-trigger/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply v14 stock totals patch
+        run: python3 scripts/psl_v14_stock_totals.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V14_STOCK_TOTALS' "$F"
+          grep -q 'Total Produksi' "$F"
+          grep -q 'Total Stock Out' "$F"
+          grep -q 'PSL_V13_CLOSED_STOCKOUT_CORRECTION' "$F"
+          grep -q 'PSL_V12_STOCK_HISTORY_FIX' "$F"
+          grep -q 'PSL_V11_SMART_SALE_PREMIUM' "$F"
+          grep -q 'PSL_V10_TRANSACTION_EDIT' "$F"
+          grep -q 'PSL_V5_BACKDATE_HB_PATCH' "$F"
+          grep -q 'MutationObserver' "$F" && { echo 'Unsafe observer found'; exit 1; } || true
+          test "$(head -c 15 "$F")" = '<!DOCTYPE html>'
+          tail -n 8 "$F" | grep -q '</html>'
+
+      - name: Bump v14 metadata and stable request
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          p=Path('apps/papa-sauce-lab/project.json')
+          m=json.loads(p.read_text())
+          m['version']=14
+          m['provider']='manual-hotfix'
+          m['model']='none'
+          m['qc']='passed'
+          m['last_request_id']='papa-sauce-lab-stock-totals-v14-20260912'
+          m['last_prompt']='Add automatic Total Produksi and Total Stock Out for selected operational date, with per-product drilldown and report summary; preserve v13 closed stockout correction and all prior accounting locks.'
+          m['last_build']='pending'
+          m['updated_at']=datetime.now(timezone.utc).isoformat()
+          p.write_text(json.dumps(m,indent=2,ensure_ascii=False)+'\n')
+          r=Path('psl-build-requests/v14-stock-totals-20260912.json')
+          r.parent.mkdir(exist_ok=True)
+          r.write_text(json.dumps({
+            'request_id':'papa-sauce-lab-stable-v14-stock-totals-20260912',
+            'project_id':'papa-sauce-lab',
+            'version':14,
+            'mode':'stable_signed_update',
+            'reason':'Build stable v14 with automatic Total Produksi and Total Stock Out cards, per-product drilldown and report totals'
+          },indent=2)+'\n')
+          PY
+
+      - name: Commit v14 patch and trigger stable build
+        shell: bash
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json psl-build-requests/v14-stock-totals-20260912.json
+          git commit -m "PSL v14: add production and stock-out totals" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
