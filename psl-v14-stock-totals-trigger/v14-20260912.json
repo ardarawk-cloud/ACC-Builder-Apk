@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-stock-totals-v14-20260912",
+  "project_id": "papa-sauce-lab",
+  "version": 14,
+  "mode": "patch_then_stable_signed_update",
+  "reason": "Add automatic Total Produksi and Total Stock Out totals so no manual calculator is needed"
+}
