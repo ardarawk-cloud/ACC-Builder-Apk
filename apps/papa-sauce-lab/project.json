@@ -1,13 +1,13 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 11,
+  "version": 12,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-smart-sale-premium-v11-20260912",
-  "last_prompt": "Add Smart Sale that records sales and optional stock-out atomically in one action, plus premium exclusive UI polish; preserve v10 transaction corrections, v9 closed-day restock correction, and all accounting formulas.",
+  "last_request_id": "papa-sauce-lab-stock-history-fix-v12-20260912",
+  "last_prompt": "Fix missing Restock/Stock Keluar history by merging stock_movements into Riwayat; add visible total-stock summary and detailed per-product drilldown; preserve v11 Smart Sale, v10 corrections, v9 closed restock correction and all accounting formulas.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
-  "updated_at": "2026-09-12T06:10:09.221334+00:00"
+  "updated_at": "2026-09-12T07:07:12.306225+00:00"
 }
