@@ -1,0 +1,75 @@
+name: PSL v11 Smart Sale Premium
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-v11-trigger/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply v11 smart sale premium patch
+        run: python3 scripts/psl_v11_smart_sale_premium.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V5_BACKDATE_HB_PATCH' "$F"
+          grep -q 'PSL_V8_FAST_INPUT' "$F"
+          grep -q 'PSL_V9_CLOSED_RESTOCK_CORRECTION' "$F"
+          grep -q 'PSL_V10_TRANSACTION_EDIT' "$F"
+          grep -q 'PSL_V11_SMART_SALE_PREMIUM' "$F"
+          grep -q 'PSL_V11_PREMIUM_STYLE' "$F"
+          grep -q 'smartSaleProduct11' "$F"
+          grep -q 'smartSaleQty11' "$F"
+          grep -q "db.transaction(stores,'readwrite')" "$F"
+          grep -q "linkedStockMovementId" "$F"
+          grep -q "linkedSaleId" "$F"
+          grep -q 'SALE + STOCK' "$F"
+          grep -q 'MutationObserver' "$F" && { echo 'Unsafe observer found'; exit 1; } || true
+          test "$(head -c 15 "$F")" = '<!DOCTYPE html>'
+          tail -n 10 "$F" | grep -q '</html>'
+
+      - name: Bump v11 metadata
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          p=Path('apps/papa-sauce-lab/project.json')
+          meta=json.loads(p.read_text())
+          meta['version']=11
+          meta['provider']='manual-hotfix'
+          meta['model']='none'
+          meta['qc']='passed'
+          meta['last_request_id']='papa-sauce-lab-smart-sale-premium-v11-20260912'
+          meta['last_prompt']='Add Smart Sale that records sales and optional stock-out atomically in one action, plus premium exclusive UI polish; preserve v10 transaction corrections, v9 closed-day restock correction, and all accounting formulas.'
+          meta['last_build']='pending'
+          meta['updated_at']=datetime.now(timezone.utc).isoformat()
+          p.write_text(json.dumps(meta,indent=2,ensure_ascii=False)+'\n')
+          PY
+
+      - name: Commit v11 patch
+        shell: bash
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json
+          git commit -m "PSL v11: smart sale + premium polish" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
