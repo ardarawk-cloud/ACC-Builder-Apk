@@ -1,13 +1,13 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 13,
+  "version": 14,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-closed-stockout-v13-20260912",
-  "last_prompt": "Allow OWNER to add late Stock Keluar corrections to CLOSED operational dates without overwriting immutable snapshots; preserve v12 stock history/drilldown, v11 Smart Sale, v10 transaction correction, v9 closed restock correction and accounting formulas.",
+  "last_request_id": "papa-sauce-lab-stock-totals-v14-20260912",
+  "last_prompt": "Add automatic Total Produksi and Total Stock Out for selected operational date, with per-product drilldown and report summary; preserve v13 closed stockout correction and all prior accounting locks.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
-  "updated_at": "2026-09-12T07:34:50.216296+00:00"
+  "updated_at": "2026-09-12T07:42:28.705480+00:00"
 }
