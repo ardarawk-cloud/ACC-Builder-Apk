@@ -1,13 +1,13 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 7,
+  "version": 8,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-freeze-hotfix-v7-20260912",
-  "last_prompt": "Fix v6 UI freeze caused by MutationObserver feedback loop; make polish bounded/idempotent; stabilize inline PSL header logo; preserve v5 accounting logic.",
+  "last_request_id": "papa-sauce-lab-fast-input-v8-20260912",
+  "last_prompt": "Add fast daily input: one amount + one-tap sales channel and compact expense entry; preserve v7 freeze fix and v5 accounting/backdate/HB logic.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
-  "updated_at": "2026-09-12T03:59:48.891891+00:00"
+  "updated_at": "2026-09-12T04:29:59.424035+00:00"
 }
