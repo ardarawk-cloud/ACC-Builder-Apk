@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-stable-v14-stock-totals-trigger-20260912",
+  "project_id": "papa-sauce-lab",
+  "version": 14,
+  "mode": "stable_signed_update",
+  "reason": "Trigger stable v14 after stock totals patch completed"
+}
