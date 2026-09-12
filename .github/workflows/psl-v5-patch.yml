@@ -1,0 +1,36 @@
+name: PSL v5 Deterministic Patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/psl-v5-patch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Apply PSL v5 patch
+        run: python3 scripts/psl_patch_v5.py
+      - name: Validate patched source
+        shell: bash
+        run: |
+          grep -q 'PSL_V5_BACKDATE_HB_PATCH' apps/papa-sauce-lab/index.html
+          grep -q 'Tambah House Bank' apps/papa-sauce-lab/index.html
+          grep -q 'Tanggal Operasional' apps/papa-sauce-lab/index.html
+          grep -q 'papa-sauce-lab-backdate-hb-v5-20260912' requests/papa-sauce-lab-backdate-hb-v5-20260912.json
+      - name: Commit patch and build request
+        shell: bash
+        run: |
+          git config user.name 'ACC PSL Builder'
+          git config user.email 'actions@users.noreply.github.com'
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json requests/papa-sauce-lab-backdate-hb-v5-20260912.json
+          git commit -m 'PSL v5: backdate + HB ledger + rollover' || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
