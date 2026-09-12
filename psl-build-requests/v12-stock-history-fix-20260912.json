@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-stable-v12-stock-history-fix-20260912",
+  "project_id": "papa-sauce-lab",
+  "version": 12,
+  "mode": "stable_signed_update",
+  "reason": "Build stable v12 with restored Restock/Stock Keluar history and detailed total-stock drilldown"
+}
