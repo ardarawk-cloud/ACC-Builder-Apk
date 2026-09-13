@@ -97,15 +97,11 @@ public final class BwdOwnerCloud {
         String token=p.getString("fcm_token","");
         if(token.length()<50){p.edit().putString("owner_sync_status","Waiting for Owner notification token").apply();finish(done);return;}
         if(!syncing.compareAndSet(false,true)){return;}
-        Context app=c.getApplicationContext();
         new Thread(()->{
             try{
                 String base=BuildConfig.BWD_CLOUD_BASE_URL;
                 while(base.endsWith("/"))base=base.substring(0,base.length()-1);
-                int slash=base.lastIndexOf('/');
-                if(slash<8)throw new IllegalStateException("invalid cloud url");
-                String ownerBase=base.substring(0,slash+1)+"ownerApi";
-                HttpURLConnection con=(HttpURLConnection)new URL(ownerBase+"/v1/admin/bookings").openConnection();
+                HttpURLConnection con=(HttpURLConnection)new URL(base+"/v1/admin/bookings").openConnection();
                 con.setConnectTimeout(12000);con.setReadTimeout(15000);con.setRequestMethod("GET");
                 con.setRequestProperty("Accept","application/json");
                 con.setRequestProperty("X-BWD-Admin-Device",token);
@@ -174,6 +170,7 @@ required = [
     'upsertCloudBooking',
     'X-BWD-Admin-Device',
     'BwdOwnerCloud.sync(this,db,this::showOwnerInbox)',
+    'base+"/v1/admin/bookings"',
 ]
 all_text = (java_dir/'BwdOwnerCloud.java').read_text() + db_file.read_text() + main.read_text()
 for token in required:
