@@ -23,9 +23,51 @@ function normalizeAdminCode(value) {
       s = s.slice(1, -1).trim();
     }
   }
-  // Enrollment codes are treated as case-insensitive alphanumeric tokens.
-  // This avoids Android keyboard/copy-paste punctuation, spaces, or casing causing false mismatches.
   return s.replace(/[^A-Za-z0-9]/g, "").toLowerCase();
+}
+
+function validServiceAccount(v) {
+  return !!(v && typeof v === "object" && v.client_email && v.private_key && v.project_id);
+}
+
+function findServiceAccount(v, depth = 0) {
+  if (depth > 3 || v == null) return null;
+  if (validServiceAccount(v)) return v;
+  if (typeof v === "string") {
+    try { return findServiceAccount(JSON.parse(v), depth + 1); } catch (_) { return null; }
+  }
+  if (typeof v === "object") {
+    for (const child of Object.values(v)) {
+      const found = findServiceAccount(child, depth + 1);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function parseLooseServiceAccount(raw) {
+  const keyStart = raw.indexOf("-----BEGIN PRIVATE KEY-----");
+  const keyMarker = "-----END PRIVATE KEY-----";
+  const keyEnd = keyStart >= 0 ? raw.indexOf(keyMarker, keyStart) : -1;
+  if (keyStart < 0 || keyEnd < 0) return null;
+
+  let privateKey = raw.slice(keyStart, keyEnd + keyMarker.length).replace(/\\n/g, "\n").trim();
+  if (!privateKey.endsWith("\n")) privateKey += "\n";
+
+  let clientEmail = "";
+  const emailMatch = raw.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]*iam\.gserviceaccount\.com/i);
+  if (emailMatch) clientEmail = emailMatch[0];
+
+  let projectId = "";
+  const projectMatch = raw.match(/["']?project_id["']?\s*[:=]\s*["']([^"'\r\n]+)["']/i);
+  if (projectMatch) projectId = projectMatch[1].trim();
+  if (!projectId && clientEmail) {
+    const domainMatch = clientEmail.match(/@([A-Za-z0-9._-]+)\.iam\.gserviceaccount\.com$/i);
+    if (domainMatch) projectId = domainMatch[1];
+  }
+
+  if (!clientEmail || !projectId) return null;
+  return { type: "service_account", project_id: projectId, private_key: privateKey, client_email: clientEmail };
 }
 
 function parseServiceAccount(value) {
@@ -39,14 +81,21 @@ function parseServiceAccount(value) {
   const end = raw.lastIndexOf("}");
   if (start >= 0 && end > start) attempts.push(raw.slice(start, end + 1));
 
+  if (!raw.includes("{") && raw.length > 200 && /^[A-Za-z0-9+/=\s]+$/.test(raw)) {
+    try {
+      const bytes = Uint8Array.from(atob(raw.replace(/\s+/g, "")), c => c.charCodeAt(0));
+      attempts.push(new TextDecoder().decode(bytes));
+    } catch (_) {}
+  }
+
   for (const candidate of attempts) {
     try {
-      let v = JSON.parse(candidate);
-      if (typeof v === "string") {
-        try { v = JSON.parse(v); } catch (_) {}
-      }
-      if (v && typeof v === "object" && v.client_email && v.private_key && v.project_id) return v;
+      const found = findServiceAccount(JSON.parse(candidate));
+      if (found) return found;
     } catch (_) {}
+
+    const loose = parseLooseServiceAccount(candidate);
+    if (loose) return loose;
   }
   return null;
 }
