@@ -77,16 +77,23 @@ p.write_text(s)
 print('BWD web patched: user-owned DJ photo + stronger hero text + redundant home card removed')
 PY
 
-node --check "$HERE/src/index.js"
+python3 "$REPO_ROOT/scripts/patch_bwd_web_simple_flow.py" "$PUBLIC/index.html"
+
+node --check "$HERE/src/index-v2.js"
+node --check "$HERE/src/simple-flow.js"
+node --check "$HERE/src/entry.js"
 python3 -m json.tool "$HERE/wrangler.jsonc" >/dev/null
 grep -q 'BOOK YOUR DATE' "$PUBLIC/index.html"
 grep -q '/booking/' "$PUBLIC/index.html"
 grep -q '/hero-wedding-dj.jpg' "$PUBLIC/index.html"
+grep -q 'I HAVE PAID' "$PUBLIC/index.html"
+grep -q 'TALK TO HUMAN ON WHATSAPP' "$PUBLIC/index.html"
 ! grep -q 'No app. No account. Just your wedding.' "$PUBLIC/index.html"
 ! grep -q 'photo-1618107095181-e3ba0f53ee59' "$PUBLIC/index.html"
 test -s "$PUBLIC/hero-wedding-dj.jpg"
 
 echo "BWD Cloudflare web build: PASS"
+echo "Flow: booking -> invoice/payment -> confirmed -> WhatsApp human handoff"
 echo "Hero asset: user-owned wedding DJ photo"
 echo "Static source: backend/bwd-cloud-v2/public"
 echo "Deploy config: cloudflare/bwd-booking/wrangler.jsonc"
