@@ -40,13 +40,13 @@ new = r'''  function formatIdr(v){const n=Number(v||0);return n>0?'Rp '+n.toLoca
     }else{
       action=`<div class="notice" style="margin-top:14px">We are checking your date and booking details. If everything is available, your invoice will appear here.</div>`;
     }
-    p.innerHTML=`<div class="kicker">MY BOOKING</div><h3 class="package-name" style="margin-top:8px">${escapeHtml(b.bride)} &amp; ${escapeHtml(b.groom)}</h3><span class="status-pill">${escapeHtml(status)}</span><div class="details"><div class="detail"><span>Booking ID</span><span>${escapeHtml(id)}</span></div><div class="detail"><span>Wedding Date</span><span>${escapeHtml(b.wedding_date||'—')}</span></div><div class="detail"><span>Venue</span><span>${escapeHtml([b.venue_name,b.venue_location].filter(Boolean).join(' · ')||'—')}</span></div><div class="detail"><span>Package</span><span>${escapeHtml(b.package_name||'—')}</span></div><div class="detail"><span>DJ Time</span><span>${escapeHtml([b.start_time,b.finish_time].filter(Boolean).join(' – ')||'—')}</span></div></div>${action}<button class="btn secondary full" style="margin-top:14px" id="refresh-booking">REFRESH STATUS</button><a class="btn secondary full" style="margin-top:9px" href="https://wa.me/6282247972288?text=${encodeURIComponent('Hello Bali Wedding DJ, I need help with booking '+id)}" target="_blank" rel="noopener">TALK TO HUMAN ON WHATSAPP</a>`;
+    p.innerHTML=`<div class="kicker">MY BOOKING</div><h3 class="package-name" style="margin-top:8px">${escapeHtml(b.bride)} &amp; ${escapeHtml(b.groom)}</h3><span class="status-pill">${escapeHtml(status)}</span><div class="details"><div class="detail"><span>Booking ID</span><span>${escapeHtml(id)}</span></div><div class="detail"><span>Wedding Date</span><span>${escapeHtml(b.wedding_date||'—')}</span></div><div class="detail"><span>Venue</span><span>${escapeHtml([b.venue_name,b.venue_location].filter(Boolean).join(' · ')||'—')}</span></div><div class="detail"><span>Package</span><span>${escapeHtml(b.package_name||'—')}</span></div><div class="detail"><span>DJ Time</span><span>${escapeHtml([b.start_time,b.finish_time].filter(Boolean).join(' – ')||'—')}</span></div></div>${action}<button class="btn secondary full" style="margin-top:14px" id="refresh-booking">REFRESH STATUS</button><a class="btn secondary full" style="margin-top:9px" href="https://wa.me/6282247972288?text=${encodeURIComponent('Hello Bali Wedding DJ, I need help with booking '+id)}" target="_blank" rel="noopener">WHATSAPP</a>`;
     $('#refresh-booking').onclick=()=>loadBooking(id,token);
     const pay=$('#payment-submitted');if(pay)pay.onclick=()=>submitSimplePayment(id,token);
   }'''
 
 s = s[:start] + new + s[end:]
-if 'I HAVE PAID' not in s or 'TALK TO HUMAN ON WHATSAPP' not in s or 'BOOKING CONFIRMED' not in s:
+if 'I HAVE PAID' not in s or '>WHATSAPP</a>' not in s or 'BOOKING CONFIRMED' not in s:
     raise SystemExit('simple portal verification failed')
 p.write_text(s)
-print('BWD guest portal simplified: booking -> invoice/payment -> confirmed + WhatsApp human handoff')
+print('BWD guest portal simplified: booking -> invoice/payment -> confirmed + WhatsApp')
