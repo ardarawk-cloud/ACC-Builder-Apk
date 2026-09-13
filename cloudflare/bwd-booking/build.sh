@@ -78,6 +78,7 @@ print('BWD web patched: user-owned DJ photo + stronger hero text + redundant hom
 PY
 
 python3 "$REPO_ROOT/scripts/patch_bwd_web_simple_flow.py" "$PUBLIC/index.html"
+python3 "$REPO_ROOT/scripts/patch_bwd_web_copy_account.py" "$PUBLIC/index.html"
 
 node --check "$HERE/src/index-v2.js"
 node --check "$HERE/src/simple-flow.js"
@@ -94,6 +95,8 @@ grep -q '>WHATSAPP</a>' "$PUBLIC/index.html"
 grep -q '50% Deposit' "$PUBLIC/index.html"
 grep -q 'Full Payment' "$PUBLIC/index.html"
 grep -q '0080679203' "$PUBLIC/index.html"
+grep -q 'COPY ACCOUNT NUMBER' "$PUBLIC/index.html"
+grep -q 'navigator.clipboard' "$PUBLIC/index.html"
 grep -q 'payment_proof_token' "$HERE/src/simple-flow.js"
 grep -q 'payment_proof_b64' "$HERE/src/simple-flow.js"
 ! grep -q 'No app. No account. Just your wedding.' "$PUBLIC/index.html"
@@ -101,7 +104,7 @@ grep -q 'payment_proof_b64' "$HERE/src/simple-flow.js"
 test -s "$PUBLIC/hero-wedding-dj.jpg"
 
 echo "BWD Cloudflare web build: PASS"
-echo "Flow: booking -> 50% deposit/full -> upload proof -> owner confirm -> WhatsApp"
+echo "Flow: booking -> 50% deposit/full -> copy bank account -> upload proof -> owner confirm -> WhatsApp"
 echo "Proof inputs: screenshot/file + camera"
 echo "Hero asset: user-owned wedding DJ photo"
 echo "Static source: backend/bwd-cloud-v2/public"
