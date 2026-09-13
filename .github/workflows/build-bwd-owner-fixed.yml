@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/build-bwd-owner-fixed.yml"
       - "scripts/patch_bwd_owner_simple_flow.py"
+      - "scripts/patch_bwd_owner_due_date_picker.py"
       - "scripts/patch_bwd_owner_dashboard.py"
       - "scripts/patch_bwd_owner_cloud_inbox.py"
       - "scripts/patch_bwd_owner_enroll_diagnostics.py"
@@ -138,11 +139,14 @@ jobs:
           python3 scripts/patch_bwd_owner_cloud_inbox.py bwd-admin
           python3 scripts/patch_bwd_owner_enroll_diagnostics.py bwd-admin
           python3 scripts/patch_bwd_owner_simple_flow.py bwd-admin
+          python3 scripts/patch_bwd_owner_due_date_picker.py bwd-admin
           MAIN=bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
           CLOUD=bwd-admin/app/src/main/java/com/baliweddingdj/app/BwdOwnerCloud.java
           grep -q 'DEAL & SEND INVOICE' "$MAIN"
           grep -q 'CONFIRM PAYMENT' "$MAIN"
           grep -q 'SHARE INVOICE PDF' "$MAIN"
+          grep -q 'DatePickerDialog(this' "$MAIN"
+          grep -q 'Tap to choose payment due date' "$MAIN"
           grep -q 'BwdOwnerCloud.sendInvoice' "$MAIN"
           grep -q 'BwdOwnerCloud.confirmPayment' "$MAIN"
           grep -q 'public static void sendInvoice' "$CLOUD"
