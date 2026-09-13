@@ -1,0 +1,98 @@
+name: Build ACC DJ Permanent Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "release-requests/acc-dj-permanent-v1.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build unsigned release APK and AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_DIR="$RUNNER_TEMP/acc-dj-release"
+          mkdir -p "$BUILD_DIR/www"
+          cp apps/acc-dj/index.html "$BUILD_DIR/www/index.html"
+          cd "$BUILD_DIR"
+          cat > package.json <<'JSON'
+          {
+            "name":"acc-dj-release",
+            "version":"1.0.0",
+            "private":true,
+            "dependencies":{"@capacitor/core":"^7.0.0","@capacitor/android":"^7.0.0"},
+            "devDependencies":{"@capacitor/cli":"^7.0.0"}
+          }
+          JSON
+          cat > capacitor.config.json <<'JSON'
+          {
+            "appId":"com.acc.dj",
+            "appName":"ACC DJ",
+            "webDir":"www",
+            "server":{"androidScheme":"https"}
+          }
+          JSON
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+
+          RES="$BUILD_DIR/android/app/src/main/res"
+          mkdir -p "$RES/mipmap-anydpi"
+          find "$RES" -type f \( -name 'ic_launcher*.png' -o -name 'ic_launcher*.webp' \) -delete
+          rm -f "$RES/mipmap-anydpi-v26/ic_launcher.xml" "$RES/mipmap-anydpi-v26/ic_launcher_round.xml"
+          cp "$GITHUB_WORKSPACE/apps/acc-dj/icon-android.xml" "$RES/mipmap-anydpi/ic_launcher.xml"
+          cp "$GITHUB_WORKSPACE/apps/acc-dj/icon-android.xml" "$RES/mipmap-anydpi/ic_launcher_round.xml"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('android/app/build.gradle')
+          s=p.read_text()
+          s=re.sub(r'versionCode\s+\d+', 'versionCode 1', s, count=1)
+          s=re.sub(r'versionName\s+["\'][^"\']+["\']', 'versionName "1.0.0"', s, count=1)
+          if 'applicationId "com.acc.dj"' not in s and "applicationId 'com.acc.dj'" not in s:
+              raise SystemExit('Package drift: expected com.acc.dj')
+          p.write_text(s)
+          m=Path('android/app/src/main/AndroidManifest.xml')
+          x=m.read_text()
+          x=x.replace('android:name=".MainActivity"', 'android:name=".MainActivity" android:screenOrientation="landscape"')
+          m.write_text(x)
+          PY
+
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease bundleRelease --stacktrace
+          mkdir -p "$GITHUB_WORKSPACE/dist-acc-dj"
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "$GITHUB_WORKSPACE/dist-acc-dj/ACC-DJ-1.0.0-unsigned.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/dist-acc-dj/ACC-DJ-1.0.0-unsigned.aab"
+          cd "$GITHUB_WORKSPACE"
+          sha256sum dist-acc-dj/* > dist-acc-dj/SHA256SUMS.txt
+
+      - name: Upload unsigned release
+        uses: actions/upload-artifact@v4
+        with:
+          name: ACC-DJ-1.0.0-UNSIGNED
+          path: dist-acc-dj/
+          retention-days: 3
