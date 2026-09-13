@@ -37,7 +37,11 @@ async function ensureSimpleSchema(env) {
   ];
   for (const [name, type] of columns) {
     if (!existing.has(name)) {
-      await env.BWD_DB.prepare(`ALTER TABLE bookings ADD COLUMN ${name} ${type}`).run();
+      try {
+        await env.BWD_DB.prepare(`ALTER TABLE bookings ADD COLUMN ${name} ${type}`).run();
+      } catch (err) {
+        if (!String(err && err.message || err).toLowerCase().includes("duplicate column")) throw err;
+      }
     }
   }
 }
@@ -147,7 +151,8 @@ export default {
       const balance = Math.max(0, total - deposit);
       const due = text(body.due_date, 32);
       const instructions = text(body.payment_instructions, 1200);
-      const number = invoiceNo(bookingId);
+      const suppliedNumber = text(body.invoice_no, 80).replace(/[^A-Za-z0-9._-]/g, "");
+      const number = suppliedNumber || invoiceNo(bookingId);
       const now = new Date().toISOString();
       await env.BWD_DB.prepare(`
         UPDATE bookings SET
