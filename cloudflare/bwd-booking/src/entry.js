@@ -100,6 +100,28 @@ function parseServiceAccount(value) {
   return null;
 }
 
+function pushDiagnostics(rawValue) {
+  const raw = String(rawValue == null ? "" : rawValue).trim();
+  const hasServiceType = /["']?type["']?\s*:\s*["']service_account["']/i.test(raw);
+  const hasProjectId = /["']?project_id["']?\s*:/i.test(raw);
+  const hasClientEmail = /["']?client_email["']?\s*:/i.test(raw) || /iam\.gserviceaccount\.com/i.test(raw);
+  const hasPrivateKey = /BEGIN PRIVATE KEY/i.test(raw) || /["']?private_key["']?\s*:/i.test(raw);
+  const looksGoogleServices = /["']?project_info["']?\s*:/i.test(raw) || /mobilesdk_app_id/i.test(raw) || /["']?api_key["']?\s*:/i.test(raw);
+  let kind = "unknown_secret";
+  if (!raw) kind = "missing";
+  else if (hasServiceType && hasProjectId && hasClientEmail && hasPrivateKey) kind = "service_account_material_present";
+  else if (looksGoogleServices && !hasPrivateKey) kind = "google_services_json";
+  else if (hasPrivateKey || hasClientEmail || hasProjectId) kind = "incomplete_service_account";
+  return {
+    push_secret_length: raw.length,
+    push_secret_kind: kind,
+    push_has_service_account_type: hasServiceType,
+    push_has_project_id_field: hasProjectId,
+    push_has_client_email_field: hasClientEmail,
+    push_has_private_key_field: hasPrivateKey
+  };
+}
+
 function normalizedEnv(env) {
   const out = Object.create(env);
   const serviceAccount = parseServiceAccount(env.BWD_FIREBASE_SERVICE_ACCOUNT_JSON);
@@ -117,6 +139,7 @@ export default {
       const rawPush = String(env.BWD_FIREBASE_SERVICE_ACCOUNT_JSON || "").trim();
       const parsedPush = parseServiceAccount(rawPush);
       const normalizedAdmin = normalizeAdminCode(env.BWD_ADMIN_ENROLL_TOKEN);
+      const pushDiag = pushDiagnostics(rawPush);
       if (!env.BWD_DB) {
         return json({
           ok: false,
@@ -125,6 +148,7 @@ export default {
           push_secret_present: !!rawPush,
           push_configured: !!parsedPush,
           push_project_id: parsedPush ? String(parsedPush.project_id || "") : "",
+          ...pushDiag,
           admin_enroll_configured: normalizedAdmin.length >= 12,
           admin_enroll_length: normalizedAdmin.length
         }, 503);
@@ -139,6 +163,7 @@ export default {
           push_secret_present: !!rawPush,
           push_configured: !!parsedPush,
           push_project_id: parsedPush ? String(parsedPush.project_id || "") : "",
+          ...pushDiag,
           admin_enroll_configured: normalizedAdmin.length >= 12,
           admin_enroll_length: normalizedAdmin.length
         });
@@ -151,6 +176,7 @@ export default {
           push_secret_present: !!rawPush,
           push_configured: !!parsedPush,
           push_project_id: parsedPush ? String(parsedPush.project_id || "") : "",
+          ...pushDiag,
           admin_enroll_configured: normalizedAdmin.length >= 12,
           admin_enroll_length: normalizedAdmin.length
         }, 503);
