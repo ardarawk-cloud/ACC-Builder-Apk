@@ -94,7 +94,17 @@ new_actions = r'''    private void showAdminBookingActions(LinearLayout p,JSONOb
         }else{
             p.addView(fullButton(("INVOICE SENT".equals(status)||"PAYMENT SUBMITTED".equals(status))?"UPDATE INVOICE":"DEAL & SEND INVOICE",true,()->simpleInvoiceDialog(id)));
             p.addView(Ui.space(this,8));
-            if("INVOICE SENT".equals(status)||"PAYMENT SUBMITTED".equals(status)){
+            if("PAYMENT SUBMITTED".equals(status)){
+                LinearLayout proof=Ui.card(this);
+                String option=b.optString("payment_option","DEPOSIT");
+                long paid=b.optLong("payment_amount",0);
+                proof.addView(Ui.text(this,"PAYMENT PROOF RECEIVED",14,Ui.GOLD,true));
+                proof.addView(Ui.text(this,("FULL".equals(option)?"Full payment":"50% deposit")+" · "+money(paid),14,Ui.WARM,true));
+                String proofName=b.optString("payment_proof_name","");
+                if(!proofName.isEmpty())proof.addView(Ui.text(this,proofName,12,Ui.MUTED,false));
+                p.addView(proof);
+                String proofUrl=b.optString("payment_proof_url","");
+                if(!proofUrl.isEmpty()){p.addView(fullButton("VIEW PAYMENT PROOF",true,()->openPaymentProof(proofUrl)));p.addView(Ui.space(this,8));}
                 p.addView(fullButton("CONFIRM PAYMENT",true,()->simpleConfirmPayment(id)));p.addView(Ui.space(this,8));
             }
             if(db.invoice(id)!=null){p.addView(fullButton("SHARE INVOICE PDF",false,()->createInvoicePdf(id)));p.addView(Ui.space(this,8));}
@@ -102,26 +112,33 @@ new_actions = r'''    private void showAdminBookingActions(LinearLayout p,JSONOb
         p.addView(fullButton("BACK TO BOOKINGS",false,this::showAdminBookings));
     }
 
+    private void openPaymentProof(String url){
+        try{
+            android.content.Intent i=new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url));
+            startActivity(i);
+        }catch(Exception e){toast("Unable to open payment proof.");}
+    }
+
     private void simpleInvoiceDialog(String id){
         JSONObject b=db.booking(id),pkg=b==null?null:db.packageByName(b.optString("package_name"));
         JSONObject q=db.quote(id);
         LinearLayout box=Ui.column(this);box.setPadding(20,6,20,6);
         EditText total=Ui.input(this,"Invoice total IDR");
-        EditText dep=Ui.input(this,"Deposit percentage");
         EditText due=Ui.input(this,"Payment due date YYYY-MM-DD");
-        EditText instructions=Ui.area(this,"Payment instructions",4);
         long defaultTotal=q!=null?q.optLong("total"):(pkg==null?0:pkg.optLong("price"));
         total.setText(defaultTotal>0?String.valueOf(defaultTotal):"");
-        int defaultPct=50;try{defaultPct=Integer.parseInt(db.setting("deposit_percentage","50"));}catch(Exception ignored){}
-        dep.setText(String.valueOf(q==null?defaultPct:q.optInt("deposit_percent",defaultPct)));
         if(q!=null)due.setText(q.optString("due_date"));
-        String pi=db.setting("payment_instructions","");
-        instructions.setText(pi.isEmpty()?"Please contact Bali Wedding DJ on WhatsApp if you need help with payment.":pi);
-        for(View v:new View[]{total,dep,due,instructions})box.addView(v);
+        box.addView(total);box.addView(due);
+        LinearLayout bank=Ui.card(this);
+        bank.addView(Ui.text(this,"PAYMENT",12,Ui.GOLD,true));
+        bank.addView(Ui.text(this,"Client can choose 50% deposit or full payment.",13,Ui.MUTED,false));
+        bank.addView(Ui.text(this,"BCA · Bagus Putu Hardajaya · 0080679203",13,Ui.WARM,true));
+        box.addView(bank);
         new AlertDialog.Builder(this).setTitle("Deal & Send Invoice · "+id).setView(box).setPositiveButton("SEND INVOICE",(d,w)->{
             long amount=parseMoney(total);if(amount<=0){toast("Enter invoice total.");return;}
-            int pct=50;try{pct=Integer.parseInt(dep.getText().toString());}catch(Exception ignored){}pct=Math.max(1,Math.min(100,pct));
-            String dueText=due.getText().toString().trim();String payText=instructions.getText().toString().trim();
+            int pct=50;
+            String dueText=due.getText().toString().trim();
+            String payText="BCA\nBagus Putu Hardajaya\n0080679203\nPayment option: 50% deposit or full payment";
             db.saveQuote(id,"",amount,0,0,pct,dueText,"","");
             db.generateInvoice(id);db.setBookingStatus(id,"INVOICE SENT");
             JSONObject inv=db.invoice(id);String invNo=inv==null?"":inv.optString("invoice_no");
@@ -130,8 +147,11 @@ new_actions = r'''    private void showAdminBookingActions(LinearLayout p,JSONOb
     }
 
     private void simpleConfirmPayment(String id){
-        new AlertDialog.Builder(this).setTitle("Confirm Payment").setMessage("Confirm payment for this booking? The client will immediately see BOOKING CONFIRMED.").setPositiveButton("CONFIRM",(d,w)->{
-            db.setBookingStatus(id,"BOOKING CONFIRMED");JSONObject b=db.booking(id);if(b!=null)db.setAvailability(b.optString("wedding_date"),"BOOKED");
+        JSONObject b=db.booking(id);
+        String option=b==null?"":b.optString("payment_option","");
+        long paid=b==null?0:b.optLong("payment_amount",0);
+        String what=("FULL".equals(option)?"full payment":"50% deposit")+(paid>0?" · "+money(paid):"");
+        new AlertDialog.Builder(this).setTitle("Confirm Payment").setMessage("Payment proof checked? Confirm "+what+" for this booking?").setPositiveButton("CONFIRM",(d,w)->{
             BwdOwnerCloud.confirmPayment(this,id,()->BwdOwnerCloud.sync(this,db,()->showBookingDetail(id,true)));
         }).setNegativeButton("CANCEL",null).show();
     }'''
@@ -156,6 +176,7 @@ main_file.write_text(main)
 all_text = main_file.read_text() + cloud_file.read_text() + db_file.read_text()
 required = [
     'DEAL & SEND INVOICE',
+    'VIEW PAYMENT PROOF',
     'CONFIRM PAYMENT',
     'SHARE INVOICE PDF',
     'public static void sendInvoice(',
@@ -163,6 +184,7 @@ required = [
     'INVOICE SENT',
     'PAYMENT SUBMITTED',
     'BOOKING CONFIRMED',
+    '0080679203',
     'v.put("status",cloudStatus);',
 ]
 for token in required:
@@ -174,4 +196,4 @@ for removed in ['CHANGE BOOKING STATUS','CREATE / UPDATE QUOTATION','EDIT ADMIN 
     if removed in actions:
         raise SystemExit('legacy Owner action still visible: '+removed)
 
-print('BWD Owner simplified: request -> invoice -> payment -> confirmed')
+print('BWD Owner simplified: request -> invoice -> uploaded proof -> confirm payment')
