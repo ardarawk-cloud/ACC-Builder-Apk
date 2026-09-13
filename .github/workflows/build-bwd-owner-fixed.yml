@@ -146,6 +146,22 @@ jobs:
           grep -q 'BwdOwnerCloud.sync' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
           grep -q 'Enrollment failed · HTTP' bwd-admin/app/src/main/java/com/baliweddingdj/app/BwdCloud.java
 
+      - name: Inspect invoice handler
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java')
+          s=p.read_text()
+          print('=== INVOICE OCCURRENCES ===')
+          lines=s.splitlines()
+          for i,line in enumerate(lines):
+              if 'INVOICE' in line.upper() or 'invoice' in line:
+                  lo=max(0,i-8); hi=min(len(lines),i+24)
+                  print(f'--- lines {lo+1}-{hi} ---')
+                  print('\n'.join(f'{j+1}: {lines[j]}' for j in range(lo,hi)))
+          PY
+
       - name: Verify Owner runtime config
         shell: bash
         run: |
