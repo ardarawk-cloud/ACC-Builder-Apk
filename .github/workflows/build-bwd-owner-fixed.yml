@@ -70,40 +70,31 @@ jobs:
           raw=os.environ.get('BWD_ANDROID_FIREBASE_CONFIG_JSON','').strip()
           if not raw:
               raise SystemExit('Missing BWD_ANDROID_FIREBASE_CONFIG_JSON')
-
           cfg=None
           try:
               cfg=json.loads(raw)
           except json.JSONDecodeError:
-              start=raw.find('{')
-              end=raw.rfind('}')
+              start=raw.find('{'); end=raw.rfind('}')
               if start >= 0 and end > start:
-                  try:
-                      cfg=json.loads(raw[start:end+1])
-                  except json.JSONDecodeError:
-                      cfg=None
-
-          project=''
-          api=''
+                  try: cfg=json.loads(raw[start:end+1])
+                  except json.JSONDecodeError: cfg=None
+          project=''; api=''
           if isinstance(cfg, dict):
               info=cfg.get('project_info') or {}
               project=str(info.get('project_id') or '')
               clients=cfg.get('client') or []
               if clients:
                   api=((clients[0].get('api_key') or [{}])[0]).get('current_key','')
-
           if not project:
               m=re.search(r'project_id["\s:=]+([A-Za-z0-9._-]+)', raw)
               if m: project=m.group(1).strip('"\'')
           if not api:
               m=re.search(r'AIza[0-9A-Za-z_-]{20,}', raw)
               if m: api=m.group(0)
-
           if project and project != 'bali-wedding-dj':
               raise SystemExit('Unexpected Firebase project')
           if not api:
               raise SystemExit('Firebase API key missing from pasted google-services.json')
-
           values={
               'BWD_FIREBASE_API_KEY':api,
               'BWD_FIREBASE_APP_ID':'1:636975525713:android:83154d5ed58d8a01032d70',
@@ -149,9 +140,11 @@ jobs:
           PY
           python3 scripts/patch_bwd_owner_dashboard.py bwd-admin
           python3 scripts/patch_bwd_owner_cloud_inbox.py bwd-admin
+          python3 scripts/patch_bwd_owner_enroll_diagnostics.py bwd-admin
           grep -q 'ENABLE CLOUD NOTIFICATIONS' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
           grep -q 'BwdCloud.showAdminEnrollment(this)' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
           grep -q 'BwdOwnerCloud.sync' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -q 'Enrollment failed · HTTP' bwd-admin/app/src/main/java/com/baliweddingdj/app/BwdCloud.java
 
       - name: Verify Owner runtime config
         shell: bash
@@ -180,22 +173,20 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           (cd bwd-admin && gradle --no-daemon :app:assembleDebug --stacktrace)
-          cp bwd-admin/app/build/outputs/apk/debug/app-debug.apk dist/BALI-WEDDING-DJ-OWNER-FIXED-debug.apk
+          cp bwd-admin/app/build/outputs/apk/debug/app-debug.apk dist/BALI-WEDDING-DJ-OWNER-DIAGNOSTIC-debug.apk
 
       - name: Verify Owner APK
         shell: bash
         run: |
           set -euo pipefail
-          OWNER_ID=$(apkanalyzer manifest application-id dist/BALI-WEDDING-DJ-OWNER-FIXED-debug.apk)
+          OWNER_ID=$(apkanalyzer manifest application-id dist/BALI-WEDDING-DJ-OWNER-DIAGNOSTIC-debug.apk)
           echo "Owner applicationId: ${OWNER_ID}"
           test "${OWNER_ID}" = "com.baliweddingdj.owner"
-          sha256sum dist/BALI-WEDDING-DJ-OWNER-FIXED-debug.apk
+          sha256sum dist/BALI-WEDDING-DJ-OWNER-DIAGNOSTIC-debug.apk
 
       - name: Upload Owner APK
         uses: actions/upload-artifact@v4
         with:
-          name: BALI-WEDDING-DJ-OWNER-FIXED
-          path: dist/BALI-WEDDING-DJ-OWNER-FIXED-debug.apk
+          name: BALI-WEDDING-DJ-OWNER-DIAGNOSTIC
+          path: dist/BALI-WEDDING-DJ-OWNER-DIAGNOSTIC-debug.apk
           retention-days: 30
-
-# tolerant-secret build trigger 2026-09-13
