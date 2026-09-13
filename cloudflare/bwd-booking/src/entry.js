@@ -13,6 +13,7 @@ function json(body, status = 200) {
 
 function normalizeAdminCode(value) {
   let s = String(value == null ? "" : value)
+    .normalize("NFKC")
     .replace(/[\u200B-\u200D\u2060\uFEFF]/g, "")
     .trim();
   if (s.length >= 2) {
@@ -22,7 +23,9 @@ function normalizeAdminCode(value) {
       s = s.slice(1, -1).trim();
     }
   }
-  return s.replace(/\s+/g, "");
+  // Enrollment codes are treated as case-insensitive alphanumeric tokens.
+  // This avoids Android keyboard/copy-paste punctuation, spaces, or casing causing false mismatches.
+  return s.replace(/[^A-Za-z0-9]/g, "").toLowerCase();
 }
 
 function parseServiceAccount(value) {
@@ -64,6 +67,7 @@ export default {
     if (request.method === "GET" && url.pathname === "/v1/health") {
       const rawPush = String(env.BWD_FIREBASE_SERVICE_ACCOUNT_JSON || "").trim();
       const parsedPush = parseServiceAccount(rawPush);
+      const normalizedAdmin = normalizeAdminCode(env.BWD_ADMIN_ENROLL_TOKEN);
       if (!env.BWD_DB) {
         return json({
           ok: false,
@@ -72,7 +76,8 @@ export default {
           push_secret_present: !!rawPush,
           push_configured: !!parsedPush,
           push_project_id: parsedPush ? String(parsedPush.project_id || "") : "",
-          admin_enroll_configured: !!normalizeAdminCode(env.BWD_ADMIN_ENROLL_TOKEN)
+          admin_enroll_configured: normalizedAdmin.length >= 12,
+          admin_enroll_length: normalizedAdmin.length
         }, 503);
       }
 
@@ -85,7 +90,8 @@ export default {
           push_secret_present: !!rawPush,
           push_configured: !!parsedPush,
           push_project_id: parsedPush ? String(parsedPush.project_id || "") : "",
-          admin_enroll_configured: !!normalizeAdminCode(env.BWD_ADMIN_ENROLL_TOKEN)
+          admin_enroll_configured: normalizedAdmin.length >= 12,
+          admin_enroll_length: normalizedAdmin.length
         });
       } catch (err) {
         return json({
@@ -96,7 +102,8 @@ export default {
           push_secret_present: !!rawPush,
           push_configured: !!parsedPush,
           push_project_id: parsedPush ? String(parsedPush.project_id || "") : "",
-          admin_enroll_configured: !!normalizeAdminCode(env.BWD_ADMIN_ENROLL_TOKEN)
+          admin_enroll_configured: normalizedAdmin.length >= 12,
+          admin_enroll_length: normalizedAdmin.length
         }, 503);
       }
     }
