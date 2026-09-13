@@ -99,7 +99,7 @@ jobs:
           BWD_FIREBASE_APP_ID: ${{ secrets.BWD_FIREBASE_APP_ID }}
           BWD_FIREBASE_PROJECT_ID: ${{ secrets.BWD_FIREBASE_PROJECT_ID }}
           BWD_FIREBASE_SENDER_ID: ${{ secrets.BWD_FIREBASE_SENDER_ID }}
-          BWD_CLOUD_BASE_URL: ${{ secrets.BWD_CLOUD_BASE_URL }}
+          BWD_CLOUD_BASE_URL: https://bali-wedding-dj-booking.ardarawk.workers.dev
         run: |
           set -euo pipefail
           python3 scripts/patch_bwd_cloud_v2.py bwd-native
@@ -178,6 +178,46 @@ jobs:
               raise SystemExit('Unexpected Owner applicationId')
           PY
 
+      - name: Apply Owner dashboard and Cloudflare inbox
+        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
+        shell: bash
+        env:
+          BWD_FIREBASE_OWNER_APP_ID: ${{ secrets.BWD_FIREBASE_OWNER_APP_ID }}
+        run: |
+          set -euo pipefail
+          python3 scripts/patch_bwd_owner_dashboard.py bwd-admin
+          python3 scripts/patch_bwd_owner_cloud_inbox.py bwd-admin
+          grep -q 'ENABLE CLOUD NOTIFICATIONS' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -q 'BwdCloud.showAdminEnrollment(this)' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -q 'BwdOwnerCloud.sync' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          grep -q 'base+"/v1/admin/bookings"' bwd-admin/app/src/main/java/com/baliweddingdj/app/BwdOwnerCloud.java
+          test -f bwd-admin/app/src/main/java/com/baliweddingdj/app/BwdOwnerCloud.java
+
+      - name: Verify Owner cloud runtime configuration
+        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          text = Path('bwd-admin/app/build.gradle').read_text()
+          def value(name):
+              m = re.search(r'buildConfigField\s+"String",\s+"'+re.escape(name)+r'",\s+"\\"(.*?)\\""', text)
+              return m.group(1) if m else ''
+
+          required = ['BWD_FIREBASE_API_KEY','BWD_FIREBASE_APP_ID','BWD_FIREBASE_PROJECT_ID','BWD_FIREBASE_SENDER_ID','BWD_CLOUD_BASE_URL']
+          missing = [name for name in required if not value(name)]
+          if missing:
+              raise SystemExit('Missing Owner runtime config: ' + ', '.join(missing))
+          if value('BWD_CLOUD_BASE_URL') != 'https://bali-wedding-dj-booking.ardarawk.workers.dev':
+              raise SystemExit('Owner cloud base URL is not the Cloudflare production URL')
+          if value('BWD_FIREBASE_APP_ID') == value('BWD_FIREBASE_PROJECT_ID'):
+              raise SystemExit('Owner Firebase app id looks invalid')
+          print('Owner runtime config: READY')
+          PY
+
       - name: Apply customer safety patch
         if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
         shell: bash
@@ -186,11 +226,9 @@ jobs:
           python3 scripts/patch_bwd_public_client.py bwd-native
           ! grep -q 'ADMIN ACCESS' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
 
-      - name: Apply premium client home and Owner inbox
+      - name: Apply premium client home
         if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
         shell: bash
-        env:
-          BWD_FIREBASE_OWNER_APP_ID: ${{ secrets.BWD_FIREBASE_OWNER_APP_ID }}
         run: |
           set -euo pipefail
           python3 scripts/patch_bwd_client_home_luxury.py bwd-native
@@ -198,8 +236,6 @@ jobs:
           grep -Fq 'Premium wedding\nentertainment in Bali.' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
           grep -Fq 'loadHomePhoto(photo)' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
           grep -Fq 'addNav("MY BOOKING",this::showProfile)' bwd-native/app/src/main/java/com/baliweddingdj/app/MainActivity.java
-          grep -q 'BwdOwnerCloud.sync' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
-          test -f bwd-admin/app/src/main/java/com/baliweddingdj/app/BwdOwnerCloud.java
 
       - name: Apply UI wording update
         shell: bash
