@@ -1,4 +1,4 @@
-name: Build BWD Owner Fixed
+name: Build BWD Owner Simple
 
 on:
   push:
@@ -6,6 +6,11 @@ on:
       - feat/bali-wedding-dj-cloud-v2
     paths:
       - ".github/workflows/build-bwd-owner-fixed.yml"
+      - "scripts/patch_bwd_owner_simple_flow.py"
+      - "scripts/patch_bwd_owner_dashboard.py"
+      - "scripts/patch_bwd_owner_cloud_inbox.py"
+      - "scripts/patch_bwd_owner_enroll_diagnostics.py"
+      - "native/bali-wedding-dj-src/**"
   workflow_dispatch:
 
 permissions:
@@ -99,9 +104,10 @@ jobs:
           }
           with open(os.environ['GITHUB_ENV'],'a') as f:
               for k,v in values.items(): f.write(f'{k}={v}\n')
+          print('Firebase runtime values loaded')
           PY
 
-      - name: Apply cloud patches
+      - name: Apply base cloud patches
         shell: bash
         run: |
           set -euo pipefail
@@ -112,7 +118,7 @@ jobs:
           grep -q '^android.useAndroidX=' bwd-native/gradle.properties && sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' bwd-native/gradle.properties || echo 'android.useAndroidX=true' >> bwd-native/gradle.properties
           grep -q '^android.suppressUnsupportedCompileSdk=' bwd-native/gradle.properties && sed -i 's/^android.suppressUnsupportedCompileSdk=.*/android.suppressUnsupportedCompileSdk=36/' bwd-native/gradle.properties || echo 'android.suppressUnsupportedCompileSdk=36' >> bwd-native/gradle.properties
 
-      - name: Create Owner app
+      - name: Create simple Owner app
         shell: bash
         run: |
           set -euo pipefail
@@ -131,27 +137,17 @@ jobs:
           python3 scripts/patch_bwd_owner_dashboard.py bwd-admin
           python3 scripts/patch_bwd_owner_cloud_inbox.py bwd-admin
           python3 scripts/patch_bwd_owner_enroll_diagnostics.py bwd-admin
-
-      - name: Inspect Owner booking action anchors
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java')
-          s=p.read_text()
-          for needle in ['GENERATE INVOICE','CHANGE STATUS','ADMIN NOTES','BOOKING TIMELINE','showBookingDetail','generateInvoice','invoice']:
-              print('\n===',needle,'===')
-              start=0
-              found=False
-              while True:
-                  i=s.lower().find(needle.lower(),start)
-                  if i<0: break
-                  found=True
-                  a=max(0,i-900); b=min(len(s),i+1800)
-                  print(s[a:b])
-                  start=i+len(needle)
-              if not found: print('NOT FOUND')
-          PY
+          python3 scripts/patch_bwd_owner_simple_flow.py bwd-admin
+          MAIN=bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
+          CLOUD=bwd-admin/app/src/main/java/com/baliweddingdj/app/BwdOwnerCloud.java
+          grep -q 'DEAL & SEND INVOICE' "$MAIN"
+          grep -q 'CONFIRM PAYMENT' "$MAIN"
+          grep -q 'SHARE INVOICE PDF' "$MAIN"
+          grep -q 'BwdOwnerCloud.sendInvoice' "$MAIN"
+          grep -q 'BwdOwnerCloud.confirmPayment' "$MAIN"
+          grep -q 'public static void sendInvoice' "$CLOUD"
+          grep -q 'public static void confirmPayment' "$CLOUD"
+          ! grep -A4 'private void showAdminBookingActions' "$MAIN" | grep -q 'CHANGE BOOKING STATUS'
 
       - name: Verify Owner runtime config
         shell: bash
@@ -169,6 +165,7 @@ jobs:
           if missing: raise SystemExit('Missing Owner runtime config: '+', '.join(missing))
           if v('BWD_FIREBASE_APP_ID')!='1:636975525713:android:dd919e7631eba662032d70': raise SystemExit('Wrong Owner Firebase app id')
           if v('BWD_CLOUD_BASE_URL')!='https://bali-wedding-dj-booking.ardarawk.workers.dev': raise SystemExit('Wrong Owner cloud URL')
+          print('Owner runtime config READY')
           PY
 
       - name: Build Owner APK
@@ -177,19 +174,20 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           (cd bwd-admin && gradle --no-daemon :app:assembleDebug --stacktrace)
-          cp bwd-admin/app/build/outputs/apk/debug/app-debug.apk dist/BALI-WEDDING-DJ-OWNER-DIAGNOSTIC-debug.apk
+          cp bwd-admin/app/build/outputs/apk/debug/app-debug.apk dist/BALI-WEDDING-DJ-OWNER-SIMPLE-debug.apk
 
       - name: Verify Owner APK
         shell: bash
         run: |
           set -euo pipefail
-          OWNER_ID=$(apkanalyzer manifest application-id dist/BALI-WEDDING-DJ-OWNER-DIAGNOSTIC-debug.apk)
+          OWNER_ID=$(apkanalyzer manifest application-id dist/BALI-WEDDING-DJ-OWNER-SIMPLE-debug.apk)
+          echo "Owner applicationId: ${OWNER_ID}"
           test "${OWNER_ID}" = "com.baliweddingdj.owner"
-          sha256sum dist/BALI-WEDDING-DJ-OWNER-DIAGNOSTIC-debug.apk
+          sha256sum dist/BALI-WEDDING-DJ-OWNER-SIMPLE-debug.apk
 
       - name: Upload Owner APK
         uses: actions/upload-artifact@v4
         with:
-          name: BALI-WEDDING-DJ-OWNER-DIAGNOSTIC
-          path: dist/BALI-WEDDING-DJ-OWNER-DIAGNOSTIC-debug.apk
+          name: BALI-WEDDING-DJ-OWNER-SIMPLE
+          path: dist/BALI-WEDDING-DJ-OWNER-SIMPLE-debug.apk
           retention-days: 30
