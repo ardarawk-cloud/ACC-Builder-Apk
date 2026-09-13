@@ -36,7 +36,21 @@ new = r'''  function formatIdr(v){const n=Number(v||0);return n>0?'Rp '+n.toLoca
     }else if(submitted){
       action=`<div class="notice" style="margin-top:14px"><strong>PAYMENT SUBMITTED</strong><br>Your payment has been sent for owner verification.</div>`;
     }else if(hasInvoice){
-      action=`<div style="margin-top:18px"><div class="kicker">INVOICE & PAYMENT</div><div class="details"><div class="detail"><span>Invoice</span><span>${escapeHtml(b.invoice_no||'—')}</span></div><div class="detail"><span>Total</span><span>${formatIdr(b.invoice_total)}</span></div><div class="detail"><span>Deposit Due</span><span>${formatIdr(b.invoice_deposit)}</span></div><div class="detail"><span>Balance</span><span>${formatIdr(b.invoice_balance)}</span></div><div class="detail"><span>Due Date</span><span>${escapeHtml(b.invoice_due_date||'—')}</span></div></div><div class="notice" style="white-space:pre-wrap">${escapeHtml(b.payment_instructions||'Please contact Bali Wedding DJ on WhatsApp for payment details.')}</div><button class="btn primary full" style="margin-top:12px" id="payment-submitted">I HAVE PAID</button></div>`;
+      action=`<div style="margin-top:18px">
+        <div class="kicker">INVOICE & PAYMENT</div>
+        <div class="details">
+          <div class="detail"><span>Invoice</span><span>${escapeHtml(b.invoice_no||'—')}</span></div>
+          <div class="detail"><span>Total</span><span>${formatIdr(b.invoice_total)}</span></div>
+          <div class="detail"><span>Due Date</span><span>${escapeHtml(b.invoice_due_date||'—')}</span></div>
+        </div>
+        <div class="kicker" style="margin-top:18px">PAYMENT OPTIONS</div>
+        <div class="details">
+          <div class="detail"><span>50% Deposit</span><span>${formatIdr(b.invoice_deposit)}</span></div>
+          <div class="detail"><span>Full Payment</span><span>${formatIdr(b.invoice_total)}</span></div>
+        </div>
+        <div class="notice" style="margin-top:12px"><strong>BANK TRANSFER · BCA</strong><br>Bagus Putu Hardajaya<br>0080679203</div>
+        <button class="btn primary full" style="margin-top:12px" id="payment-submitted">I HAVE PAID</button>
+      </div>`;
     }else{
       action=`<div class="notice" style="margin-top:14px">We are checking your date and booking details. If everything is available, your invoice will appear here.</div>`;
     }
@@ -46,7 +60,8 @@ new = r'''  function formatIdr(v){const n=Number(v||0);return n>0?'Rp '+n.toLoca
   }'''
 
 s = s[:start] + new + s[end:]
-if 'I HAVE PAID' not in s or '>WHATSAPP</a>' not in s or 'BOOKING CONFIRMED' not in s:
-    raise SystemExit('simple portal verification failed')
+for token in ['I HAVE PAID','>WHATSAPP</a>','BOOKING CONFIRMED','50% Deposit','Full Payment','0080679203']:
+    if token not in s:
+        raise SystemExit('simple portal verification failed: '+token)
 p.write_text(s)
-print('BWD guest portal simplified: booking -> invoice/payment -> confirmed + WhatsApp')
+print('BWD guest portal: 50% deposit + full payment + BCA + WhatsApp')
