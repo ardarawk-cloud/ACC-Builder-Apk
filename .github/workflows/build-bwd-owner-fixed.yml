@@ -68,11 +68,9 @@ jobs:
           python3 - <<'PY'
           import json, os, re
           raw=os.environ.get('BWD_ANDROID_FIREBASE_CONFIG_JSON','').strip()
-          if not raw:
-              raise SystemExit('Missing BWD_ANDROID_FIREBASE_CONFIG_JSON')
+          if not raw: raise SystemExit('Missing BWD_ANDROID_FIREBASE_CONFIG_JSON')
           cfg=None
-          try:
-              cfg=json.loads(raw)
+          try: cfg=json.loads(raw)
           except json.JSONDecodeError:
               start=raw.find('{'); end=raw.rfind('}')
               if start >= 0 and end > start:
@@ -80,21 +78,17 @@ jobs:
                   except json.JSONDecodeError: cfg=None
           project=''; api=''
           if isinstance(cfg, dict):
-              info=cfg.get('project_info') or {}
-              project=str(info.get('project_id') or '')
+              info=cfg.get('project_info') or {}; project=str(info.get('project_id') or '')
               clients=cfg.get('client') or []
-              if clients:
-                  api=((clients[0].get('api_key') or [{}])[0]).get('current_key','')
+              if clients: api=((clients[0].get('api_key') or [{}])[0]).get('current_key','')
           if not project:
               m=re.search(r'project_id["\s:=]+([A-Za-z0-9._-]+)', raw)
               if m: project=m.group(1).strip('"\'')
           if not api:
               m=re.search(r'AIza[0-9A-Za-z_-]{20,}', raw)
               if m: api=m.group(0)
-          if project and project != 'bali-wedding-dj':
-              raise SystemExit('Unexpected Firebase project')
-          if not api:
-              raise SystemExit('Firebase API key missing from pasted google-services.json')
+          if project and project != 'bali-wedding-dj': raise SystemExit('Unexpected Firebase project')
+          if not api: raise SystemExit('Firebase API key missing from pasted google-services.json')
           values={
               'BWD_FIREBASE_API_KEY':api,
               'BWD_FIREBASE_APP_ID':'1:636975525713:android:83154d5ed58d8a01032d70',
@@ -105,7 +99,6 @@ jobs:
           }
           with open(os.environ['GITHUB_ENV'],'a') as f:
               for k,v in values.items(): f.write(f'{k}={v}\n')
-          print('Firebase runtime values loaded')
           PY
 
       - name: Apply cloud patches
@@ -128,38 +121,36 @@ jobs:
           from pathlib import Path
           import re
           gradle=Path('bwd-admin/app/build.gradle')
-          s=gradle.read_text()
-          s,n=re.subn(r'(?m)^(\s*)applicationId\s+["\'][^"\']+["\']',r'\1applicationId "com.baliweddingdj.owner"',s,count=1)
+          s=gradle.read_text(); s,n=re.subn(r'(?m)^(\s*)applicationId\s+["\'][^"\']+["\']',r'\1applicationId "com.baliweddingdj.owner"',s,count=1)
           if n!=1: raise SystemExit('Owner applicationId patch failed')
           gradle.write_text(s)
           strings=Path('bwd-admin/app/src/main/res/values/strings.xml')
           if strings.exists():
-              t=strings.read_text()
-              t=re.sub(r'(<string\s+name="app_name">).*?(</string>)',r'\1Bali Wedding DJ Owner\2',t,count=1)
-              strings.write_text(t)
+              t=strings.read_text(); t=re.sub(r'(<string\s+name="app_name">).*?(</string>)',r'\1Bali Wedding DJ Owner\2',t,count=1); strings.write_text(t)
           PY
           python3 scripts/patch_bwd_owner_dashboard.py bwd-admin
           python3 scripts/patch_bwd_owner_cloud_inbox.py bwd-admin
           python3 scripts/patch_bwd_owner_enroll_diagnostics.py bwd-admin
-          grep -q 'ENABLE CLOUD NOTIFICATIONS' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
-          grep -q 'BwdCloud.showAdminEnrollment(this)' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
-          grep -q 'BwdOwnerCloud.sync' bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java
-          grep -q 'Enrollment failed · HTTP' bwd-admin/app/src/main/java/com/baliweddingdj/app/BwdCloud.java
 
-      - name: Inspect invoice handler
+      - name: Inspect Owner booking action anchors
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('bwd-admin/app/src/main/java/com/baliweddingdj/app/MainActivity.java')
           s=p.read_text()
-          print('=== INVOICE OCCURRENCES ===')
-          lines=s.splitlines()
-          for i,line in enumerate(lines):
-              if 'INVOICE' in line.upper() or 'invoice' in line:
-                  lo=max(0,i-8); hi=min(len(lines),i+24)
-                  print(f'--- lines {lo+1}-{hi} ---')
-                  print('\n'.join(f'{j+1}: {lines[j]}' for j in range(lo,hi)))
+          for needle in ['GENERATE INVOICE','CHANGE STATUS','ADMIN NOTES','BOOKING TIMELINE','showBookingDetail','generateInvoice','invoice']:
+              print('\n===',needle,'===')
+              start=0
+              found=False
+              while True:
+                  i=s.lower().find(needle.lower(),start)
+                  if i<0: break
+                  found=True
+                  a=max(0,i-900); b=min(len(s),i+1800)
+                  print(s[a:b])
+                  start=i+len(needle)
+              if not found: print('NOT FOUND')
           PY
 
       - name: Verify Owner runtime config
@@ -176,11 +167,8 @@ jobs:
           required=['BWD_FIREBASE_API_KEY','BWD_FIREBASE_APP_ID','BWD_FIREBASE_PROJECT_ID','BWD_FIREBASE_SENDER_ID','BWD_CLOUD_BASE_URL']
           missing=[x for x in required if not v(x)]
           if missing: raise SystemExit('Missing Owner runtime config: '+', '.join(missing))
-          if v('BWD_FIREBASE_APP_ID')!='1:636975525713:android:dd919e7631eba662032d70':
-              raise SystemExit('Wrong Owner Firebase app id')
-          if v('BWD_CLOUD_BASE_URL')!='https://bali-wedding-dj-booking.ardarawk.workers.dev':
-              raise SystemExit('Wrong Owner cloud URL')
-          print('Owner runtime config READY')
+          if v('BWD_FIREBASE_APP_ID')!='1:636975525713:android:dd919e7631eba662032d70': raise SystemExit('Wrong Owner Firebase app id')
+          if v('BWD_CLOUD_BASE_URL')!='https://bali-wedding-dj-booking.ardarawk.workers.dev': raise SystemExit('Wrong Owner cloud URL')
           PY
 
       - name: Build Owner APK
@@ -196,7 +184,6 @@ jobs:
         run: |
           set -euo pipefail
           OWNER_ID=$(apkanalyzer manifest application-id dist/BALI-WEDDING-DJ-OWNER-DIAGNOSTIC-debug.apk)
-          echo "Owner applicationId: ${OWNER_ID}"
           test "${OWNER_ID}" = "com.baliweddingdj.owner"
           sha256sum dist/BALI-WEDDING-DJ-OWNER-DIAGNOSTIC-debug.apk
 
