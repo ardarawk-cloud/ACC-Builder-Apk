@@ -28,7 +28,22 @@ if owner_app_id and gradle.exists():
 # Add idempotent cloud-booking upsert to the local DB used by Owner dashboard/details.
 d = db_file.read_text()
 anchor = '    public JSONArray bookings(){ return queryArray("SELECT * FROM bookings ORDER BY id DESC",null); }\n'
-upsert = r'''    public void upsertCloudBooking(JSONObject b){
+upsert = r'''    private void ensureOwnerCloudColumns(){
+        SQLiteDatabase x=getWritableDatabase();
+        String[] defs={
+            "payment_status TEXT",
+            "payment_option TEXT",
+            "payment_amount INTEGER",
+            "payment_proof_name TEXT",
+            "payment_proof_type TEXT",
+            "payment_proof_url TEXT",
+            "payment_proof_uploaded_at TEXT"
+        };
+        for(String def:defs){try{x.execSQL("ALTER TABLE bookings ADD COLUMN "+def);}catch(Exception ignored){}}
+    }
+
+    public void upsertCloudBooking(JSONObject b){
+        ensureOwnerCloudColumns();
         String bookingId=b.optString("booking_id","").trim(); if(bookingId.isEmpty())return;
         JSONObject old=booking(bookingId); boolean exists=old!=null;
         ContentValues v=new ContentValues();
@@ -37,8 +52,15 @@ upsert = r'''    public void upsertCloudBooking(JSONObject b){
         String[] fields={"bride","groom","email","whatsapp","wedding_date","venue_name","venue_location","planner","package_name","sections","start_time","finish_time","music_pref","favorite_songs","must_play","do_not_play","special_requests"};
         for(String f:fields)v.put(f,b.optString(f,""));
         v.put("guests",b.optInt("guests",0));
+        v.put("payment_status",b.optString("payment_status",""));
+        v.put("payment_option",b.optString("payment_option",""));
+        v.put("payment_amount",b.optLong("payment_amount",0));
+        v.put("payment_proof_name",b.optString("payment_proof_name",""));
+        v.put("payment_proof_type",b.optString("payment_proof_type",""));
+        v.put("payment_proof_url",b.optString("payment_proof_url",""));
+        v.put("payment_proof_uploaded_at",b.optString("payment_proof_uploaded_at",""));
         String cloudStatus=b.optString("status","REQUEST RECEIVED");
-        if(!exists || old.optString("status","").isEmpty() || "REQUEST RECEIVED".equals(old.optString("status")))v.put("status",cloudStatus);
+        v.put("status",cloudStatus);
         if(!exists){
             v.put("admin_notes","");v.put("timeline","");v.put("music_plan","");
             getWritableDatabase().insertWithOnConflict("bookings",null,v,SQLiteDatabase.CONFLICT_IGNORE);
@@ -48,10 +70,15 @@ upsert = r'''    public void upsertCloudBooking(JSONObject b){
     }
 
 '''
-if 'public void upsertCloudBooking(JSONObject b)' not in d:
-    if anchor not in d:
-        raise SystemExit('WeddingDb bookings anchor not found')
-    d = d.replace(anchor, upsert + anchor, 1)
+if 'public void upsertCloudBooking(JSONObject b)' in d:
+    start=d.find('    public void upsertCloudBooking(JSONObject b)')
+    end=d.find(anchor,start)
+    if start<0 or end<0: raise SystemExit('existing upsert block not found')
+    d=d[:start]+upsert+d[end:]
+elif anchor in d:
+    d=d.replace(anchor,upsert+anchor,1)
+else:
+    raise SystemExit('WeddingDb bookings anchor not found')
 db_file.write_text(d)
 
 # Owner-only cloud inbox synchronizer. It never embeds admin enrollment credentials.
@@ -168,6 +195,8 @@ c.write_text(cloud)
 required = [
     'class BwdOwnerCloud',
     'upsertCloudBooking',
+    'payment_proof_url',
+    'payment_amount',
     'X-BWD-Admin-Device',
     'BwdOwnerCloud.sync(this,db,this::showOwnerInbox)',
     'base+"/v1/admin/bookings"',
@@ -177,5 +206,5 @@ for token in required:
     if token not in all_text:
         raise SystemExit('missing owner cloud inbox token: '+token)
 
-print('BWD Owner cloud inbox sync patch applied')
+print('BWD Owner cloud inbox sync patch applied with payment proof metadata')
 print('owner_firebase_app_id_configured=', bool(owner_app_id))
