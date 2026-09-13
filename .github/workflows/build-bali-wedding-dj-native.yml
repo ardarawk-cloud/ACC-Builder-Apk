@@ -91,14 +91,53 @@ jobs:
           python3 scripts/patch_bwd_business_contact.py bwd-native
           grep -R '6282247972288\|+62 822-4797-2288' -n bwd-native/app/src/main/java/com/baliweddingdj/app
 
+      - name: Load Android Firebase config
+        if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
+        shell: bash
+        env:
+          BWD_ANDROID_FIREBASE_CONFIG_JSON: ${{ secrets.BWD_ANDROID_FIREBASE_CONFIG_JSON }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          raw=os.environ.get('BWD_ANDROID_FIREBASE_CONFIG_JSON','').strip()
+          if not raw:
+              raise SystemExit('Missing GitHub Actions secret BWD_ANDROID_FIREBASE_CONFIG_JSON')
+          try:
+              cfg=json.loads(raw)
+          except Exception as e:
+              raise SystemExit('BWD_ANDROID_FIREBASE_CONFIG_JSON is not valid JSON') from e
+          info=cfg.get('project_info') or {}
+          clients={}
+          for c in cfg.get('client') or []:
+              ci=c.get('client_info') or {}
+              ai=ci.get('android_client_info') or {}
+              pkg=ai.get('package_name')
+              if pkg: clients[pkg]=c
+          client=clients.get('com.baliweddingdj.app')
+          owner=clients.get('com.baliweddingdj.owner')
+          if not client or not owner:
+              raise SystemExit('Firebase JSON must contain both com.baliweddingdj.app and com.baliweddingdj.owner')
+          def app_id(c): return (c.get('client_info') or {}).get('mobilesdk_app_id','')
+          api=((client.get('api_key') or [{}])[0]).get('current_key','')
+          values={
+              'BWD_FIREBASE_API_KEY':api,
+              'BWD_FIREBASE_APP_ID':app_id(client),
+              'BWD_FIREBASE_OWNER_APP_ID':app_id(owner),
+              'BWD_FIREBASE_PROJECT_ID':info.get('project_id',''),
+              'BWD_FIREBASE_SENDER_ID':info.get('project_number',''),
+          }
+          missing=[k for k,v in values.items() if not str(v).strip()]
+          if missing: raise SystemExit('Firebase Android config missing: '+', '.join(missing))
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              for k,v in values.items(): f.write(f'{k}={v}\n')
+          print('Firebase Android config loaded for Client + Owner')
+          PY
+
       - name: Apply Cloud V2 patch
         if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2' && hashFiles('scripts/patch_bwd_cloud_v2.py') != ''
         shell: bash
         env:
-          BWD_FIREBASE_API_KEY: ${{ secrets.BWD_FIREBASE_API_KEY }}
-          BWD_FIREBASE_APP_ID: ${{ secrets.BWD_FIREBASE_APP_ID }}
-          BWD_FIREBASE_PROJECT_ID: ${{ secrets.BWD_FIREBASE_PROJECT_ID }}
-          BWD_FIREBASE_SENDER_ID: ${{ secrets.BWD_FIREBASE_SENDER_ID }}
           BWD_CLOUD_BASE_URL: https://bali-wedding-dj-booking.ardarawk.workers.dev
         run: |
           set -euo pipefail
@@ -181,8 +220,6 @@ jobs:
       - name: Apply Owner dashboard and Cloudflare inbox
         if: github.ref_name == 'feat/bali-wedding-dj-cloud-v2'
         shell: bash
-        env:
-          BWD_FIREBASE_OWNER_APP_ID: ${{ secrets.BWD_FIREBASE_OWNER_APP_ID }}
         run: |
           set -euo pipefail
           python3 scripts/patch_bwd_owner_dashboard.py bwd-admin
@@ -200,7 +237,7 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import re
+          import re, os
 
           text = Path('bwd-admin/app/build.gradle').read_text()
           def value(name):
@@ -213,8 +250,8 @@ jobs:
               raise SystemExit('Missing Owner runtime config: ' + ', '.join(missing))
           if value('BWD_CLOUD_BASE_URL') != 'https://bali-wedding-dj-booking.ardarawk.workers.dev':
               raise SystemExit('Owner cloud base URL is not the Cloudflare production URL')
-          if value('BWD_FIREBASE_APP_ID') == value('BWD_FIREBASE_PROJECT_ID'):
-              raise SystemExit('Owner Firebase app id looks invalid')
+          if value('BWD_FIREBASE_APP_ID') != os.environ.get('BWD_FIREBASE_OWNER_APP_ID',''):
+              raise SystemExit('Owner APK is not using the Owner Firebase app id')
           print('Owner runtime config: READY')
           PY
 
