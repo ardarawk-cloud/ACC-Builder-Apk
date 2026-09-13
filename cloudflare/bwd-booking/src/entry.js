@@ -1,4 +1,4 @@
-import app from "./index-v2.js";
+import app from "./simple-flow.js";
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
