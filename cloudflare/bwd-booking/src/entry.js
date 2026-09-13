@@ -25,17 +25,53 @@ function normalizeAdminCode(value) {
   return s.replace(/\s+/g, "");
 }
 
+function parseServiceAccount(value) {
+  let raw = String(value == null ? "" : value).trim();
+  if (!raw) return null;
+
+  raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+
+  const attempts = [raw];
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start >= 0 && end > start) attempts.push(raw.slice(start, end + 1));
+
+  for (const candidate of attempts) {
+    try {
+      let v = JSON.parse(candidate);
+      if (typeof v === "string") {
+        try { v = JSON.parse(v); } catch (_) {}
+      }
+      if (v && typeof v === "object" && v.client_email && v.private_key && v.project_id) return v;
+    } catch (_) {}
+  }
+  return null;
+}
+
+function normalizedEnv(env) {
+  const out = Object.create(env);
+  const serviceAccount = parseServiceAccount(env.BWD_FIREBASE_SERVICE_ACCOUNT_JSON);
+  out.BWD_FIREBASE_SERVICE_ACCOUNT_JSON = serviceAccount ? JSON.stringify(serviceAccount) : String(env.BWD_FIREBASE_SERVICE_ACCOUNT_JSON || "").trim();
+  out.BWD_ADMIN_ENROLL_TOKEN = normalizeAdminCode(env.BWD_ADMIN_ENROLL_TOKEN);
+  return out;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    const effectiveEnv = normalizedEnv(env);
 
     if (request.method === "GET" && url.pathname === "/v1/health") {
+      const rawPush = String(env.BWD_FIREBASE_SERVICE_ACCOUNT_JSON || "").trim();
+      const parsedPush = parseServiceAccount(rawPush);
       if (!env.BWD_DB) {
         return json({
           ok: false,
           error: "database_not_bound",
           database: false,
-          push_configured: !!String(env.BWD_FIREBASE_SERVICE_ACCOUNT_JSON || "").trim(),
+          push_secret_present: !!rawPush,
+          push_configured: !!parsedPush,
+          push_project_id: parsedPush ? String(parsedPush.project_id || "") : "",
           admin_enroll_configured: !!normalizeAdminCode(env.BWD_ADMIN_ENROLL_TOKEN)
         }, 503);
       }
@@ -46,7 +82,9 @@ export default {
           ok: true,
           service: "bwd-cloudflare",
           database: true,
-          push_configured: !!String(env.BWD_FIREBASE_SERVICE_ACCOUNT_JSON || "").trim(),
+          push_secret_present: !!rawPush,
+          push_configured: !!parsedPush,
+          push_project_id: parsedPush ? String(parsedPush.project_id || "") : "",
           admin_enroll_configured: !!normalizeAdminCode(env.BWD_ADMIN_ENROLL_TOKEN)
         });
       } catch (err) {
@@ -55,7 +93,9 @@ export default {
           error: "database_query_failed",
           database: false,
           detail: String(err && err.message || err).slice(0, 180),
-          push_configured: !!String(env.BWD_FIREBASE_SERVICE_ACCOUNT_JSON || "").trim(),
+          push_secret_present: !!rawPush,
+          push_configured: !!parsedPush,
+          push_project_id: parsedPush ? String(parsedPush.project_id || "") : "",
           admin_enroll_configured: !!normalizeAdminCode(env.BWD_ADMIN_ENROLL_TOKEN)
         }, 503);
       }
@@ -70,11 +110,9 @@ export default {
         headers,
         body
       });
-      const normalizedEnv = Object.create(env);
-      normalizedEnv.BWD_ADMIN_ENROLL_TOKEN = normalizeAdminCode(env.BWD_ADMIN_ENROLL_TOKEN);
-      return app.fetch(normalizedRequest, normalizedEnv, ctx);
+      return app.fetch(normalizedRequest, effectiveEnv, ctx);
     }
 
-    return app.fetch(request, env, ctx);
+    return app.fetch(request, effectiveEnv, ctx);
   }
 };
