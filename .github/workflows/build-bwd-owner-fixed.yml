@@ -66,18 +66,44 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import json, os
+          import json, os, re
           raw=os.environ.get('BWD_ANDROID_FIREBASE_CONFIG_JSON','').strip()
           if not raw:
               raise SystemExit('Missing BWD_ANDROID_FIREBASE_CONFIG_JSON')
-          cfg=json.loads(raw)
-          info=cfg.get('project_info') or {}
-          if info.get('project_id') != 'bali-wedding-dj':
+
+          cfg=None
+          try:
+              cfg=json.loads(raw)
+          except json.JSONDecodeError:
+              start=raw.find('{')
+              end=raw.rfind('}')
+              if start >= 0 and end > start:
+                  try:
+                      cfg=json.loads(raw[start:end+1])
+                  except json.JSONDecodeError:
+                      cfg=None
+
+          project=''
+          api=''
+          if isinstance(cfg, dict):
+              info=cfg.get('project_info') or {}
+              project=str(info.get('project_id') or '')
+              clients=cfg.get('client') or []
+              if clients:
+                  api=((clients[0].get('api_key') or [{}])[0]).get('current_key','')
+
+          if not project:
+              m=re.search(r'project_id["\s:=]+([A-Za-z0-9._-]+)', raw)
+              if m: project=m.group(1).strip('"\'')
+          if not api:
+              m=re.search(r'AIza[0-9A-Za-z_-]{20,}', raw)
+              if m: api=m.group(0)
+
+          if project and project != 'bali-wedding-dj':
               raise SystemExit('Unexpected Firebase project')
-          clients=cfg.get('client') or []
-          if not clients:
-              raise SystemExit('Firebase JSON has no Android client')
-          api=((clients[0].get('api_key') or [{}])[0]).get('current_key','')
+          if not api:
+              raise SystemExit('Firebase API key missing from pasted google-services.json')
+
           values={
               'BWD_FIREBASE_API_KEY':api,
               'BWD_FIREBASE_APP_ID':'1:636975525713:android:83154d5ed58d8a01032d70',
@@ -86,8 +112,6 @@ jobs:
               'BWD_FIREBASE_SENDER_ID':'636975525713',
               'BWD_CLOUD_BASE_URL':'https://bali-wedding-dj-booking.ardarawk.workers.dev',
           }
-          if not api:
-              raise SystemExit('Firebase API key missing')
           with open(os.environ['GITHUB_ENV'],'a') as f:
               for k,v in values.items(): f.write(f'{k}={v}\n')
           print('Firebase runtime values loaded')
@@ -174,4 +198,4 @@ jobs:
           path: dist/BALI-WEDDING-DJ-OWNER-FIXED-debug.apk
           retention-days: 30
 
-# secret-refresh build trigger 2026-09-13
+# tolerant-secret build trigger 2026-09-13
