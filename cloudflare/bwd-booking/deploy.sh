@@ -4,6 +4,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_CONFIG="$HERE/wrangler.jsonc"
 RESOLVED_CONFIG="$HERE/.wrangler.resolved.jsonc"
+SHORT_CONFIG="$HERE/../bwd-shortlink/wrangler.jsonc"
 DB_NAME="bwd_booking"
 
 cleanup() {
@@ -56,4 +57,10 @@ Path(os.environ['BWD_RESOLVED_CONFIG']).write_text(json.dumps(base, indent=2) + 
 print(f'Resolved D1 database {name} for BWD_DB binding')
 PY
 
+# Deploy the existing booking backend/site first. --keep-vars preserves the
+# current Cloudflare-side secrets and variables for this production Worker.
 npx wrangler@latest deploy --config "$RESOLVED_CONFIG" --keep-vars
+
+# Deploy a separate public shortlink Worker. It has no secrets or database
+# bindings and only redirects to the production booking Worker.
+npx wrangler@latest deploy --config "$SHORT_CONFIG"
