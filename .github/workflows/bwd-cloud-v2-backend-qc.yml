@@ -7,6 +7,7 @@ on:
     paths:
       - "backend/bwd-cloud-v2/**"
       - "cloudflare/bwd-booking/**"
+      - "cloudflare/bwd-shortlink/**"
       - ".github/workflows/bwd-cloud-v2-backend-qc.yml"
   workflow_dispatch:
 
@@ -78,6 +79,8 @@ jobs:
           set -euo pipefail
           (cd ../../.. && bash cloudflare/bwd-booking/build.sh)
           (cd ../../.. && npx --yes wrangler@latest deploy --dry-run --config cloudflare/bwd-booking/wrangler.jsonc --outdir /tmp/bwd-cloudflare-dry-run)
+          (cd ../../.. && node --check cloudflare/bwd-shortlink/src/index.js)
+          (cd ../../.. && npx --yes wrangler@latest deploy --dry-run --config cloudflare/bwd-shortlink/wrangler.jsonc --outdir /tmp/bwd-shortlink-dry-run)
 
       - name: Dependency tree
         run: npm ls --depth=0
