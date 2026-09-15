@@ -1,0 +1,35 @@
+name: Export Android APK Signer Tool
+
+on:
+  push:
+    branches: [fix-acc-dj-signing-v2]
+    paths:
+      - ".github/workflows/export-apksig-tool.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Locate Android build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS_DIR="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          echo "Using $BUILD_TOOLS_DIR"
+          test -x "$BUILD_TOOLS_DIR/apksigner"
+          test -f "$BUILD_TOOLS_DIR/lib/apksigner.jar"
+          mkdir -p /tmp/apksig-export/lib
+          cp "$BUILD_TOOLS_DIR/apksigner" /tmp/apksig-export/apksigner
+          cp "$BUILD_TOOLS_DIR/lib/apksigner.jar" /tmp/apksig-export/lib/apksigner.jar
+          if test -x "$BUILD_TOOLS_DIR/zipalign"; then cp "$BUILD_TOOLS_DIR/zipalign" /tmp/apksig-export/zipalign; fi
+          printf '%s\n' "$BUILD_TOOLS_DIR" > /tmp/apksig-export/source.txt
+
+      - name: Upload signer tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apksigner-tool
+          path: /tmp/apksig-export/
+          retention-days: 1
