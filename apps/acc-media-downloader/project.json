@@ -1,13 +1,13 @@
 {
   "id": "acc-media-downloader",
   "name": "ACC Media Downloader",
-  "version": 5,
+  "version": 6,
   "provider": "manual",
   "model": "gpt-5.6-sol",
   "qc": "pending-build",
-  "last_request_id": "media-downloader-v32-metadata-20260824",
-  "last_prompt": "Add title-based filenames, embedded MP3 metadata and cover art, selectable 128/192/256/320 kbps audio bitrate, and readable video filenames while preserving YouTube compatibility, Spotify helper, batch downloads, and premium branding.",
-  "last_build": "ready",
+  "last_request_id": "media-downloader-v4-social-20260916",
+  "last_prompt": "Upgrade ACC Media Downloader to v4 with public-link download support for TikTok, Instagram/Reels, Facebook/fb.watch, and X/Twitter through the local yt-dlp/FFmpeg engine. Preserve YouTube v3.2 metadata/bitrate features, Spotify official helper, direct-media downloads, batch mode, readable filenames, and premium branding. Do not bypass login, private content, paywalls, or DRM.",
+  "last_build": "pending",
   "created_at": "2026-08-21T02:10:00Z",
-  "updated_at": "2026-08-23T19:37:28.596177+00:00"
+  "updated_at": "2026-09-15T17:54:00Z"
 }
