@@ -1,3 +1,5 @@
+// Public short alias for Bali Wedding DJ booking.
+// Keep this Worker intentionally stateless: no auth, no DB, no secrets.
 export default {
   async fetch(request) {
     const incoming = new URL(request.url);
