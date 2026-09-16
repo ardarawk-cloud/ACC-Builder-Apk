@@ -1,13 +1,13 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 15,
+  "version": 16,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-complete-reports-v15-20260912",
-  "last_prompt": "Replace ambiguous generic monthly transaction count with complete weekly/monthly/all-data summaries: sales by channel, expenses, production, stock out, opening/closing stock, entry counts and per-product breakdown. Keep report date synced to operational date.",
+  "last_request_id": "papa-sauce-lab-outlet-stockout-v16-20260916",
+  "last_prompt": "Add mandatory PSK/PSP/PSBK destination selection for manual Stock Out, preserve outlet on corrections, and add daily/weekly/monthly/all-data outlet distribution monitoring by product.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
-  "updated_at": "2026-09-12T08:00:27.734320+00:00"
+  "updated_at": "2026-09-16T15:27:26.438556+00:00"
 }
