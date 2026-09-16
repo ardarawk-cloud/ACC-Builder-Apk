@@ -1,13 +1,13 @@
 {
   "id": "acc-media-downloader",
   "name": "ACC Media Downloader",
-  "version": 7,
+  "version": 8,
   "provider": "manual",
   "model": "gpt-5.6-sol",
   "qc": "pending-build",
-  "last_request_id": "media-downloader-v5-spotify-playlist-20260916",
-  "last_prompt": "Add Spotify playlist batch import: read public playlist metadata from Spotify Embed, preserve playlist order, allow select all or individual tracks, search matching public YouTube/YouTube Music sources, then download sequentially as MP3 or MP4. Preserve ACC Media v4 social download support, YouTube v3.2 metadata/bitrate flow, direct-media batch, Spotify non-ripping policy, and premium branding. Do not bypass login, private content, paywalls, Premium restrictions, or DRM.",
-  "last_build": "ready",
+  "last_request_id": "media-downloader-v6-youtube-playlists-20260916",
+  "last_prompt": "Add direct YouTube and YouTube Music playlist batch import and sequential download alongside the existing Spotify playlist workflow. Preserve playlist order, allow select all or individual tracks, support MP3 or MP4, skip unavailable/private/login-only tracks without stopping the queue, and preserve ACC Media v4 social support, v5 Spotify playlist import, direct-media batch, YouTube metadata/bitrate features, and branding. Do not bypass login, private content, memberships, paywalls, or DRM.",
+  "last_build": "building",
   "created_at": "2026-08-21T02:10:00Z",
-  "updated_at": "2026-09-16T07:38:29.424862+00:00"
+  "updated_at": "2026-09-16T07:45:00Z"
 }

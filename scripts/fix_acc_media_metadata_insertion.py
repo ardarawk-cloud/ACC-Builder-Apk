@@ -29,6 +29,7 @@ s = s[:pos] + '    }\n}\n' + s[pos + len(tail):]
 main.write_text(s, encoding='utf-8')
 print('Fixed ACC Media advanced native bridge placement')
 
-# Keep v3.2 as the stable baseline, then layer v4 social + v5 playlist extensions.
+# Stable baseline, then additive feature layers.
 runpy.run_path(str(Path(__file__).with_name('patch_acc_media_social_v4.py')), run_name='__main__')
 runpy.run_path(str(Path(__file__).with_name('patch_acc_media_playlist_v5.py')), run_name='__main__')
+runpy.run_path(str(Path(__file__).with_name('patch_acc_media_youtube_playlist_v6.py')), run_name='__main__')
