@@ -7,7 +7,7 @@
   "qc": "pending-build",
   "last_request_id": "media-downloader-v6-youtube-playlists-20260916",
   "last_prompt": "Add direct YouTube and YouTube Music playlist batch import and sequential download alongside the existing Spotify playlist workflow. Preserve playlist order, allow select all or individual tracks, support MP3 or MP4, skip unavailable/private/login-only tracks without stopping the queue, and preserve ACC Media v4 social support, v5 Spotify playlist import, direct-media batch, YouTube metadata/bitrate features, and branding. Do not bypass login, private content, memberships, paywalls, or DRM.",
-  "last_build": "building",
+  "last_build": "ready",
   "created_at": "2026-08-21T02:10:00Z",
-  "updated_at": "2026-09-16T07:45:00Z"
+  "updated_at": "2026-09-16T07:55:15.246578+00:00"
 }
