@@ -1,0 +1,7 @@
+{
+  "request_id": "media-downloader-v61-youtube-stall-20260916",
+  "project_id": "acc-media-downloader",
+  "project_name": "ACC Media Downloader",
+  "mode": "build_existing",
+  "prompt": "Build ACC Media v6.1 / build 9 with the YouTube no-JS stall hotfix, bounded progress, Spotify playlist batch, YouTube and YouTube Music playlist batch, social downloads, metadata/bitrate features, and no bypass of login/private/paywall/DRM restrictions."
+}
