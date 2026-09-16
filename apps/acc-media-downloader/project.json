@@ -1,13 +1,13 @@
 {
   "id": "acc-media-downloader",
   "name": "ACC Media Downloader",
-  "version": 9,
+  "version": 10,
   "provider": "manual",
   "model": "gpt-5.6-sol",
   "qc": "pending-build",
-  "last_request_id": "media-downloader-v61-youtube-stall-20260916",
-  "last_prompt": "Hotfix ACC Media YouTube downloads that can hang on QuickJS JavaScript challenge solving. Prefer no-JS YouTube clients, cap progress below 100 until the file is actually published, add network timeouts, preserve Spotify and YouTube/YouTube Music playlist batch workflows, social download support, metadata/bitrate features, and branding. Do not bypass login, private content, memberships, paywalls, or DRM.",
-  "last_build": "ready",
+  "last_request_id": "media-downloader-v62-playlist-queue-20260916",
+  "last_prompt": "Fix YouTube and YouTube Music playlist batch so the queue does not stop after the first track. Force playlist detection ahead of single-video mode including Enter-key analysis, add a robust sequential queue watchdog that skips failed/stalled tracks and continues, ignore stale callbacks, preserve order and selection, and use the current fast YouTube client fallback without android_vr. Preserve Spotify playlist import, social downloads, metadata/bitrate features, and branding. Do not bypass login, private content, memberships, paywalls, or DRM.",
+  "last_build": "building",
   "created_at": "2026-08-21T02:10:00Z",
-  "updated_at": "2026-09-16T08:41:41.197126+00:00"
+  "updated_at": "2026-09-16T10:15:00+00:00"
 }
