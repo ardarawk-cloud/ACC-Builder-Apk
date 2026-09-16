@@ -1,0 +1,85 @@
+name: PSL v16 Outlet Stock Out
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-v16-outlet-trigger/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply v16 outlet stock-out patch
+        run: python3 scripts/psl_v16_outlet_stockout.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V16_OUTLET_STOCKOUT' "$F"
+          grep -q 'stockoutOutlet16' "$F"
+          grep -q 'PSK' "$F"
+          grep -q 'PSP' "$F"
+          grep -q 'PSBK' "$F"
+          grep -q 'destinationOutlet' "$F"
+          grep -q 'Distribusi Stock Out per Outlet' "$F"
+          grep -q 'PSL_V15_COMPLETE_REPORTS' "$F"
+          grep -q 'PSL_V14_STOCK_TOTALS' "$F"
+          grep -q 'PSL_V13_CLOSED_STOCKOUT_CORRECTION' "$F"
+          grep -q 'PSL_V11_SMART_SALE_PREMIUM' "$F"
+          grep -q 'PSL_V10_TRANSACTION_EDIT' "$F"
+          grep -q 'PSL_V5_BACKDATE_HB_PATCH' "$F"
+          grep -q 'MutationObserver' "$F" && { echo 'Unsafe observer found'; exit 1; } || true
+          test "$(head -c 15 "$F")" = '<!DOCTYPE html>'
+          tail -n 8 "$F" | grep -q '</html>'
+
+      - name: Bump v16 metadata and stable request
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          p=Path('apps/papa-sauce-lab/project.json')
+          m=json.loads(p.read_text())
+          m['version']=16
+          m['provider']='manual-hotfix'
+          m['model']='none'
+          m['qc']='passed'
+          m['last_request_id']='papa-sauce-lab-outlet-stockout-v16-20260916'
+          m['last_prompt']='Add mandatory PSK/PSP/PSBK destination selection for manual Stock Out, preserve outlet on corrections, and add daily/weekly/monthly/all-data outlet distribution monitoring by product.'
+          m['last_build']='pending'
+          m['updated_at']=datetime.now(timezone.utc).isoformat()
+          p.write_text(json.dumps(m,indent=2,ensure_ascii=False)+'\n')
+          r=Path('psl-build-requests/v16-outlet-stockout-20260916.json')
+          r.parent.mkdir(exist_ok=True)
+          r.write_text(json.dumps({
+            'request_id':'papa-sauce-lab-stable-v16-outlet-stockout-20260916',
+            'project_id':'papa-sauce-lab',
+            'version':16,
+            'mode':'stable_signed_update',
+            'reason':'Build stable v16 with PSK/PSP/PSBK stock-out routing and outlet monitoring reports'
+          },indent=2)+'\n')
+          PY
+
+      - name: Commit v16 patch and trigger stable build
+        shell: bash
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json psl-build-requests/v16-outlet-stockout-20260916.json
+          git commit -m "PSL v16: add outlet stock-out tracking" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
