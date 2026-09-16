@@ -1,13 +1,13 @@
 {
   "id": "acc-media-downloader",
   "name": "ACC Media Downloader",
-  "version": 6,
+  "version": 7,
   "provider": "manual",
   "model": "gpt-5.6-sol",
   "qc": "pending-build",
-  "last_request_id": "media-downloader-v4-social-20260916",
-  "last_prompt": "Upgrade ACC Media Downloader to v4 with public-link download support for TikTok, Instagram/Reels, Facebook/fb.watch, and X/Twitter through the local yt-dlp/FFmpeg engine. Preserve YouTube v3.2 metadata/bitrate features, Spotify official helper, direct-media downloads, batch mode, readable filenames, and premium branding. Do not bypass login, private content, paywalls, or DRM.",
-  "last_build": "ready",
+  "last_request_id": "media-downloader-v5-spotify-playlist-20260916",
+  "last_prompt": "Add Spotify playlist batch import: read public playlist metadata from Spotify Embed, preserve playlist order, allow select all or individual tracks, search matching public YouTube/YouTube Music sources, then download sequentially as MP3 or MP4. Preserve ACC Media v4 social download support, YouTube v3.2 metadata/bitrate flow, direct-media batch, Spotify non-ripping policy, and premium branding. Do not bypass login, private content, paywalls, Premium restrictions, or DRM.",
+  "last_build": "building",
   "created_at": "2026-08-21T02:10:00Z",
-  "updated_at": "2026-09-15T18:02:22.603452+00:00"
+  "updated_at": "2026-09-16T07:35:00+00:00"
 }
