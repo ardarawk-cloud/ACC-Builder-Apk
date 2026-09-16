@@ -1,0 +1,7 @@
+{
+  "request_id": "media-downloader-v6-youtube-playlists-rebuild-20260916",
+  "project_id": "acc-media-downloader",
+  "project_name": "ACC Media Downloader",
+  "mode": "build_existing",
+  "prompt": "Rebuild the merged ACC Media v6 / build 8 source with Spotify playlist batch plus direct YouTube and YouTube Music playlist batch. Preserve sequential MP3/MP4 queue, playlist order, skip unavailable tracks, social downloads, direct media, YouTube metadata features, and non-bypass policy."
+}
