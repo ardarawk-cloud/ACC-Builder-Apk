@@ -34,3 +34,4 @@ runpy.run_path(str(Path(__file__).with_name('patch_acc_media_social_v4.py')), ru
 runpy.run_path(str(Path(__file__).with_name('patch_acc_media_playlist_v5.py')), run_name='__main__')
 runpy.run_path(str(Path(__file__).with_name('patch_acc_media_youtube_playlist_v6.py')), run_name='__main__')
 runpy.run_path(str(Path(__file__).with_name('patch_acc_media_youtube_stall_v7.py')), run_name='__main__')
+runpy.run_path(str(Path(__file__).with_name('patch_acc_media_playlist_queue_v62.py')), run_name='__main__')
