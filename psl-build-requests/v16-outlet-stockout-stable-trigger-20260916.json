@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-stable-v16-outlet-stockout-manual-trigger-20260916",
+  "project_id": "papa-sauce-lab",
+  "version": 16,
+  "mode": "stable_signed_update",
+  "reason": "Trigger stable signed v16 build after outlet stock-out patch validation"
+}
