@@ -3,6 +3,12 @@
   "name": "bali-wedding-dj-booking",
   "main": "./src/entry.js",
   "compatibility_date": "2026-09-10",
+  "routes": [
+    {
+      "pattern": "book.nadmo.id",
+      "custom_domain": true
+    }
+  ],
   "d1_databases": [
     {
       "binding": "BWD_DB",
