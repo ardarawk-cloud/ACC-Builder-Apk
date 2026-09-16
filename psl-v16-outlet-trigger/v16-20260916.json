@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-outlet-stockout-v16-20260916",
+  "project_id": "papa-sauce-lab",
+  "version": 16,
+  "mode": "patch_then_stable_signed_update",
+  "reason": "Track manual Stock Out destination by outlet PSK/PSP/PSBK and report distribution per outlet/product"
+}
