@@ -1,0 +1,7 @@
+{
+  "request_id": "media-downloader-v63-packaging-fix-20260917",
+  "project_id": "acc-media-downloader",
+  "project_name": "ACC Media Downloader",
+  "mode": "build_existing",
+  "prompt": "Rebuild ACC Media as build 11 after fixing packaging so patched web assets are copied into Android assets after all ACC Media patch layers run. The installed APK must visibly include the v6.x UI/JS features rather than the old v3.0.0 baseline. Preserve YouTube/YouTube Music playlist sequential queue continuation, Spotify playlist workflow, social downloads, metadata/bitrate features, and current native restrictions. Do not bypass login, private content, memberships, paywalls, or DRM."
+}

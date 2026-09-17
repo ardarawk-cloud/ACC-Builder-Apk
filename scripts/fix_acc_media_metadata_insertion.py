@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import runpy
+import shutil
 import sys
 
 if len(sys.argv) != 2:
@@ -35,3 +36,14 @@ runpy.run_path(str(Path(__file__).with_name('patch_acc_media_playlist_v5.py')), 
 runpy.run_path(str(Path(__file__).with_name('patch_acc_media_youtube_playlist_v6.py')), run_name='__main__')
 runpy.run_path(str(Path(__file__).with_name('patch_acc_media_youtube_stall_v7.py')), run_name='__main__')
 runpy.run_path(str(Path(__file__).with_name('patch_acc_media_playlist_queue_v62.py')), run_name='__main__')
+
+# Capacitor sync runs before the additive ACC Media patches above. Copy the final
+# patched web bundle into Android assets so the APK actually contains v4-v6.x UI/JS.
+www = root / 'www'
+assets = root / 'android/app/src/main/assets/public'
+if not www.exists():
+    raise SystemExit('patched www directory missing')
+if not assets.exists():
+    raise SystemExit('Android public assets directory missing')
+shutil.copytree(www, assets, dirs_exist_ok=True)
+print('Synced patched ACC Media web assets into Android APK assets')
