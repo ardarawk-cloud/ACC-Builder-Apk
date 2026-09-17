@@ -55,8 +55,6 @@
     more.addEventListener('click', () => showPopup('beatPopup'));
     tools.append(eq, more);
     body.appendChild(tools);
-    const existing = deck.querySelector('.mini-action[data-popup="beatPopup"]');
-    if (existing) existing.textContent = 'LOOP / BEAT';
   });
 
   // Add Drive / Android Files source next to the streaming library.
@@ -152,9 +150,4 @@
   shade?.addEventListener('click', () => {
     if (!$('drivePopup')?.hidden) hideAllPopups();
   });
-
-  // Rebind top actions after removing old duplicates.
-  $('uiLibraryBtn')?.addEventListener('click', () => $('musicBtn')?.click());
-  $('uiSettingsBtn')?.addEventListener('click', () => $('settingsBtn')?.click());
-  $('uiFullscreenBtn')?.addEventListener('click', () => $('djModeBtn')?.click());
 })();
