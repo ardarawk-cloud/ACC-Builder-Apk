@@ -1,17 +1,17 @@
 {
   "id": "acc-dj",
   "name": "ACC DJ",
-  "version": 3,
-  "version_name": "1.2.0",
-  "version_code": 3,
+  "version": 4,
+  "version_name": "1.2.1",
+  "version_code": 4,
   "provider": "manual-wrapper-dj-am-v9",
   "qc": "pending-build",
   "source_repository": "balinightlife666-web/DJ-AM",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
   "package_id": "com.acc.dj",
-  "last_request_id": "acc-dj-v12-drive-20260918",
-  "last_prompt": "Remove duplicated top/center controls, keep two-turntable controller layout, move secondary controls into popups, and add Google Drive / Android Files multi-file loading into Deck A/B while preserving the verified DJ engine.",
+  "last_request_id": "acc-dj-phone-fit-v121-20260918",
+  "last_prompt": "Force the controller to fit completely on a phone landscape viewport without scroll or cropped transport controls; preserve Drive/Files loading and the verified DJ engine.",
   "last_build": "pending",
   "created_at": "2026-09-09T12:28:00Z",
-  "updated_at": "2026-09-18T01:21:00+08:00"
+  "updated_at": "2026-09-18T01:48:00+08:00"
 }
