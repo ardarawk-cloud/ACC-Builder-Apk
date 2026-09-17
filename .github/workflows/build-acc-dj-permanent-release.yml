@@ -34,6 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           BUILD_DIR="$RUNNER_TEMP/acc-dj-release"
+          export BUILD_DIR
           mkdir -p "$BUILD_DIR/www"
           cp apps/acc-dj/index.html "$BUILD_DIR/www/index.html"
           cp apps/acc-dj/v12.css "$BUILD_DIR/www/v12.css"
@@ -43,7 +44,9 @@ jobs:
           curl -fsSL "https://raw.githubusercontent.com/balinightlife666-web/DJ-AM/90a5af34d641f29992c8ecfe245e6cda833dbf2c/app-v8.js" -o "$BUILD_DIR/www/app-v8.js"
           python3 - <<'PY'
           from pathlib import Path
-          html = Path("$BUILD_DIR/www/index.html")
+          import os
+          build = Path(os.environ['BUILD_DIR'])
+          html = build / 'www' / 'index.html'
           s = html.read_text()
           remote = "https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/app-v8.js"
           if remote not in s:
@@ -53,7 +56,7 @@ jobs:
           s = s.replace("</body>", '  <script src="./v12.js"></script>\n</body>', 1)
           html.write_text(s)
 
-          core = Path("$BUILD_DIR/www/app-v8.js")
+          core = build / 'www' / 'app-v8.js'
           js = core.read_text()
           marker = "})();"
           pos = js.rfind(marker)
