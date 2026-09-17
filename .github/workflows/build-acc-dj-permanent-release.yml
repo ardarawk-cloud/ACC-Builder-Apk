@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "release-requests/acc-dj-permanent-v1.json"
+      - "release-requests/acc-dj-ui-v2.json"
   workflow_dispatch:
 
 permissions:
@@ -40,7 +40,7 @@ jobs:
           cat > package.json <<'JSON'
           {
             "name":"acc-dj-release",
-            "version":"1.0.0",
+            "version":"1.1.0",
             "private":true,
             "dependencies":{"@capacitor/core":"^7.0.0","@capacitor/android":"^7.0.0"},
             "devDependencies":{"@capacitor/cli":"^7.0.0"}
@@ -70,14 +70,15 @@ jobs:
           import re
           p=Path('android/app/build.gradle')
           s=p.read_text()
-          s=re.sub(r'versionCode\s+\d+', 'versionCode 1', s, count=1)
-          s=re.sub(r'versionName\s+["\'][^"\']+["\']', 'versionName "1.0.0"', s, count=1)
+          s=re.sub(r'versionCode\s+\d+', 'versionCode 2', s, count=1)
+          s=re.sub(r'versionName\s+["\'][^"\']+["\']', 'versionName "1.1.0"', s, count=1)
           if 'applicationId "com.acc.dj"' not in s and "applicationId 'com.acc.dj'" not in s:
               raise SystemExit('Package drift: expected com.acc.dj')
           p.write_text(s)
           m=Path('android/app/src/main/AndroidManifest.xml')
           x=m.read_text()
-          x=x.replace('android:name=".MainActivity"', 'android:name=".MainActivity" android:screenOrientation="landscape"')
+          if 'android:screenOrientation="landscape"' not in x:
+              x=x.replace('android:name=".MainActivity"', 'android:name=".MainActivity" android:screenOrientation="landscape"')
           m.write_text(x)
           PY
 
@@ -85,14 +86,14 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease bundleRelease --stacktrace
           mkdir -p "$GITHUB_WORKSPACE/dist-acc-dj"
-          cp app/build/outputs/apk/release/app-release-unsigned.apk "$GITHUB_WORKSPACE/dist-acc-dj/ACC-DJ-1.0.0-unsigned.apk"
-          cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/dist-acc-dj/ACC-DJ-1.0.0-unsigned.aab"
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "$GITHUB_WORKSPACE/dist-acc-dj/ACC-DJ-1.1.0-unsigned.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/dist-acc-dj/ACC-DJ-1.1.0-unsigned.aab"
           cd "$GITHUB_WORKSPACE"
           sha256sum dist-acc-dj/* > dist-acc-dj/SHA256SUMS.txt
 
       - name: Upload unsigned release
         uses: actions/upload-artifact@v4
         with:
-          name: ACC-DJ-1.0.0-UNSIGNED
+          name: ACC-DJ-1.1.0-UNSIGNED
           path: dist-acc-dj/
           retention-days: 3

@@ -3,213 +3,110 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#000000" />
-  <meta name="description" content="ACC DJ — 2-deck streaming DJ mixer powered by Audius." />
+  <meta name="theme-color" content="#05070a" />
+  <meta name="description" content="ACC DJ — professional two-deck streaming DJ mixer." />
   <link rel="icon" href="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/icon-192.png" type="image/png" sizes="192x192" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/styles.css" />
   <title>ACC DJ</title>
+  <style>
+    :root{--bg:#05070a;--panel:#11151a;--panel2:#171b21;--line:#2a3038;--text:#f5f7fa;--muted:#8993a1;--blue:#1498ff;--orange:#ff9d2d;--green:#36e66a;--shadow:0 18px 50px rgba(0,0,0,.55)}
+    *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden} body{min-height:100vh}
+    button,input,select{font:inherit}.panel{background:transparent;border:0;box-shadow:none}.engine-hidden{display:none!important}
+    .pro-shell{height:100vh;display:grid;grid-template-rows:54px minmax(0,1fr);background:radial-gradient(circle at 50% 35%,#171c23 0,#0b0e12 40%,#05070a 76%)}
+    .pro-topbar{height:54px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 14px;border-bottom:1px solid #242a31;background:rgba(7,9,12,.96);z-index:20}
+    .pro-brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.08em}.pro-brand img{width:30px;height:30px;border-radius:7px}.pro-brand b{font-size:18px}.pro-brand b span{color:var(--blue)}
+    .pro-tools{display:flex;gap:7px}.tool-btn{height:38px;min-width:48px;padding:0 12px;border:1px solid #303740;border-radius:10px;background:linear-gradient(#1a1f26,#101419);color:#dce2e8;font-size:12px;font-weight:800}.tool-btn:active,.tool-btn.active{transform:translateY(1px);border-color:#68717c}.tool-btn strong{display:block;font-size:15px;line-height:14px}.tool-btn span{font-size:8px;color:#8f99a5;letter-spacing:.08em}
+    .top-status{justify-self:end;display:flex;align-items:center;gap:8px;color:#a7b0bb;font-size:10px}.status-led{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 10px rgba(54,230,106,.7)}
+    .stage{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 168px minmax(0,1fr);position:relative}
+    .deck-pro{min-width:0;display:grid;grid-template-rows:108px minmax(0,1fr) 86px;background:linear-gradient(145deg,#15191f,#22262b 55%,#171a1f);position:relative;overflow:hidden;border-right:1px solid #020304}.deck-pro[data-deck="B"]{background:linear-gradient(215deg,#17191d,#29211d 58%,#19191a);border-left:1px solid #020304;border-right:0}
+    .track-strip{padding:8px 14px 6px;border-bottom:1px solid #242932;background:rgba(5,7,10,.82);display:grid;grid-template-columns:minmax(0,1fr) 86px;grid-template-rows:36px 36px;gap:3px 10px}.track-copy-pro{min-width:0}.track-copy-pro .artist{font-size:10px;color:#8d96a1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.track-copy-pro h2{font-size:16px;line-height:20px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.deck-pro[data-deck="A"] .deck-name{color:#41b3ff}.deck-pro[data-deck="B"] .deck-name{color:#ffb152}.deck-name{font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.track-stats{text-align:right;align-self:center}.track-stats .bpm{font-size:16px;font-weight:800}.track-stats .small{display:flex;justify-content:flex-end;gap:5px;font-size:9px;color:#9aa4af}.wave-wrap{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) 70px;align-items:end;gap:8px}.wave{width:100%;height:31px!important;border-radius:3px;background:#07090c}.seek{position:absolute;opacity:0;pointer-events:none}.time-row{font-size:9px;color:#a7b0ba;display:flex;justify-content:space-between}.track-strip .time-row{align-self:end}
+    .deck-body{position:relative;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px 46px}.sync-main{position:absolute;top:12px;z-index:6;height:42px;padding:0 16px;border-radius:8px;border:2px solid var(--blue);background:rgba(7,10,14,.92);color:#fff;font-weight:900;box-shadow:0 0 12px rgba(20,152,255,.42)}.deck-pro[data-deck="A"] .sync-main{left:12px}.deck-pro[data-deck="B"] .sync-main{right:12px;border-color:var(--orange);box-shadow:0 0 12px rgba(255,157,45,.35)}.sync-main.synced{background:#0f3e66}.deck-pro[data-deck="B"] .sync-main.synced{background:#5d3612}
+    .pitch-stack{position:absolute;top:66px;bottom:12px;width:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#9aa4af;font-size:9px}.deck-pro[data-deck="A"] .pitch-stack{left:6px}.deck-pro[data-deck="B"] .pitch-stack{right:6px}.pitch-stack input{height:125px;width:26px;writing-mode:vertical-lr;direction:rtl;accent-color:#adb7c2}.pitch-stack .plusminus{font-size:14px;color:#c8ced5}.pitch-stack output{font-size:9px;color:#cbd2da}
+    .platter{width:min(42vw,43vh,420px);aspect-ratio:1;border-radius:50%;position:relative;display:grid;place-items:center;background:repeating-radial-gradient(circle at center,#111 0 3px,#171717 4px 6px,#0c0c0d 7px 9px);border:9px solid #0c0e11;box-shadow:0 0 0 2px #8e959d inset,0 0 0 12px #171a1f,0 15px 35px rgba(0,0,0,.6)}.platter:before{content:"";position:absolute;inset:4%;border-radius:50%;border:2px dotted #b3bac1;opacity:.72}.platter:after{content:"";position:absolute;inset:11%;border-radius:50%;border:1px solid #3f444a;box-shadow:0 0 0 1px #050505}.deck-pro[data-deck="A"] .platter{box-shadow:0 0 0 2px #8e959d inset,0 0 0 12px #171a1f,0 15px 35px rgba(0,0,0,.6),0 0 24px rgba(20,152,255,.08)}.deck-pro[data-deck="B"] .platter{box-shadow:0 0 0 2px #8e959d inset,0 0 0 12px #171a1f,0 15px 35px rgba(0,0,0,.6),0 0 24px rgba(255,157,45,.08)}
+    .vinyl-label{width:35%;aspect-ratio:1;border-radius:50%;object-fit:cover;z-index:3;border:2px solid #222;box-shadow:0 0 0 5px #0d0e10}.deck-playing .vinyl-label{animation:spin 3.6s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+    .spindle{position:absolute;width:10px;height:10px;border-radius:50%;background:#dce1e5;border:2px solid #555;z-index:5}.tonearm{position:absolute;right:8%;top:8%;width:8px;height:58%;border-radius:8px;background:linear-gradient(90deg,#7a7d81,#e1e4e7,#6a6e73);transform:rotate(24deg);transform-origin:50% 0;box-shadow:0 0 0 1px #2a2d31,2px 4px 8px rgba(0,0,0,.5);z-index:4}.tonearm:before{content:"";position:absolute;top:-18px;left:-9px;width:25px;height:25px;border-radius:50%;background:radial-gradient(circle,#bbb 0 18%,#34383d 20% 40%,#0b0c0e 42%)}.tonearm:after{content:"";position:absolute;bottom:-9px;left:-6px;width:20px;height:12px;border-radius:3px;background:#1c2228;border:1px solid #70767c}
+    .deck-pro[data-deck="B"] .tonearm{left:8%;right:auto;transform:rotate(-24deg)}
+    .transport-bar{border-top:1px solid #292e35;background:#0b0e12;display:grid;grid-template-columns:72px 1fr 1fr 1fr;gap:7px;align-items:center;padding:8px 10px}.deck-pro[data-deck="B"] .transport-bar{grid-template-columns:1fr 1fr 1fr 72px}.transport-btn,.cue-btn,.mini-action{height:52px;border-radius:12px;border:1px solid #333a43;background:linear-gradient(#1a1f25,#0e1115);color:#f7f8fa;font-weight:900}.transport-btn[data-action="play"]{width:66px;height:66px;border-radius:50%;font-size:24px;border:3px solid var(--green);box-shadow:0 0 14px rgba(54,230,106,.25)}.cue-btn.active{border-color:#ffd05c;color:#ffd05c}.transport-btn.playing{background:#193d24}.mini-action{font-size:11px}.sync-state{display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#7f8995}.sync-state.locked{color:#4ef27a}.sync-state.chasing{color:#ffd35c}.sync-state.armed{color:#65bbff}
+    .center-mixer{min-width:0;background:linear-gradient(#12161c,#090b0f);border-left:1px solid #2a2e34;border-right:1px solid #2a2e34;display:grid;grid-template-rows:auto auto 1fr auto;align-items:center;padding:9px 8px;z-index:5;box-shadow:0 0 25px rgba(0,0,0,.45)}.mixer-logo{text-align:center;font-size:18px;font-weight:1000;letter-spacing:.08em}.mixer-logo span{color:var(--blue)}.center-tools{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:7px}.center-tools button{height:38px;border:1px solid #30363e;border-radius:8px;background:#151a20;color:#dce1e6;font-size:9px;font-weight:800}.meters{display:flex!important;align-items:center;justify-content:center;gap:8px;height:100%;margin:4px 0}.meters>div{height:68%;display:flex;flex-direction:column;gap:4px;align-items:center;color:#7f8994;font-size:9px}.meters meter{writing-mode:vertical-lr;direction:rtl;width:10px;height:100%;accent-color:#2ee8cf}.xfade-wrap{padding:4px 0 8px}.xfade-label{display:flex;justify-content:space-between;font-size:8px;color:#858f99}.crossfader{width:100%;accent-color:#e7eaee}
+    .popup-shade{position:fixed;inset:54px 0 0;background:rgba(0,0,0,.58);backdrop-filter:blur(4px);z-index:60}.ui-popup{position:fixed;left:50%;top:53%;transform:translate(-50%,-45%) scale(.97);width:min(680px,90vw);max-height:76vh;overflow:auto;border:1px solid #343b44;border-radius:18px;background:linear-gradient(145deg,#181d23,#0d1014);box-shadow:var(--shadow);z-index:70;padding:14px;opacity:0;transition:.15s ease}.ui-popup.open{opacity:1;transform:translate(-50%,-50%) scale(1)}.popup-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.popup-head strong{font-size:14px}.popup-close{width:34px;height:34px;border-radius:9px;border:1px solid #353c45;background:#11151a;color:#e9edf1}.popup-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.popup-section{border:1px solid #2c323a;border-radius:14px;background:#101419;padding:12px}.popup-section h3{margin:0 0 10px;font-size:12px}.popup-section.a h3{color:#43b6ff}.popup-section.b h3{color:#ffb14c}.knob-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.knob-row label,.master-control{font-size:9px;color:#929ca7;text-align:center;display:flex;flex-direction:column;gap:7px}.knob-row input,.master-control input{width:100%;accent-color:#b9c1ca}.perf-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.perf-grid button{height:44px;border:1px solid #343b44;border-radius:10px;background:#181d23;color:#f4f6f8;font-weight:800}.master-btn.active{border-color:#4fe274!important;color:#4fe274!important}.cue-mode{margin-top:12px}.mode-btn{width:100%;height:44px;border:1px solid #343b44;border-radius:10px;background:#181d23;color:#e9edf0;font-weight:800}.cue-mode p{font-size:9px;color:#84909c}
+    .music-drawer{position:fixed!important;left:50%!important;right:auto!important;top:54%!important;bottom:auto!important;transform:translate(-50%,-50%)!important;width:min(880px,92vw)!important;height:min(620px,82vh)!important;max-height:82vh!important;border-radius:18px!important;border:1px solid #353c45!important;background:#101419!important;box-shadow:var(--shadow)!important;z-index:85!important;padding:14px!important}.music-drawer:not(.open){display:none!important}.drawer-backdrop{position:fixed!important;inset:54px 0 0!important;background:rgba(0,0,0,.66)!important;backdrop-filter:blur(5px);z-index:80!important}.music-drawer-head{display:flex;justify-content:space-between;align-items:center}.music-drawer-head span{display:block;font-size:9px;color:#8f99a4}.quick-genres{display:flex;gap:5px;overflow:auto;margin:10px 0}.genre-chip{white-space:nowrap}.results{max-height:48vh;overflow:auto}.library-row{display:grid;grid-template-columns:1fr auto;gap:8px}.search-wrap{display:flex;gap:6px}.search-wrap input{min-width:0;flex:1}
+    dialog{border:1px solid #353c45!important;border-radius:18px!important;background:#11151a!important;color:#fff!important;box-shadow:var(--shadow)!important}dialog::backdrop{background:rgba(0,0,0,.7);backdrop-filter:blur(4px)}
+    .notes{display:none!important}
+    @media(max-width:950px){.stage{grid-template-columns:minmax(0,1fr) 126px minmax(0,1fr)}.center-tools{grid-template-columns:1fr}.platter{width:min(39vw,42vh,360px)}.track-strip{padding-left:9px;padding-right:9px}.pro-tools .tool-btn{min-width:42px;padding:0 8px}.pro-brand b{font-size:14px}}
+    @media(max-height:560px){.pro-shell{grid-template-rows:46px minmax(0,1fr)}.pro-topbar{height:46px}.deck-pro{grid-template-rows:82px minmax(0,1fr) 70px}.track-strip{grid-template-rows:30px 28px;padding-top:5px}.wave{height:22px!important}.transport-btn,.cue-btn,.mini-action{height:44px}.transport-btn[data-action="play"]{height:54px;width:54px}.platter{width:min(35vw,42vh,300px)}.tool-btn{height:34px}.popup-shade{inset:46px 0 0}}
+  </style>
 </head>
 <body>
-  <!-- Android wrapper pinned to DJ-AM commit 90a5af34d641f29992c8ecfe245e6cda833dbf2c. -->
-  <div id="app">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-mark brand-logo"><img src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/icon-192.png" alt="ACC DJ" /></div>
-        <div>
-          <h1>DJ</h1>
-          <p>STREAM • MIX • CUE</p>
-        </div>
-      </div>
-      <div class="top-actions">
-        <span id="audioStatus" class="status-dot">Audio idle</span>
-        <button id="djModeBtn" class="ghost focus-btn">DJ MODE</button>
-        <button id="installBtn" class="ghost install-btn" hidden>INSTALL</button>
-        <button id="musicBtn" class="primary music-toggle">♫ MUSIC</button>
-        <button id="settingsBtn" class="ghost api-btn">API</button>
-      </div>
-    </header>
+<div id="app" class="pro-shell">
+  <header class="pro-topbar">
+    <div class="pro-brand"><img src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/icon-192.png" alt="ACC DJ"><b>ACC <span>DJ</span></b></div>
+    <div class="pro-tools">
+      <button id="uiLibraryBtn" class="tool-btn"><strong>♫</strong><span>LIBRARY</span></button>
+      <button class="tool-btn" data-popup="eqPopup"><strong>≋</strong><span>EQ</span></button>
+      <button class="tool-btn" data-popup="mixerPopup"><strong>☷</strong><span>MIXER</span></button>
+      <button class="tool-btn" data-popup="beatPopup"><strong>4×4</strong><span>PERFORM</span></button>
+      <button id="uiSettingsBtn" class="tool-btn"><strong>⚙</strong><span>SETTINGS</span></button>
+      <button id="uiFullscreenBtn" class="tool-btn"><strong>⛶</strong><span>FULL</span></button>
+    </div>
+    <div class="top-status"><i class="status-led"></i><span id="audioStatus">Audio idle</span></div>
+    <button id="djModeBtn" class="engine-hidden">DJ MODE</button><button id="installBtn" class="engine-hidden" hidden>INSTALL</button><button id="musicBtn" class="engine-hidden">MUSIC</button><button id="settingsBtn" class="engine-hidden">API</button>
+  </header>
 
-    <main>
-      <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
-      <section id="musicDrawer" class="library panel music-drawer" aria-hidden="true">
-        <div class="music-drawer-head">
-          <div>
-            <strong>MUSIC BROWSER</strong>
-            <span>Audius streaming • pilih lagu lalu LOAD ke Deck A/B</span>
-          </div>
-          <button id="closeMusicBtn" class="ghost" type="button">✕</button>
-        </div>
-        <div class="quick-genres" aria-label="Quick genres">
-          <button data-genre="" class="genre-chip active">TRENDING</button>
-          <button data-genre="House" class="genre-chip">HOUSE</button>
-          <button data-genre="Tech House" class="genre-chip">TECH HOUSE</button>
-          <button data-genre="Deep House" class="genre-chip">DEEP HOUSE</button>
-          <button data-genre="Techno" class="genre-chip">TECHNO</button>
-          <button data-genre="Trance" class="genre-chip">TRANCE</button>
-          <button data-genre="Drum & Bass" class="genre-chip">DNB</button>
-          <button data-genre="Dubstep" class="genre-chip">DUBSTEP</button>
-          <button data-genre="Electronic" class="genre-chip">ELECTRONIC</button>
-          <button data-genre="Future House" class="genre-chip">FUTURE</button>
-          <button data-genre="Progressive House" class="genre-chip">PROGRESSIVE</button>
-        </div>
-        <div class="library-row">
-          <div class="search-wrap">
-            <input id="searchInput" type="search" placeholder="Cari track / artist di Audius..." autocomplete="off" />
-            <button id="searchBtn" class="primary">SEARCH</button>
-          </div>
-          <div class="filters">
-            <select id="genreSelect" aria-label="Genre">
-              <option value="">Semua genre</option>
-              <option>House</option>
-              <option>Tech House</option>
-              <option>Deep House</option>
-              <option>Techno</option>
-              <option>Trance</option>
-              <option>Drum & Bass</option>
-              <option>Dubstep</option>
-              <option>Electronic</option>
-              <option>Future House</option>
-              <option>Progressive House</option>
-            </select>
-            <button id="trendingBtn" class="ghost">TRENDING</button>
-          </div>
-        </div>
-        <div id="libraryMessage" class="library-message">Masukkan kata kunci atau buka Trending.</div>
-        <div id="results" class="results"></div>
-        <div class="browser-footer"><button id="moreBtn" class="ghost" type="button" hidden>MORE TRACKS</button></div>
-      </section>
+  <main class="stage">
+    <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+    <section id="musicDrawer" class="library panel music-drawer" aria-hidden="true">
+      <div class="music-drawer-head"><div><strong>MUSIC LIBRARY</strong><span>Audius streaming • LOAD ke Deck A / B</span></div><button id="closeMusicBtn" class="ghost" type="button">✕</button></div>
+      <div class="quick-genres"><button data-genre="" class="genre-chip active">TRENDING</button><button data-genre="House" class="genre-chip">HOUSE</button><button data-genre="Tech House" class="genre-chip">TECH HOUSE</button><button data-genre="Deep House" class="genre-chip">DEEP HOUSE</button><button data-genre="Techno" class="genre-chip">TECHNO</button><button data-genre="Trance" class="genre-chip">TRANCE</button><button data-genre="Drum & Bass" class="genre-chip">DNB</button><button data-genre="Dubstep" class="genre-chip">DUBSTEP</button><button data-genre="Electronic" class="genre-chip">ELECTRONIC</button></div>
+      <div class="library-row"><div class="search-wrap"><input id="searchInput" type="search" placeholder="Cari track / artist di Audius..." autocomplete="off"><button id="searchBtn" class="primary">SEARCH</button></div><div class="filters"><select id="genreSelect" aria-label="Genre"><option value="">Semua genre</option><option>House</option><option>Tech House</option><option>Deep House</option><option>Techno</option><option>Trance</option><option>Drum & Bass</option><option>Dubstep</option><option>Electronic</option><option>Future House</option><option>Progressive House</option></select><button id="trendingBtn" class="ghost">TRENDING</button></div></div>
+      <div id="libraryMessage" class="library-message">Masukkan kata kunci atau buka Trending.</div><div id="results" class="results"></div><div class="browser-footer"><button id="moreBtn" class="ghost" type="button" hidden>MORE TRACKS</button></div>
+    </section>
 
-      <section class="decks-grid">
-        <article class="deck panel" data-deck="A">
-          <div class="deck-head">
-            <span class="deck-label">DECK A</span>
-            <div class="deck-head-actions"><button class="master-btn active" data-action="master" data-deck="A">MASTER</button><button class="cue-btn" data-action="cue" data-deck="A">CUE A</button></div>
-          </div>
-          <div class="track-meta">
-            <img id="coverA" class="cover" alt="Cover Deck A" src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/placeholder.svg" />
-            <div class="track-copy">
-              <h2 id="titleA">No track loaded</h2>
-              <p id="artistA">Audius</p>
-              <div class="chips"><span id="bpmA">BPM —</span><span id="keyA">KEY —</span><span id="gridA">GRID —</span></div>
-            </div>
-          </div>
-          <canvas id="waveA" class="wave" width="900" height="130"></canvas>
-          <input id="seekA" class="seek" type="range" min="0" max="1000" value="0" />
-          <div class="time-row"><span id="timeA">00:00</span><span id="durationA">00:00</span></div>
-          <div class="transport">
-            <button class="transport-btn" data-action="play" data-deck="A">▶</button>
-            <button class="transport-btn" data-action="restart" data-deck="A">↺</button>
-            <button class="transport-btn sync-btn" data-action="sync" data-deck="A">SYNC</button>
-            <button class="transport-btn" data-action="loop" data-deck="A">LOOP</button>
-          </div>
-          <div class="nudge-row">
-            <button class="nudge-btn" data-action="nudge" data-dir="-1" data-deck="A">◀ NUDGE</button>
-            <span id="syncStateA" class="sync-state">FREE</span>
-            <button class="nudge-btn" data-action="nudge" data-dir="1" data-deck="A">NUDGE ▶</button>
-          </div>
-          <div class="controls-row">
-            <label>LOW<input id="lowA" type="range" min="-18" max="12" value="0" step="1" /></label>
-            <label>MID<input id="midA" type="range" min="-18" max="12" value="0" step="1" /></label>
-            <label>HIGH<input id="highA" type="range" min="-18" max="12" value="0" step="1" /></label>
-          </div>
-          <div class="pitch-row">
-            <label>PITCH <span id="pitchLabelA">0.0%</span></label>
-            <input id="pitchA" type="range" min="-8" max="8" value="0" step="0.1" />
-          </div>
-        </article>
+    <article class="deck deck-pro" data-deck="A">
+      <div class="track-strip"><div class="track-copy-pro"><div class="deck-name">DECK A</div><div class="artist" id="artistA">Audius</div><h2 id="titleA">No track loaded</h2></div><div class="track-stats"><div id="bpmA" class="bpm">BPM —</div><div class="small"><span id="keyA">KEY —</span><span id="gridA">GRID —</span></div></div><div class="wave-wrap"><canvas id="waveA" class="wave" width="900" height="130"></canvas><div class="time-row"><span id="timeA">00:00</span><span id="durationA">00:00</span></div></div><input id="seekA" class="seek" type="range" min="0" max="1000" value="0"></div>
+      <div class="deck-body"><button class="transport-btn sync-main sync-btn" data-action="sync" data-deck="A">SYNC</button><div class="pitch-stack"><span class="plusminus">+</span><input id="pitchA" type="range" min="-8" max="8" value="0" step="0.1"><span class="plusminus">−</span><output id="pitchLabelA">0.0%</output></div><div class="platter" data-platter="A"><img id="coverA" class="vinyl-label" alt="Cover Deck A" src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/placeholder.svg" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/placeholder.svg'"><span class="spindle"></span><span class="tonearm"></span></div></div>
+      <div class="transport-bar"><button class="transport-btn" data-action="play" data-deck="A">▶</button><button class="cue-btn" data-action="cue" data-deck="A">CUE</button><button class="mini-action" data-popup="beatPopup">LOOP / BEAT</button><span id="syncStateA" class="sync-state">MASTER</span></div>
+    </article>
 
-        <article class="mixer panel">
-          <div class="mixer-title">MIXER</div>
-          <div class="meters">
-            <div><span>A</span><meter id="meterA" min="0" max="1" value="0"></meter></div>
-            <div><span>B</span><meter id="meterB" min="0" max="1" value="0"></meter></div>
-          </div>
-          <label class="master-control">MASTER
-            <input id="masterVol" type="range" min="0" max="1" value="0.85" step="0.01" />
-          </label>
-          <div class="cue-mode">
-            <button id="splitCueBtn" class="mode-btn">SPLIT CUE: OFF</button>
-            <p id="cueHelp">Normal: master stereo.</p>
-          </div>
-          <div class="xfade-wrap">
-            <div class="xfade-label"><span>A</span><strong>CROSSFADER</strong><span>B</span></div>
-            <input id="crossfader" class="crossfader" type="range" min="-1" max="1" value="0" step="0.01" />
-          </div>
-          <div class="mixer-info">
-            <strong>Split Cue</strong>
-            <span>LEFT = Master mono</span>
-            <span>RIGHT = Cue mono</span>
-          </div>
-        </article>
+    <aside class="mixer center-mixer panel"><div class="mixer-logo">ACC <span>DJ</span></div><div class="center-tools"><button data-popup="eqPopup">EQ</button><button data-popup="mixerPopup">MIX</button><button data-popup="beatPopup">BEAT</button><button id="centerLibraryBtn">MUSIC</button></div><div class="meters"><div><span>A</span><meter id="meterA" min="0" max="1" value="0"></meter></div><div><span>B</span><meter id="meterB" min="0" max="1" value="0"></meter></div></div><div class="xfade-wrap"><div class="xfade-label"><span>A</span><strong>X-FADER</strong><span>B</span></div><input id="crossfader" class="crossfader" type="range" min="-1" max="1" value="0" step="0.01"></div></aside>
 
-        <article class="deck panel" data-deck="B">
-          <div class="deck-head">
-            <span class="deck-label">DECK B</span>
-            <div class="deck-head-actions"><button class="master-btn" data-action="master" data-deck="B">MASTER</button><button class="cue-btn" data-action="cue" data-deck="B">CUE B</button></div>
-          </div>
-          <div class="track-meta">
-            <img id="coverB" class="cover" alt="Cover Deck B" src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/placeholder.svg" />
-            <div class="track-copy">
-              <h2 id="titleB">No track loaded</h2>
-              <p id="artistB">Audius</p>
-              <div class="chips"><span id="bpmB">BPM —</span><span id="keyB">KEY —</span><span id="gridB">GRID —</span></div>
-            </div>
-          </div>
-          <canvas id="waveB" class="wave" width="900" height="130"></canvas>
-          <input id="seekB" class="seek" type="range" min="0" max="1000" value="0" />
-          <div class="time-row"><span id="timeB">00:00</span><span id="durationB">00:00</span></div>
-          <div class="transport">
-            <button class="transport-btn" data-action="play" data-deck="B">▶</button>
-            <button class="transport-btn" data-action="restart" data-deck="B">↺</button>
-            <button class="transport-btn sync-btn" data-action="sync" data-deck="B">SYNC</button>
-            <button class="transport-btn" data-action="loop" data-deck="B">LOOP</button>
-          </div>
-          <div class="nudge-row">
-            <button class="nudge-btn" data-action="nudge" data-dir="-1" data-deck="B">◀ NUDGE</button>
-            <span id="syncStateB" class="sync-state">FREE</span>
-            <button class="nudge-btn" data-action="nudge" data-dir="1" data-deck="B">NUDGE ▶</button>
-          </div>
-          <div class="controls-row">
-            <label>LOW<input id="lowB" type="range" min="-18" max="12" value="0" step="1" /></label>
-            <label>MID<input id="midB" type="range" min="-18" max="12" value="0" step="1" /></label>
-            <label>HIGH<input id="highB" type="range" min="-18" max="12" value="0" step="1" /></label>
-          </div>
-          <div class="pitch-row">
-            <label>PITCH <span id="pitchLabelB">0.0%</span></label>
-            <input id="pitchB" type="range" min="-8" max="8" value="0" step="0.1" />
-          </div>
-        </article>
-      </section>
+    <article class="deck deck-pro" data-deck="B">
+      <div class="track-strip"><div class="track-copy-pro"><div class="deck-name">DECK B</div><div class="artist" id="artistB">Audius</div><h2 id="titleB">No track loaded</h2></div><div class="track-stats"><div id="bpmB" class="bpm">BPM —</div><div class="small"><span id="keyB">KEY —</span><span id="gridB">GRID —</span></div></div><div class="wave-wrap"><canvas id="waveB" class="wave" width="900" height="130"></canvas><div class="time-row"><span id="timeB">00:00</span><span id="durationB">00:00</span></div></div><input id="seekB" class="seek" type="range" min="0" max="1000" value="0"></div>
+      <div class="deck-body"><button class="transport-btn sync-main sync-btn" data-action="sync" data-deck="B">SYNC</button><div class="pitch-stack"><span class="plusminus">+</span><input id="pitchB" type="range" min="-8" max="8" value="0" step="0.1"><span class="plusminus">−</span><output id="pitchLabelB">0.0%</output></div><div class="platter" data-platter="B"><img id="coverB" class="vinyl-label" alt="Cover Deck B" src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/placeholder.svg" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/placeholder.svg'"><span class="spindle"></span><span class="tonearm"></span></div></div>
+      <div class="transport-bar"><span id="syncStateB" class="sync-state">FREE</span><button class="mini-action" data-popup="beatPopup">LOOP / BEAT</button><button class="cue-btn" data-action="cue" data-deck="B">CUE</button><button class="transport-btn" data-action="play" data-deck="B">▶</button></div>
+    </article>
 
-      <section class="notes panel">
-        <strong>ACC DJ Engine v1:</strong> live beat-anchor analysis + master/follower chase. <strong>HP / Android:</strong> Split Cue memakai satu output stereo sebagai dua jalur mono. Agar Master dan Cue benar-benar terpisah, pakai USB-C audio DAC + DJ split-cue cable (bukan splitter headphone biasa). Audio di-stream saat diputar.
-      </section>
-    </main>
+    <section class="notes panel"><strong>ACC DJ</strong></section>
+  </main>
 
-    <dialog id="settingsDialog">
-      <form method="dialog" class="dialog-card">
-        <div class="dialog-head">
-          <div><strong>Audius API</strong><p>API key frontend aman menurut dokumentasi Audius.</p></div>
-          <button value="cancel" class="ghost">✕</button>
-        </div>
-        <label>API Key
-          <input id="apiKeyInput" type="text" placeholder="Tempel Audius API key di sini" autocomplete="off" />
-        </label>
-        <p class="hint">Tanpa key, ACC DJ mencoba Public Mode. Untuk hasil paling stabil gunakan free Audius API key.</p>
-        <div class="dialog-actions">
-          <button id="clearKeyBtn" type="button" class="ghost">CLEAR</button>
-          <button id="saveKeyBtn" value="default" class="primary">SAVE</button>
-        </div>
-      </form>
-    </dialog>
-  </div>
+  <div id="popupShade" class="popup-shade" hidden></div>
+  <section id="eqPopup" class="ui-popup" hidden><div class="popup-head"><strong>3-BAND EQ</strong><button class="popup-close" data-close-popup>✕</button></div><div class="popup-grid"><div class="popup-section a"><h3>DECK A</h3><div class="knob-row"><label>LOW<input id="lowA" type="range" min="-18" max="12" value="0" step="1"></label><label>MID<input id="midA" type="range" min="-18" max="12" value="0" step="1"></label><label>HIGH<input id="highA" type="range" min="-18" max="12" value="0" step="1"></label></div></div><div class="popup-section b"><h3>DECK B</h3><div class="knob-row"><label>LOW<input id="lowB" type="range" min="-18" max="12" value="0" step="1"></label><label>MID<input id="midB" type="range" min="-18" max="12" value="0" step="1"></label><label>HIGH<input id="highB" type="range" min="-18" max="12" value="0" step="1"></label></div></div></div></section>
+  <section id="mixerPopup" class="ui-popup" hidden><div class="popup-head"><strong>MASTER / CUE MIXER</strong><button class="popup-close" data-close-popup>✕</button></div><div class="popup-section"><label class="master-control">MASTER VOLUME<input id="masterVol" type="range" min="0" max="1" value="0.85" step="0.01"></label><div class="cue-mode"><button id="splitCueBtn" class="mode-btn">SPLIT CUE: OFF</button><p id="cueHelp">Normal: master stereo.</p></div></div></section>
+  <section id="beatPopup" class="ui-popup" hidden><div class="popup-head"><strong>PERFORMANCE / BEAT</strong><button class="popup-close" data-close-popup>✕</button></div><div class="popup-grid"><div class="popup-section a"><h3>DECK A</h3><div class="perf-grid"><button class="master-btn active" data-action="master" data-deck="A">MASTER A</button><button data-action="restart" data-deck="A">RESTART</button><button data-action="loop" data-deck="A">LOOP</button><button data-action="nudge" data-dir="-1" data-deck="A">NUDGE ◀</button><button data-action="nudge" data-dir="1" data-deck="A">NUDGE ▶</button></div></div><div class="popup-section b"><h3>DECK B</h3><div class="perf-grid"><button class="master-btn" data-action="master" data-deck="B">MASTER B</button><button data-action="restart" data-deck="B">RESTART</button><button data-action="loop" data-deck="B">LOOP</button><button data-action="nudge" data-dir="-1" data-deck="B">NUDGE ◀</button><button data-action="nudge" data-dir="1" data-deck="B">NUDGE ▶</button></div></div></div></section>
 
-  <audio id="audioA" crossorigin="anonymous" preload="metadata"></audio>
-  <audio id="audioB" crossorigin="anonymous" preload="metadata"></audio>
-  <script src="https://cdn.jsdelivr.net/npm/@audius/sdk@latest/dist/sdk.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/v9-analyser-hook.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/app-v8.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/v9-bpm-overlay.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/v9-beatlink.js"></script>
+  <dialog id="settingsDialog"><form method="dialog" class="dialog-card"><div class="dialog-head"><div><strong>Audius API</strong><p>Streaming source configuration.</p></div><button value="cancel" class="ghost">✕</button></div><label>API Key<input id="apiKeyInput" type="text" placeholder="Tempel Audius API key" autocomplete="off"></label><p class="hint">Tanpa key, ACC DJ mencoba Public Mode.</p><div class="dialog-actions"><button id="clearKeyBtn" type="button" class="ghost">CLEAR</button><button id="saveKeyBtn" value="default" class="primary">SAVE</button></div></form></dialog>
+</div>
+
+<audio id="audioA" crossorigin="anonymous" preload="metadata"></audio><audio id="audioB" crossorigin="anonymous" preload="metadata"></audio>
+<script src="https://cdn.jsdelivr.net/npm/@audius/sdk@latest/dist/sdk.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/v9-analyser-hook.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/app-v8.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/v9-bpm-overlay.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/balinightlife666-web/DJ-AM@90a5af34d641f29992c8ecfe245e6cda833dbf2c/v9-beatlink.js"></script>
+<script>
+(()=>{
+  const shade=document.getElementById('popupShade');
+  const popups=[...document.querySelectorAll('.ui-popup')];
+  function closePopups(){popups.forEach(p=>{p.classList.remove('open');setTimeout(()=>{if(!p.classList.contains('open'))p.hidden=true},150)});shade.hidden=true}
+  function openPopup(id){closePopups();const p=document.getElementById(id);if(!p)return;p.hidden=false;shade.hidden=false;requestAnimationFrame(()=>p.classList.add('open'))}
+  document.querySelectorAll('[data-popup]').forEach(b=>b.addEventListener('click',()=>openPopup(b.dataset.popup)));
+  document.querySelectorAll('[data-close-popup]').forEach(b=>b.addEventListener('click',closePopups));shade.addEventListener('click',closePopups);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closePopups()});
+  const library=()=>document.getElementById('musicBtn').click();
+  document.getElementById('uiLibraryBtn').addEventListener('click',library);document.getElementById('centerLibraryBtn').addEventListener('click',library);
+  document.getElementById('uiSettingsBtn').addEventListener('click',()=>document.getElementById('settingsBtn').click());
+  document.getElementById('uiFullscreenBtn').addEventListener('click',()=>document.getElementById('djModeBtn').click());
+  ['A','B'].forEach(id=>{const deck=document.querySelector(`.deck[data-deck="${id}"]`);const play=document.querySelector(`[data-action="play"][data-deck="${id}"]`);const sync=()=>deck.classList.toggle('deck-playing',play.classList.contains('playing'));new MutationObserver(sync).observe(play,{attributes:true,attributeFilter:['class']});sync();document.querySelector(`[data-platter="${id}"]`).addEventListener('dblclick',()=>play.click())});
+})();
+</script>
 </body>
 </html>
