@@ -1,0 +1,9 @@
+{
+  "project_id": "acc-dj",
+  "release": "1.2.0",
+  "version_code": 3,
+  "package_id": "com.acc.dj",
+  "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
+  "mode": "permanent-release",
+  "features": ["clean-layout", "drive-files-picker", "multi-file-local-load", "popup-controls"]
+}
