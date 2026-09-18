@@ -1,4 +1,4 @@
-name: Build ARDA DJ v1.4 Permanent
+name: Build ARDA DJ v1.4.1 Permanent
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Build ARDA DJ v1.4 unsigned release
+      - name: Build ARDA DJ v1.4.1 unsigned release
         shell: bash
         run: |
           set -euo pipefail
@@ -54,67 +54,6 @@ jobs:
             <circle cx="128" cy="128" r="6" fill="#eef3f7"/>
           </svg>
           SVG
-
-          python3 - <<'PY'
-          from pathlib import Path
-          import os
-          core = Path(os.environ["BUILD_DIR"]) / "www" / "app-v8.js"
-          js = core.read_text()
-          marker = "})();"
-          pos = js.rfind(marker)
-          if pos < 0:
-              raise SystemExit("ACC DJ core closure marker not found")
-          hook = r'''
-          window.ACCDJCore = window.ACCDJCore || {};
-          window.ACCDJCore.loadLocal = async function(id, file) {
-            if (!file || !['A','B'].includes(id)) throw new Error('Invalid local track');
-            await initAudio();
-            const deck = state.decks[id];
-            if (!deck) throw new Error('Deck not ready');
-            deck.audio.pause();
-            try { if (deck.localObjectUrl) URL.revokeObjectURL(deck.localObjectUrl); } catch (_) {}
-            disableSync(id, true);
-            deck.audio.playbackRate = 1;
-            const pitch = $(`pitch${id}`); if (pitch) pitch.value = 0;
-            const pitchLabel = $(`pitchLabel${id}`); if (pitchLabel) pitchLabel.textContent = '0.0%';
-            const cleanName = String(file.name || 'Local Track').replace(/\.[^.]+$/, '').replace(/_/g, ' ');
-            deck.track = {
-              id: `local:${file.name}:${file.size}:${file.lastModified}`,
-              title: cleanName,
-              artist: 'Drive / Files',
-              artwork: './icons/placeholder.svg',
-              genre: 'Local',
-              bpm: null,
-              key: null,
-              duration: 0,
-              local: true
-            };
-            deck.beatAnchor = NaN; deck.beatConfidence = 0; deck.prevLowEnergy = 0; deck.fluxAvg = 0;
-            deck.lastOnsetMedia = -99; deck.lastAnchorResetMedia = 0;
-            updateGridUi(id);
-            const url = URL.createObjectURL(file);
-            deck.localObjectUrl = url;
-            deck.primaryStreamUrl = url;
-            deck.fallbackStreamUrl = '';
-            deck.streamAttempt = 1;
-            deck.audio.src = url;
-            deck.audio.load();
-            $(`title${id}`).textContent = cleanName;
-            $(`artist${id}`).textContent = 'Drive / Files';
-            const cover = $(`cover${id}`); if (cover) cover.src = './icons/placeholder.svg';
-            $(`bpm${id}`).textContent = 'BPM ANALYZE';
-            $(`key${id}`).textContent = 'KEY —';
-            $(`grid${id}`).textContent = 'ANALYZE';
-            $(`seek${id}`).value = 0;
-            $(`time${id}`).textContent = '00:00';
-            $(`duration${id}`).textContent = '00:00';
-            setSyncUi(id, false);
-            setMessage(`${cleanName} → Deck ${id} loaded dari Drive / Files.`);
-            return true;
-          };
-          '''
-          core.write_text(js[:pos] + hook + "\n" + js[pos:])
-          PY
 
           node --check "$BUILD_DIR/www/v14.js"
           node --check "$BUILD_DIR/www/v14-bpm.js"
@@ -154,7 +93,7 @@ jobs:
           cat > package.json <<'JSON'
           {
             "name":"arda-dj-release",
-            "version":"1.4.0",
+            "version":"1.4.1",
             "private":true,
             "dependencies":{"@capacitor/core":"^7.0.0","@capacitor/android":"^7.0.0"},
             "devDependencies":{"@capacitor/cli":"^7.0.0"}
@@ -234,8 +173,8 @@ jobs:
           import re
           p=Path('android/app/build.gradle')
           s=p.read_text()
-          s=re.sub(r'versionCode\s+\d+', 'versionCode 8', s, count=1)
-          s=re.sub(r'versionName\s+["\'][^"\']+["\']', 'versionName "1.4.0"', s, count=1)
+          s=re.sub(r'versionCode\s+\d+', 'versionCode 9', s, count=1)
+          s=re.sub(r'versionName\s+["\'][^"\']+["\']', 'versionName "1.4.1"', s, count=1)
           if 'applicationId "com.acc.dj"' not in s and "applicationId 'com.acc.dj'" not in s:
               raise SystemExit('Package drift: expected com.acc.dj')
           p.write_text(s)
@@ -251,14 +190,14 @@ jobs:
           ./gradlew assembleRelease bundleRelease --stacktrace
 
           mkdir -p "$GITHUB_WORKSPACE/dist-arda-dj"
-          cp app/build/outputs/apk/release/app-release-unsigned.apk "$GITHUB_WORKSPACE/dist-arda-dj/ARDA-DJ-1.4.0-unsigned.apk"
-          cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/dist-arda-dj/ARDA-DJ-1.4.0-unsigned.aab"
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "$GITHUB_WORKSPACE/dist-arda-dj/ARDA-DJ-1.4.1-unsigned.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/dist-arda-dj/ARDA-DJ-1.4.1-unsigned.aab"
           cd "$GITHUB_WORKSPACE"
           sha256sum dist-arda-dj/* > dist-arda-dj/SHA256SUMS.txt
 
       - name: Upload unsigned release
         uses: actions/upload-artifact@v4
         with:
-          name: ARDA-DJ-1.4.0-UNSIGNED
+          name: ARDA-DJ-1.4.1-UNSIGNED
           path: dist-arda-dj/
           retention-days: 3

@@ -1,8 +1,8 @@
 {
   "project_id": "acc-dj",
   "product_name": "ARDA DJ",
-  "release": "1.4.0",
-  "version_code": 8,
+  "release": "1.4.1",
+  "version_code": 9,
   "package_id": "com.acc.dj",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
   "mode": "permanent-release",
@@ -17,6 +17,10 @@
     "tempo-sync-mode",
     "beat-sync-mode",
     "stable-locked-beatgrid",
-    "immersive-dj-mode"
+    "immersive-dj-mode",
+    "library-no-auto-fetch",
+    "audius-timeout-abort",
+    "audius-public-fallback",
+    "library-stays-responsive"
   ]
 }
