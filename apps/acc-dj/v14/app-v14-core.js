@@ -28,6 +28,8 @@
     deferredInstallPrompt: null,
     focusMode: false,
     masterDeck: 'A',
+    searchSeq: 0,
+    searchAbort: null,
   };
 
   function formatTime(seconds) {
@@ -50,7 +52,7 @@
     if (backdrop) backdrop.hidden = false;
     if (!state.musicLoaded) {
       state.musicLoaded = true;
-      searchTracks('', true);
+      setMessage('Pilih DRIVE / FILES, TRENDING, genre, atau cari lagu.');
     }
   }
 
@@ -60,6 +62,8 @@
     drawer.classList.remove('open');
     drawer.setAttribute('aria-hidden', 'true');
     if (backdrop) backdrop.hidden = true;
+    try { state.searchAbort?.abort(); } catch (_) {}
+    state.searchAbort = null;
   }
 
   function effectiveBpm(id) {
@@ -395,9 +399,55 @@
     }
   }
 
+  function withTimeout(promise, ms, label = 'Request timeout') {
+    let timer;
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(label)), ms); })
+    ]).finally(() => clearTimeout(timer));
+  }
+
+  async function fetchJsonWithTimeout(url, ms = 6500) {
+    try { state.searchAbort?.abort(); } catch (_) {}
+    const controller = new AbortController();
+    state.searchAbort = controller;
+    const timer = setTimeout(() => controller.abort(), ms);
+    try {
+      const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+      if (!response.ok) throw new Error(`Audius HTTP ${response.status}`);
+      return await response.json();
+    } finally {
+      clearTimeout(timer);
+      if (state.searchAbort === controller) state.searchAbort = null;
+    }
+  }
+
+  async function publicAudiusTracks(query, trending, genre, offset) {
+    const params = new URLSearchParams({ app_name: APP_NAME, limit: String(state.pageSize), offset: String(offset) });
+    if (genre) params.set('genre', genre);
+    if (!trending) params.set('query', query);
+    const path = trending ? 'tracks/trending' : 'tracks/search';
+    const urls = [
+      `${PUBLIC_API}/${path}?${params}`,
+      `${LEGACY_PUBLIC_API}/${path}?${params}`
+    ];
+    let lastError = null;
+    for (const url of urls) {
+      try {
+        const json = await fetchJsonWithTimeout(url, 6500);
+        return json?.data || [];
+      } catch (err) {
+        lastError = err;
+        if (err?.name === 'AbortError') throw err;
+      }
+    }
+    throw lastError || new Error('Audius unavailable');
+  }
+
   async function searchTracks(query, trending = false, append = false) {
     const genre = $('genreSelect').value;
     const offset = append ? state.searchOffset + state.pageSize : 0;
+    const requestId = ++state.searchSeq;
     if (!append) {
       state.lastQuery = query;
       state.lastTrending = trending;
@@ -405,31 +455,26 @@
       state.renderedTrackIds = new Set();
       $('results').innerHTML = '';
     }
-    setMessage(append ? 'Mengambil track berikutnya…' : 'Mengambil track dari Audius…');
+    setMessage(append ? 'Mengambil track berikutnya…' : 'Menghubungkan ke Audius…');
 
     try {
       let tracks = [];
       if (state.sdk) {
-        const response = trending
-          ? await state.sdk.tracks.getTrendingTracks({ limit: state.pageSize, offset, ...(genre ? { genre } : {}) })
-          : await state.sdk.tracks.searchTracks({ query, limit: state.pageSize, offset, sortMethod: 'relevant', ...(genre ? { genre: [genre] } : {}) });
-        tracks = response?.data || [];
-      } else {
-        const params = new URLSearchParams({ app_name: APP_NAME, limit: String(state.pageSize), offset: String(offset) });
-        if (genre) params.set('genre', genre);
-        let url;
-        if (trending) {
-          url = `${PUBLIC_API}/tracks/trending?${params}`;
-        } else {
-          params.set('query', query);
-          url = `${PUBLIC_API}/tracks/search?${params}`;
+        try {
+          const sdkPromise = trending
+            ? state.sdk.tracks.getTrendingTracks({ limit: state.pageSize, offset, ...(genre ? { genre } : {}) })
+            : state.sdk.tracks.searchTracks({ query, limit: state.pageSize, offset, sortMethod: 'relevant', ...(genre ? { genre: [genre] } : {}) });
+          const response = await withTimeout(sdkPromise, 5500, 'Audius SDK timeout');
+          tracks = response?.data || [];
+        } catch (sdkErr) {
+          console.warn('Audius SDK fallback to public API', sdkErr);
+          tracks = await publicAudiusTracks(query, trending, genre, offset);
         }
-        const r = await fetch(url);
-        if (!r.ok) throw new Error(`Audius HTTP ${r.status}`);
-        const json = await r.json();
-        tracks = json?.data || [];
+      } else {
+        tracks = await publicAudiusTracks(query, trending, genre, offset);
       }
 
+      if (requestId !== state.searchSeq) return;
       state.searchOffset = offset;
       const rawCount = tracks.length;
       const beforeFilter = tracks.length;
@@ -441,14 +486,17 @@
       if (tracks.length || append) {
         setMessage(`${totalShown} track tersedia${hidden ? ` • ${hidden} non-streamable dilewati` : ''}${state.apiKey ? ' • API key aktif' : ' • Public Mode'}.`);
       } else {
-        setMessage('Tidak ada track streamable yang cocok. Coba genre/search lain.', true);
+        setMessage('Tidak ada track streamable. Coba genre/search lain atau DRIVE / FILES.', true);
       }
     } catch (err) {
+      if (requestId !== state.searchSeq) return;
       console.error(err);
-      setMessage('Gagal terhubung ke Audius. Buka API dan periksa Audius API key.', true);
+      const timeout = err?.name === 'AbortError' || /timeout/i.test(String(err?.message || ''));
+      setMessage(timeout
+        ? 'Audius lambat/tidak merespons. Library tetap aktif — pakai DRIVE / FILES atau tekan TRENDING untuk coba lagi.'
+        : 'Audius tidak tersedia. Library tetap aktif — pakai DRIVE / FILES atau coba lagi.', true);
     }
   }
-
 
   function boolish(value) {
     if (value === true || value === false) return value;
