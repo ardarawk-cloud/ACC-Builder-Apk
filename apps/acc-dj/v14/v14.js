@@ -147,8 +147,9 @@
   }
   $('driveInput')?.addEventListener('change',e=>renderFiles(Array.from(e.target.files||[])));
 
-  function sourceBpm(id){return Number(window.ACCDJ9?.sourceBpm?.(id))||0;}
+  function sourceBpm(id){return Number(window.ARDADJAnalysis?.getBpm?.(id))||Number(window.ACCDJ9?.sourceBpm?.(id))||0;}
   function beatAnchor(id){
+    if(window.ARDADJAnalysis?.gridReady?.(id))return Number(window.ARDADJAnalysis.getAnchor(id))||0;
     const d=window.ACCDJ9?.decks?.[id];
     return Number.isFinite(d?.anchor)?d.anchor:0;
   }
@@ -191,6 +192,15 @@
   }
   document.querySelectorAll('[data-beatloop]').forEach(b=>b.addEventListener('click',()=>setBeatLoop(performanceDeck,Number(b.dataset.beatloop))));
   $('loopExitBtn')?.addEventListener('click',()=>{beatLoops[performanceDeck]=null;updatePadUi();});
+  document.querySelectorAll('[data-grid-nudge]').forEach(b=>b.addEventListener('click',()=>{
+    window.ARDADJAnalysis?.nudge?.(performanceDeck,Number(b.dataset.gridNudge));
+  }));
+  document.querySelector('[data-grid-set]')?.addEventListener('click',()=>{
+    window.ARDADJAnalysis?.setBeatHere?.(performanceDeck);
+  });
+  document.querySelectorAll('[data-grid-bpm]').forEach(b=>b.addEventListener('click',()=>{
+    window.ARDADJAnalysis?.scaleBpm?.(performanceDeck,Number(b.dataset.gridBpm));
+  }));
 
   function updateFxUi(){
     $('fxTitle').textContent=`DECK ${fxDeck} • FX`;
