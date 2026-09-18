@@ -139,7 +139,7 @@
         });
         acts.appendChild(b);
       });
-      row.append(meta,acts);list.appendChild(row){
+      row.append(meta,acts);list.appendChild(row);
     });
   }
   $('driveInput')?.addEventListener('change',e=>renderFiles(Array.from(e.target.files||[])));
