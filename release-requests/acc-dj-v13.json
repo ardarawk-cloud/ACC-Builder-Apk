@@ -1,0 +1,16 @@
+{
+  "project_id": "acc-dj",
+  "release": "1.3.0",
+  "version_code": 5,
+  "package_id": "com.acc.dj",
+  "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
+  "mode": "permanent-release",
+  "features": [
+    "clean-phone-landscape-ui",
+    "transport-cue-point",
+    "unclipped-bpm",
+    "drive-files-picker",
+    "popup-mixer-pfl-eq",
+    "single-screen-no-scroll"
+  ]
+}
