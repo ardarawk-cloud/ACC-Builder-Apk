@@ -1,0 +1,22 @@
+{
+  "project_id": "acc-dj",
+  "product_name": "ARDA DJ",
+  "release": "1.4.0",
+  "version_code": 8,
+  "package_id": "com.acc.dj",
+  "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
+  "mode": "permanent-release",
+  "features": [
+    "rebrand-arda-dj",
+    "cover-tap-library-per-deck",
+    "drive-files-per-deck",
+    "transport-cue-play-pads-fx",
+    "hot-cue-1-4",
+    "quantized-beat-loops",
+    "filter-echo-reverb-roll-fx",
+    "tempo-sync-mode",
+    "beat-sync-mode",
+    "stable-locked-beatgrid",
+    "immersive-dj-mode"
+  ]
+}
