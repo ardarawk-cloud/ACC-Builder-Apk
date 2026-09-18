@@ -1,7 +1,7 @@
 {
   "project_id": "acc-dj",
-  "release": "1.3.0",
-  "version_code": 5,
+  "release": "1.3.1",
+  "version_code": 6,
   "package_id": "com.acc.dj",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
   "mode": "permanent-release",
@@ -11,6 +11,8 @@
     "unclipped-bpm",
     "drive-files-picker",
     "popup-mixer-pfl-eq",
-    "single-screen-no-scroll"
+    "real-dj-mode-immersive",
+    "android-system-bars-hidden-in-dj-mode",
+    "compact-turntable-tonearm"
   ]
 }
