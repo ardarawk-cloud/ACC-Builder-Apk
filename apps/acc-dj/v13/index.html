@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#050608">
+  <title>ACC DJ</title>
+  <link rel="stylesheet" href="./v13.css">
+</head>
+<body>
+<div id="app" class="app-shell">
+  <header class="topbar">
+    <div class="brand"><div class="brand-disc">A</div><b>ACC <span>DJ</span></b></div>
+    <div class="top-actions">
+      <button id="musicBtn" class="top-btn">♫ <span>MUSIC</span></button>
+      <button id="driveBtn" class="top-btn">☁ <span>DRIVE</span></button>
+      <button id="mixerBtn" class="top-btn">☷ <span>MIXER</span></button>
+    </div>
+    <div class="status-zone"><span id="audioStatus">Audio idle</span><i></i><button id="djModeBtn" class="full-btn">⛶</button></div>
+    <button id="installBtn" hidden>INSTALL</button><button id="settingsBtn" hidden>API</button>
+  </header>
+
+  <main class="controller">
+    <div id="drawerBackdrop" class="backdrop" hidden></div>
+
+    <section id="musicDrawer" class="modal-panel music-drawer" aria-hidden="true">
+      <div class="modal-head"><div><strong>MUSIC LIBRARY</strong><small>Audius streaming</small></div><div class="head-actions"><button id="openApiBtn" class="soft-btn">API</button><button id="closeMusicBtn" class="icon-btn">✕</button></div></div>
+      <div class="quick-genres"><button data-genre="" class="genre-chip active">TRENDING</button><button data-genre="House" class="genre-chip">HOUSE</button><button data-genre="Tech House" class="genre-chip">TECH HOUSE</button><button data-genre="Deep House" class="genre-chip">DEEP</button><button data-genre="Techno" class="genre-chip">TECHNO</button><button data-genre="Electronic" class="genre-chip">ELECTRONIC</button></div>
+      <div class="library-tools"><div class="search-wrap"><input id="searchInput" type="search" placeholder="Cari judul / artist..." autocomplete="off"><button id="searchBtn" class="primary">SEARCH</button></div><div class="filters"><select id="genreSelect"><option value="">Semua genre</option><option>House</option><option>Tech House</option><option>Deep House</option><option>Techno</option><option>Trance</option><option>Drum & Bass</option><option>Dubstep</option><option>Electronic</option><option>Future House</option><option>Progressive House</option></select><button id="trendingBtn" class="soft-btn">TRENDING</button></div></div>
+      <div id="libraryMessage" class="library-message">Pilih Trending atau cari lagu.</div>
+      <div id="results" class="results"></div>
+      <div class="modal-foot"><button id="moreBtn" class="soft-btn" hidden>MORE TRACKS</button></div>
+    </section>
+
+    <section id="drivePopup" class="modal-panel" hidden>
+      <div class="modal-head"><div><strong>DRIVE / FILES</strong><small>Google Drive • HP • SD Card</small></div><button class="icon-btn" data-close-modal>✕</button></div>
+      <div class="drive-hero"><div><b>Pilih banyak lagu sekaligus</b><p>File picker Android bisa membuka Google Drive dan akun Drive yang terpasang di HP.</p></div><button id="drivePickerBtn" class="primary">OPEN DRIVE / FILES</button></div>
+      <input id="driveInput" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.opus" multiple hidden>
+      <div id="driveStatus" class="library-message">Belum ada lagu dipilih.</div>
+      <div id="driveList" class="drive-list"><div class="empty-state">Pilih lagu, lalu LOAD A atau LOAD B.</div></div>
+    </section>
+
+    <section id="mixerPopup" class="modal-panel compact-modal" hidden>
+      <div class="modal-head"><div><strong>MIXER / MONITOR</strong><small>Master, PFL, EQ & performance</small></div><button class="icon-btn" data-close-modal>✕</button></div>
+      <div class="mixer-popup-grid">
+        <div class="popup-card"><h3>DECK A</h3><div class="eq3"><label>LOW<input id="lowA" type="range" min="-18" max="12" value="0" step="1"></label><label>MID<input id="midA" type="range" min="-18" max="12" value="0" step="1"></label><label>HIGH<input id="highA" type="range" min="-18" max="12" value="0" step="1"></label></div><div class="popup-actions"><button class="master-btn active" data-action="master" data-deck="A">MASTER A</button><button class="pfl-btn cue-btn" data-action="cue" data-deck="A">PFL A</button><button data-action="restart" data-deck="A">RESTART</button><button data-action="nudge" data-dir="-1" data-deck="A">NUDGE ◀</button><button data-action="nudge" data-dir="1" data-deck="A">NUDGE ▶</button></div></div>
+        <div class="popup-card"><h3>DECK B</h3><div class="eq3"><label>LOW<input id="lowB" type="range" min="-18" max="12" value="0" step="1"></label><label>MID<input id="midB" type="range" min="-18" max="12" value="0" step="1"></label><label>HIGH<input id="highB" type="range" min="-18" max="12" value="0" step="1"></label></div><div class="popup-actions"><button class="master-btn" data-action="master" data-deck="B">MASTER B</button><button class="pfl-btn cue-btn" data-action="cue" data-deck="B">PFL B</button><button data-action="restart" data-deck="B">RESTART</button><button data-action="nudge" data-dir="-1" data-deck="B">NUDGE ◀</button><button data-action="nudge" data-dir="1" data-deck="B">NUDGE ▶</button></div></div>
+      </div>
+      <div class="master-strip"><label>MASTER VOL<input id="masterVol" type="range" min="0" max="1" value="0.85" step="0.01"></label><button id="splitCueBtn" class="soft-btn">SPLIT CUE: OFF</button><span id="cueHelp">Normal: master stereo.</span></div>
+    </section>
+
+    <article class="deck" data-deck="A">
+      <div class="track-head">
+        <div class="cover-wrap"><img id="coverA" alt=""></div>
+        <div class="track-copy"><span class="deck-tag a">DECK A</span><strong id="titleA">No track loaded</strong><small id="artistA">Audius / Drive</small></div>
+        <div class="track-stats"><b id="bpmA">BPM —</b><span id="keyA">KEY —</span><span id="gridA">GRID —</span></div>
+      </div>
+      <div class="wave-box"><canvas id="waveA" class="wave" width="900" height="130"></canvas><input id="seekA" class="seek" type="range" min="0" max="1000" value="0"><div class="times"><span id="timeA">00:00</span><span id="durationA">00:00</span></div></div>
+      <div class="deck-body">
+        <button class="sync-btn" data-action="sync" data-deck="A">SYNC</button>
+        <div class="pitch"><span>+</span><input id="pitchA" type="range" min="-8" max="8" value="0" step="0.1"><span>−</span><output id="pitchLabelA">0.0%</output></div>
+        <div class="platter"><div class="record"><img id="labelA" alt=""><i></i></div><div class="tonearm"></div></div>
+        <span id="syncStateA" class="sync-state">MASTER</span>
+      </div>
+      <div class="transport">
+        <button id="cuePointA" class="cue-point" data-cue-point="A">CUE</button>
+        <button class="play-btn" data-action="play" data-deck="A">▶</button>
+        <button class="loop-btn" data-action="loop" data-deck="A">LOOP</button>
+        <button class="more-btn" data-open-mixer>AUX</button>
+      </div>
+    </article>
+
+    <aside class="center-strip">
+      <div class="center-logo">ACC<br><span>DJ</span></div>
+      <div class="meters"><div><b>A</b><meter id="meterA" min="0" max="1" value="0"></meter></div><div><b>B</b><meter id="meterB" min="0" max="1" value="0"></meter></div></div>
+      <div class="xfader"><div><span>A</span><span>B</span></div><input id="crossfader" type="range" min="-1" max="1" value="0" step="0.01"></div>
+    </aside>
+
+    <article class="deck" data-deck="B">
+      <div class="track-head">
+        <div class="cover-wrap"><img id="coverB" alt=""></div>
+        <div class="track-copy"><span class="deck-tag b">DECK B</span><strong id="titleB">No track loaded</strong><small id="artistB">Audius / Drive</small></div>
+        <div class="track-stats"><b id="bpmB">BPM —</b><span id="keyB">KEY —</span><span id="gridB">GRID —</span></div>
+      </div>
+      <div class="wave-box"><canvas id="waveB" class="wave" width="900" height="130"></canvas><input id="seekB" class="seek" type="range" min="0" max="1000" value="0"><div class="times"><span id="timeB">00:00</span><span id="durationB">00:00</span></div></div>
+      <div class="deck-body">
+        <button class="sync-btn b" data-action="sync" data-deck="B">SYNC</button>
+        <div class="pitch right"><span>+</span><input id="pitchB" type="range" min="-8" max="8" value="0" step="0.1"><span>−</span><output id="pitchLabelB">0.0%</output></div>
+        <div class="platter"><div class="record"><img id="labelB" alt=""><i></i></div><div class="tonearm right"></div></div>
+        <span id="syncStateB" class="sync-state">FREE</span>
+      </div>
+      <div class="transport reverse">
+        <button class="more-btn" data-open-mixer>AUX</button>
+        <button class="loop-btn" data-action="loop" data-deck="B">LOOP</button>
+        <button class="play-btn" data-action="play" data-deck="B">▶</button>
+        <button id="cuePointB" class="cue-point" data-cue-point="B">CUE</button>
+      </div>
+    </article>
+  </main>
+
+  <dialog id="settingsDialog"><form method="dialog" class="settings-card"><div class="modal-head"><div><strong>Audius API</strong><small>Optional untuk streaming</small></div><button value="cancel" class="icon-btn">✕</button></div><label>API Key<input id="apiKeyInput" type="text" placeholder="Audius API key" autocomplete="off"></label><div class="dialog-actions"><button id="clearKeyBtn" type="button" class="soft-btn">CLEAR</button><button id="saveKeyBtn" value="default" class="primary">SAVE</button></div></form></dialog>
+
+  <audio id="audioA" crossorigin="anonymous" preload="metadata"></audio><audio id="audioB" crossorigin="anonymous" preload="metadata"></audio>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@audius/sdk@latest/dist/sdk.min.js"></script>
+<script src="./v9-analyser-hook.js"></script>
+<script src="./app-v8.js"></script>
+<script src="./v9-bpm-overlay.js"></script>
+<script src="./v9-beatlink.js"></script>
+<script src="./v13.js"></script>
+</body>
+</html>
