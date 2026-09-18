@@ -1,17 +1,17 @@
 {
   "id": "acc-dj",
   "name": "ARDA DJ",
-  "version": 8,
-  "version_name": "1.4.0",
-  "version_code": 8,
+  "version": 9,
+  "version_name": "1.4.1",
+  "version_code": 9,
   "provider": "manual-wrapper-dj-am-v9",
-  "qc": "arda-dj-v14-pending-build",
+  "qc": "library-timeout-fix-pending-build",
   "source_repository": "balinightlife666-web/DJ-AM",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
   "package_id": "com.acc.dj",
-  "last_request_id": "arda-dj-v140-20260919",
-  "last_prompt": "Rebrand to ARDA DJ. Tap deck cover to choose music for that deck. Remove large Loop from transport. Add standard FX (Filter, Echo, Reverb, Roll), performance pads with Hot Cue and beat loops, and replace conflicting sync logic with separate Tempo Sync / Beat Sync using locked BPM/beatgrid.",
+  "last_request_id": "arda-dj-v141-library-freeze-20260919",
+  "last_prompt": "Fix Music Library freeze: do not auto-fetch Audius on open, add request timeout/abort/fallback, keep modal responsive, preserve Drive/Files and v1.4 performance engine.",
   "last_build": "pending",
   "created_at": "2026-09-09T12:28:00Z",
-  "updated_at": "2026-09-19T01:16:00+08:00"
+  "updated_at": "2026-09-19T01:35:00+08:00"
 }
