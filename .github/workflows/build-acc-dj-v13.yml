@@ -1,0 +1,211 @@
+name: Build ACC DJ v1.3 Permanent
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "release-requests/acc-dj-v13.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build ACC DJ v1.3 unsigned release
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC_SHA="90a5af34d641f29992c8ecfe245e6cda833dbf2c"
+          BUILD_DIR="$RUNNER_TEMP/acc-dj-v13"
+          export BUILD_DIR
+          mkdir -p "$BUILD_DIR/www/icons"
+
+          cp apps/acc-dj/v13/index.html "$BUILD_DIR/www/index.html"
+          cp apps/acc-dj/v13/v13.css "$BUILD_DIR/www/v13.css"
+          cp apps/acc-dj/v13/v13.js "$BUILD_DIR/www/v13.js"
+
+          curl -fsSL "https://raw.githubusercontent.com/balinightlife666-web/DJ-AM/$SRC_SHA/app-v8.js" -o "$BUILD_DIR/www/app-v8.js"
+          curl -fsSL "https://raw.githubusercontent.com/balinightlife666-web/DJ-AM/$SRC_SHA/v9-analyser-hook.js" -o "$BUILD_DIR/www/v9-analyser-hook.js"
+          curl -fsSL "https://raw.githubusercontent.com/balinightlife666-web/DJ-AM/$SRC_SHA/v9-bpm-overlay.js" -o "$BUILD_DIR/www/v9-bpm-overlay.js"
+          curl -fsSL "https://raw.githubusercontent.com/balinightlife666-web/DJ-AM/$SRC_SHA/v9-beatlink.js" -o "$BUILD_DIR/www/v9-beatlink.js"
+
+          cat > "$BUILD_DIR/www/icons/placeholder.svg" <<'SVG'
+          <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+            <rect width="256" height="256" rx="24" fill="#101419"/>
+            <circle cx="128" cy="128" r="78" fill="#080a0d" stroke="#727b85" stroke-width="4"/>
+            <circle cx="128" cy="128" r="26" fill="#1da2ff"/>
+            <circle cx="128" cy="128" r="6" fill="#eef3f7"/>
+          </svg>
+          SVG
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          core = Path(os.environ["BUILD_DIR"]) / "www" / "app-v8.js"
+          js = core.read_text()
+          marker = "})();"
+          pos = js.rfind(marker)
+          if pos < 0:
+              raise SystemExit("ACC DJ core closure marker not found")
+          hook = r'''
+          window.ACCDJCore = window.ACCDJCore || {};
+          window.ACCDJCore.loadLocal = async function(id, file) {
+            if (!file || !['A','B'].includes(id)) throw new Error('Invalid local track');
+            await initAudio();
+            const deck = state.decks[id];
+            if (!deck) throw new Error('Deck not ready');
+            deck.audio.pause();
+            try { if (deck.localObjectUrl) URL.revokeObjectURL(deck.localObjectUrl); } catch (_) {}
+            disableSync(id, true);
+            deck.audio.playbackRate = 1;
+            const pitch = $(`pitch${id}`); if (pitch) pitch.value = 0;
+            const pitchLabel = $(`pitchLabel${id}`); if (pitchLabel) pitchLabel.textContent = '0.0%';
+            const cleanName = String(file.name || 'Local Track').replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+            deck.track = {
+              id: `local:${file.name}:${file.size}:${file.lastModified}`,
+              title: cleanName,
+              artist: 'Drive / Files',
+              artwork: './icons/placeholder.svg',
+              genre: 'Local',
+              bpm: null,
+              key: null,
+              duration: 0,
+              local: true
+            };
+            deck.beatAnchor = NaN; deck.beatConfidence = 0; deck.prevLowEnergy = 0; deck.fluxAvg = 0;
+            deck.lastOnsetMedia = -99; deck.lastAnchorResetMedia = 0;
+            updateGridUi(id);
+            const url = URL.createObjectURL(file);
+            deck.localObjectUrl = url;
+            deck.primaryStreamUrl = url;
+            deck.fallbackStreamUrl = '';
+            deck.streamAttempt = 1;
+            deck.audio.src = url;
+            deck.audio.load();
+            $(`title${id}`).textContent = cleanName;
+            $(`artist${id}`).textContent = 'Drive / Files';
+            const cover = $(`cover${id}`); if (cover) cover.src = './icons/placeholder.svg';
+            $(`bpm${id}`).textContent = 'BPM ANALYZE';
+            $(`key${id}`).textContent = 'KEY —';
+            $(`grid${id}`).textContent = 'ANALYZE';
+            $(`seek${id}`).value = 0;
+            $(`time${id}`).textContent = '00:00';
+            $(`duration${id}`).textContent = '00:00';
+            setSyncUi(id, false);
+            setMessage(`${cleanName} → Deck ${id} loaded dari Drive / Files.`);
+            return true;
+          };
+          '''
+          core.write_text(js[:pos] + hook + "\n" + js[pos:])
+          PY
+
+          node --check "$BUILD_DIR/www/v13.js"
+          node --check "$BUILD_DIR/www/app-v8.js"
+          node --check "$BUILD_DIR/www/v9-bpm-overlay.js"
+          node --check "$BUILD_DIR/www/v9-beatlink.js"
+
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import os
+          required = {
+            'audioA','audioB','bpmA','bpmB','waveA','waveB','pitchA','pitchB',
+            'lowA','midA','highA','lowB','midB','highB','crossfader','masterVol',
+            'splitCueBtn','cueHelp','musicDrawer','drawerBackdrop','results','searchInput',
+            'searchBtn','genreSelect','trendingBtn','moreBtn','settingsDialog','apiKeyInput'
+          }
+          class P(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.ids=[]
+              def handle_starttag(self, tag, attrs):
+                  for k,v in attrs:
+                      if k=='id' and v: self.ids.append(v)
+          p=P(); p.feed((Path(os.environ["BUILD_DIR"])/"www"/"index.html").read_text())
+          missing=sorted(required-set(p.ids))
+          dup=sorted({x for x in p.ids if p.ids.count(x)>1})
+          if missing or dup:
+              raise SystemExit(f"DOM QC failed missing={missing} duplicate={dup}")
+          print("DOM QC PASS")
+          PY
+
+          cd "$BUILD_DIR"
+          cat > package.json <<'JSON'
+          {
+            "name":"acc-dj-release",
+            "version":"1.3.0",
+            "private":true,
+            "dependencies":{"@capacitor/core":"^7.0.0","@capacitor/android":"^7.0.0"},
+            "devDependencies":{"@capacitor/cli":"^7.0.0"}
+          }
+          JSON
+          cat > capacitor.config.json <<'JSON'
+          {
+            "appId":"com.acc.dj",
+            "appName":"ACC DJ",
+            "webDir":"www",
+            "server":{"androidScheme":"https"}
+          }
+          JSON
+
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+
+          RES="$BUILD_DIR/android/app/src/main/res"
+          mkdir -p "$RES/mipmap-anydpi"
+          find "$RES" -type f \( -name 'ic_launcher*.png' -o -name 'ic_launcher*.webp' \) -delete
+          rm -f "$RES/mipmap-anydpi-v26/ic_launcher.xml" "$RES/mipmap-anydpi-v26/ic_launcher_round.xml"
+          cp "$GITHUB_WORKSPACE/apps/acc-dj/icon-android.xml" "$RES/mipmap-anydpi/ic_launcher.xml"
+          cp "$GITHUB_WORKSPACE/apps/acc-dj/icon-android.xml" "$RES/mipmap-anydpi/ic_launcher_round.xml"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('android/app/build.gradle')
+          s=p.read_text()
+          s=re.sub(r'versionCode\s+\d+', 'versionCode 5', s, count=1)
+          s=re.sub(r'versionName\s+["\'][^"\']+["\']', 'versionName "1.3.0"', s, count=1)
+          if 'applicationId "com.acc.dj"' not in s and "applicationId 'com.acc.dj'" not in s:
+              raise SystemExit('Package drift: expected com.acc.dj')
+          p.write_text(s)
+          m=Path('android/app/src/main/AndroidManifest.xml')
+          x=m.read_text()
+          if 'android:screenOrientation="landscape"' not in x:
+              x=x.replace('android:name=".MainActivity"', 'android:name=".MainActivity" android:screenOrientation="landscape"')
+          m.write_text(x)
+          PY
+
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease bundleRelease --stacktrace
+
+          mkdir -p "$GITHUB_WORKSPACE/dist-acc-dj"
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "$GITHUB_WORKSPACE/dist-acc-dj/ACC-DJ-1.3.0-unsigned.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/dist-acc-dj/ACC-DJ-1.3.0-unsigned.aab"
+          cd "$GITHUB_WORKSPACE"
+          sha256sum dist-acc-dj/* > dist-acc-dj/SHA256SUMS.txt
+
+      - name: Upload unsigned release
+        uses: actions/upload-artifact@v4
+        with:
+          name: ACC-DJ-1.3.0-UNSIGNED
+          path: dist-acc-dj/
+          retention-days: 3
