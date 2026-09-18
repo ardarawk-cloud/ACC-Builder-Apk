@@ -29,3 +29,6 @@ body.focus-mode .modal-panel{top:50%!important}
   body.focus-mode .track-head{grid-template-columns:39px minmax(0,1fr) 108px!important}
   body.focus-mode .track-stats{width:108px!important;min-width:108px!important}
 }
+
+/* v1.3.2 — remove fake tonearm; clean platter only */
+.tonearm,.tonearm:before,.tonearm:after{display:none!important;content:none!important}
