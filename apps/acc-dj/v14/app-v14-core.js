@@ -68,21 +68,21 @@
 
   function effectiveBpm(id) {
     const d = state.decks[id];
-    const bpm = Number(d?.track?.bpm);
+    const bpm = Number(window.ARDADJAnalysis?.getBpm?.(id)) || Number(d?.track?.bpm);
     if (!bpm || !Number.isFinite(bpm)) return null;
     return bpm * (Number(d.audio.playbackRate) || 1);
   }
 
   function updateBpmDisplay(id) {
     const d = state.decks[id];
-    const base = Number(d?.track?.bpm);
+    const base = Number(window.ARDADJAnalysis?.getBpm?.(id)) || Number(d?.track?.bpm);
     if (!base || !Number.isFinite(base)) {
-      $(`bpm${id}`).textContent = 'BPM —';
+      $(`bpm${id}`).textContent = d?.track ? 'BPM ANALYZE' : 'BPM —';
       return;
     }
     const eff = effectiveBpm(id);
     const changed = Math.abs((d.audio.playbackRate || 1) - 1) > 0.0005;
-    $(`bpm${id}`).textContent = changed ? `BPM ${eff.toFixed(1)}*` : `BPM ${base}`;
+    $(`bpm${id}`).textContent = changed ? `BPM ${eff.toFixed(1)}*` : `BPM ${Number(base).toFixed(1)}`;
   }
 
   function beatLengthMedia(id) {
@@ -623,6 +623,7 @@
     $(`time${id}`).textContent = '00:00';
     setSyncUi(id, false);
     setMessage(`${track.title} → Deck ${id} loaded.`);
+    window.dispatchEvent(new CustomEvent('arda-track-loaded',{detail:{id,track,url:deck.primaryStreamUrl}}));
     closeMusic();
   }
 
@@ -691,22 +692,23 @@
       const data = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(data);
       observeBeat(id, data);
-      const canvas = $(`wave${id}`);
-      const c = canvas.getContext('2d');
-      const w = canvas.width, h = canvas.height;
-      c.clearRect(0, 0, w, h);
-      c.fillStyle = '#080c15'; c.fillRect(0,0,w,h);
-      const bars = 72;
-      const step = Math.max(1, Math.floor(data.length / bars));
-      const barW = w / bars;
-      for (let i=0; i<bars; i++) {
-        const v = data[i*step] / 255;
-        const bh = Math.max(2, v * h * .82);
-        const grad = c.createLinearGradient(0, h-bh, 0, h);
-        grad.addColorStop(0, id === 'A' ? '#ffffff' : '#bdbdbd');
-        grad.addColorStop(1, '#3f3f46');
-        c.fillStyle = grad;
-        c.fillRect(i*barW+1, h-bh, Math.max(1,barW-2), bh);
+      if (!window.ARDADJAnalysis?.ownsWaveform) {
+        const canvas = $(`wave${id}`);
+        const c = canvas.getContext('2d');
+        const w = canvas.width, h = canvas.height;
+        c.clearRect(0, 0, w, h);
+        c.fillStyle = '#080c15'; c.fillRect(0,0,w,h);
+        const timeData = new Uint8Array(analyser.fftSize);
+        analyser.getByteTimeDomainData(timeData);
+        c.strokeStyle = id === 'A' ? '#42b9ff' : '#ffad4a';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        for (let x=0;x<w;x++) {
+          const idx=Math.floor((x/w)*timeData.length);
+          const y=(timeData[idx]/255)*h;
+          if(x===0)c.moveTo(x,y);else c.lineTo(x,y);
+        }
+        c.stroke();
       }
       const avg = data.reduce((a,b)=>a+b,0) / (data.length*255 || 1);
       $(`meter${id}`).value = Math.min(1, avg * 2.2);
@@ -923,6 +925,7 @@
     $(`grid${id}`).textContent = 'ANALYZE';
     $(`seek${id}`).value = 0; $(`time${id}`).textContent = '00:00'; $(`duration${id}`).textContent = '00:00';
     setSyncUi(id, false); setMessage(`${cleanName} → Deck ${id} loaded dari Drive / Files.`);
+    window.dispatchEvent(new CustomEvent('arda-track-loaded',{detail:{id,track:deck.track,file,url}}));
     return true;
   };
 
@@ -939,7 +942,7 @@
       const freq = 18000 * Math.pow(0.035, a);
       ramp(d.fxFilter.frequency, Math.max(280, freq), .018); ramp(d.fxFilter.Q, .8 + a * 4.2, .018);
     } else if (type === 'ECHO') {
-      const bpm = Number(window.ACCDJ9?.sourceBpm?.(id)) || Number(d.track?.bpm) || 120;
+      const bpm = Number(window.ARDADJAnalysis?.getBpm?.(id)) || Number(window.ACCDJ9?.sourceBpm?.(id)) || Number(d.track?.bpm) || 120;
       const beat = 60 / bpm;
       ramp(d.fxDelay.delayTime, Math.max(.06, Math.min(.75, beat * .5)), .01);
       ramp(d.fxDelayWet.gain, .12 + a * .52); ramp(d.fxFeedback.gain, .18 + a * .52); ramp(d.fxDry.gain, 1 - a * .18);
@@ -948,5 +951,11 @@
     }
     return true;
   };
+  window.ARDADJCore.decodeAudio = async function(arrayBuffer) {
+    await initAudio();
+    return await state.ctx.decodeAudioData(arrayBuffer.slice(0));
+  };
+  window.ARDADJCore.getAnalyser = function(id) { return state.decks[id]?.analyser || null; };
+  window.ARDADJCore.getDeck = function(id) { return state.decks[id] || null; };
   window.ACCDJCore = window.ARDADJCore;
 })();
