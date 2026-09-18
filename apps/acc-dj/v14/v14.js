@@ -31,7 +31,10 @@
     const p=$(id);if(!p)return;
     if(id==='musicDrawer'){
       p.classList.add('open');p.setAttribute('aria-hidden','false');
-      if(!$('results')?.children.length)$('trendingBtn')?.click();
+      if(!$('results')?.children.length && $('libraryMessage')) {
+        $('libraryMessage').textContent = 'Pilih DRIVE / FILES, TRENDING, genre, atau cari lagu.';
+        $('libraryMessage').style.color = '';
+      }
     }else p.hidden=false;
     if(backdrop)backdrop.hidden=false;
   }
