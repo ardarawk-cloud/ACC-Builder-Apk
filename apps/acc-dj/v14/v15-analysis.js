@@ -40,13 +40,15 @@
     return token;
   }
 
-  function monoAt(buffer, index) {
-    let v=0;
-    for(let ch=0;ch<buffer.numberOfChannels;ch++) v += buffer.getChannelData(ch)[index] || 0;
-    return v / Math.max(1,buffer.numberOfChannels);
+  function channelArrays(buffer) {
+    const out=[];
+    for(let ch=0;ch<buffer.numberOfChannels;ch++) out.push(buffer.getChannelData(ch));
+    return out;
   }
 
   function makePeaks(buffer) {
+    const channels=channelArrays(buffer);
+    const chCount=Math.max(1,channels.length);
     const len=buffer.length;
     const bins=clamp(Math.round(buffer.duration*22),1400,5200);
     const peaks=new Float32Array(bins);
@@ -56,7 +58,9 @@
       const step=Math.max(1,Math.floor((end-start)/72));
       let max=0;
       for(let i=start;i<end;i+=step) {
-        const a=Math.abs(monoAt(buffer,i));
+        let v=0;
+        for(let ch=0;ch<channels.length;ch++) v+=channels[ch][i]||0;
+        const a=Math.abs(v/chCount);
         if(a>max)max=a;
       }
       peaks[b]=Math.min(1,max);
@@ -65,6 +69,8 @@
   }
 
   function onsetEnvelope(buffer) {
+    const channels=channelArrays(buffer);
+    const chCount=Math.max(1,channels.length);
     const hop=1024;
     const frame=2048;
     const fps=buffer.sampleRate/hop;
@@ -74,8 +80,10 @@
     for(let f=0;f<count;f++) {
       const start=f*hop;
       let sum=0, n=0;
-      for(let i=start;i<start+frame && i<buffer.length;i+=8) {
-        const x=monoAt(buffer,i);
+      for(let i=start;i<start+frame && i<buffer.length;i+=16) {
+        let x=0;
+        for(let ch=0;ch<channels.length;ch++) x+=channels[ch][i]||0;
+        x/=chCount;
         const hp=x-previousSample;
         previousSample=x;
         sum += hp*hp;
@@ -181,6 +189,7 @@
       if(state[id].token!==token)return;
       await new Promise(r=>setTimeout(r,0));
       const peaks=makePeaks(buffer);
+      await new Promise(r=>setTimeout(r,0));
       const {flux,fps}=onsetEnvelope(buffer);
       const bpm=estimateBpm(flux,fps,hintedBpm);
       const phase=estimateAnchor(flux,fps,bpm);
