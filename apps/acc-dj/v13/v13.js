@@ -48,4 +48,12 @@
     files.forEach(file=>{const row=document.createElement('div');row.className='drive-track';const meta=document.createElement('div');meta.innerHTML=`<b></b><span></span>`;meta.querySelector('b').textContent=nice(file.name);meta.querySelector('span').textContent=`${file.type||'audio'} • ${size(file.size)}`;const acts=document.createElement('div');acts.className='drive-load';['A','B'].forEach(id=>{const b=document.createElement('button');b.textContent=`LOAD ${id}`;b.addEventListener('click',async()=>{try{status.textContent=`Loading ${file.name} → Deck ${id}…`;await window.ACCDJCore?.loadLocal?.(id,file);cuePoints[id]=0;updateCue(id);status.textContent=`${file.name} → Deck ${id} siap.`;closePanels();}catch(err){console.error(err);status.textContent=`Gagal membuka ${file.name}.`;}});acts.appendChild(b)});row.append(meta,acts);list.appendChild(row)});
   }
   $('driveInput')?.addEventListener('change',e=>renderFiles(Array.from(e.target.files||[])));
+  // Keep native Android system bars in sync with the real DJ/focus mode.
+  const syncNativeImmersive = () => {
+    const enabled = document.body.classList.contains('focus-mode');
+    try { window.AndroidDJ?.setImmersive?.(enabled); } catch (_) {}
+  };
+  new MutationObserver(syncNativeImmersive).observe(document.body,{attributes:true,attributeFilter:['class']});
+  document.addEventListener('fullscreenchange',syncNativeImmersive);
+  window.addEventListener('load',syncNativeImmersive);
 })();
