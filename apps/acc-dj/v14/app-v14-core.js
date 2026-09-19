@@ -717,29 +717,34 @@
     return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
   }
 
-  async function toggleDjMode() {
+  function syncDjModeButton() {
     const btn = $('djModeBtn');
+    if (!btn) return;
+    const active = document.body.classList.contains('focus-mode');
+    btn.classList.toggle('active', active);
+    btn.textContent = active ? '×' : '⛶';
+    btn.setAttribute('aria-label', active ? 'Keluar DJ Mode' : 'Masuk DJ Mode');
+    btn.setAttribute('title', active ? 'Keluar DJ Mode' : 'DJ Mode');
+  }
+
+  async function toggleDjMode() {
+    const entering = !document.body.classList.contains('focus-mode');
     try {
-      if (!document.fullscreenElement) {
+      if (entering) {
         await document.documentElement.requestFullscreen?.();
         try { await screen.orientation?.lock?.('landscape'); } catch (_) {}
         document.body.classList.add('focus-mode');
         state.focusMode = true;
-        btn.classList.add('active');
-        btn.textContent = 'EXIT';
       } else {
-        await document.exitFullscreen?.();
+        if (document.fullscreenElement) await document.exitFullscreen?.();
         document.body.classList.remove('focus-mode');
         state.focusMode = false;
-        btn.classList.remove('active');
-        btn.textContent = 'DJ MODE';
       }
     } catch (err) {
       document.body.classList.toggle('focus-mode');
       state.focusMode = document.body.classList.contains('focus-mode');
-      btn.classList.toggle('active', state.focusMode);
-      btn.textContent = state.focusMode ? 'EXIT' : 'DJ MODE';
     }
+    syncDjModeButton();
   }
 
   async function installPwa() {
@@ -759,6 +764,14 @@
     initSdk();
     document.querySelectorAll('[data-action="master"]').forEach(b=>b.classList.toggle('active',b.dataset.deck===state.masterDeck));
     $('djModeBtn').addEventListener('click', toggleDjMode);
+    syncDjModeButton();
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement && document.body.classList.contains('focus-mode')) {
+        document.body.classList.remove('focus-mode');
+        state.focusMode = false;
+      }
+      syncDjModeButton();
+    });
     $('installBtn').addEventListener('click', installPwa);
     if (!isStandalone()) $('installBtn').hidden = false;
 
