@@ -1,0 +1,202 @@
+name: Build ARDA DJ v1.6.0 QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "qa-requests/arda-dj-v160.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build ARDA DJ v1.6.0 QA APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC_SHA="90a5af34d641f29992c8ecfe245e6cda833dbf2c"
+          BUILD_DIR="$RUNNER_TEMP/arda-dj-v140"
+          export BUILD_DIR
+          mkdir -p "$BUILD_DIR/www/icons"
+
+          cp apps/acc-dj/v14/index.html "$BUILD_DIR/www/index.html"
+          cp apps/acc-dj/v14/v14.css "$BUILD_DIR/www/v14.css"
+          cp apps/acc-dj/v14/v14.js "$BUILD_DIR/www/v14.js"
+          cp apps/acc-dj/v14/v15-analysis.js "$BUILD_DIR/www/v15-analysis.js"
+          cp apps/acc-dj/v14/v15-sync.js "$BUILD_DIR/www/v15-sync.js"
+          cp apps/acc-dj/v14/app-v14-core.js "$BUILD_DIR/www/app-v8.js"
+          cp apps/acc-dj/v14/v14-analyser-hook.js "$BUILD_DIR/www/v9-analyser-hook.js"
+
+          cat > "$BUILD_DIR/www/icons/placeholder.svg" <<'SVG'
+          <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+            <rect width="256" height="256" rx="24" fill="#101419"/>
+            <circle cx="128" cy="128" r="78" fill="#080a0d" stroke="#727b85" stroke-width="4"/>
+            <circle cx="128" cy="128" r="26" fill="#1da2ff"/>
+            <circle cx="128" cy="128" r="6" fill="#eef3f7"/>
+          </svg>
+          SVG
+
+          node --check "$BUILD_DIR/www/v14.js"
+          node --check "$BUILD_DIR/www/v15-analysis.js"
+          node --check "$BUILD_DIR/www/v15-sync.js"
+          node --check "$BUILD_DIR/www/app-v8.js"
+
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import os
+          required = {
+            'audioA','audioB','bpmA','bpmB','waveA','waveB','pitchA','pitchB',
+            'lowA','midA','highA','lowB','midB','highB','crossfader','masterVol',
+            'splitCueBtn','cueHelp','musicDrawer','drawerBackdrop','results','searchInput',
+            'searchBtn','genreSelect','trendingBtn','moreBtn','settingsDialog','apiKeyInput'
+          }
+          class P(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.ids=[]
+              def handle_starttag(self, tag, attrs):
+                  for k,v in attrs:
+                      if k=='id' and v: self.ids.append(v)
+          p=P(); p.feed((Path(os.environ["BUILD_DIR"])/"www"/"index.html").read_text())
+          missing=sorted(required-set(p.ids))
+          dup=sorted({x for x in p.ids if p.ids.count(x)>1})
+          if missing or dup:
+              raise SystemExit(f"DOM QC failed missing={missing} duplicate={dup}")
+          print("DOM QC PASS")
+          PY
+
+          if grep -q "ACC DJ" "$BUILD_DIR/www/index.html"; then
+            echo "Old ACC DJ branding still visible in v1.4 index" >&2
+            exit 1
+          fi
+
+          cd "$BUILD_DIR"
+          cat > package.json <<'JSON'
+          {
+            "name":"arda-dj-release",
+            "version":"1.6.0",
+            "private":true,
+            "dependencies":{"@capacitor/core":"^7.0.0","@capacitor/android":"^7.0.0"},
+            "devDependencies":{"@capacitor/cli":"^7.0.0"}
+          }
+          JSON
+          cat > capacitor.config.json <<'JSON'
+          {
+            "appId":"com.arda.dj.beta",
+            "appName":"ARDA DJ QA",
+            "webDir":"www",
+            "server":{"androidScheme":"https"}
+          }
+          JSON
+
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+
+          # Native DJ MODE bridge: hide Android status/navigation bars only while focus-mode is active.
+          MAIN_ACTIVITY="$BUILD_DIR/android/app/src/main/java/com/arda/dj/beta/MainActivity.java"
+          cat > "$MAIN_ACTIVITY" <<'JAVA'
+          package com.arda.dj.beta;
+
+          import android.os.Bundle;
+          import android.view.View;
+          import android.webkit.JavascriptInterface;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              private boolean djImmersive = false;
+
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  getBridge().getWebView().addJavascriptInterface(new DJModeBridge(), "AndroidDJ");
+              }
+
+              private void applyImmersive(boolean enabled) {
+                  int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+                  if (enabled) {
+                      flags |= View.SYSTEM_UI_FLAG_FULLSCREEN
+                              | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                              | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                              | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                              | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+                  }
+                  getWindow().getDecorView().setSystemUiVisibility(flags);
+              }
+
+              public class DJModeBridge {
+                  @JavascriptInterface
+                  public void setImmersive(final boolean enabled) {
+                      runOnUiThread(() -> {
+                          djImmersive = enabled;
+                          applyImmersive(enabled);
+                      });
+                  }
+              }
+
+              @Override
+              public void onWindowFocusChanged(boolean hasFocus) {
+                  super.onWindowFocusChanged(hasFocus);
+                  if (hasFocus && djImmersive) applyImmersive(true);
+              }
+          }
+          JAVA
+
+          RES="$BUILD_DIR/android/app/src/main/res"
+          mkdir -p "$RES/mipmap-anydpi"
+          find "$RES" -type f \( -name 'ic_launcher*.png' -o -name 'ic_launcher*.webp' \) -delete
+          rm -f "$RES/mipmap-anydpi-v26/ic_launcher.xml" "$RES/mipmap-anydpi-v26/ic_launcher_round.xml"
+          cp "$GITHUB_WORKSPACE/apps/acc-dj/arda-dj-icon.xml" "$RES/mipmap-anydpi/ic_launcher.xml"
+          cp "$GITHUB_WORKSPACE/apps/acc-dj/arda-dj-icon.xml" "$RES/mipmap-anydpi/ic_launcher_round.xml"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('android/app/build.gradle')
+          s=p.read_text()
+          s=re.sub(r'versionCode\s+\d+', 'versionCode 12', s, count=1)
+          s=re.sub(r'versionName\s+["\'][^"\']+["\']', 'versionName "1.6.0"', s, count=1)
+          s=s.replace('applicationId "com.acc.dj"','applicationId "com.arda.dj.beta"').replace("applicationId 'com.acc.dj'","applicationId 'com.arda.dj.beta'")
+          p.write_text(s)
+          m=Path('android/app/src/main/AndroidManifest.xml')
+          x=m.read_text()
+          if 'android:screenOrientation="landscape"' not in x:
+              x=x.replace('android:name=".MainActivity"', 'android:name=".MainActivity" android:screenOrientation="landscape"')
+          m.write_text(x)
+          PY
+
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+          mkdir -p "$GITHUB_WORKSPACE/dist-arda-dj"
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "$GITHUB_WORKSPACE/dist-arda-dj/ARDA-DJ-1.6.0-unsigned.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/dist-arda-dj/ARDA-DJ-1.6.0-unsigned.aab"
+          cd "$GITHUB_WORKSPACE"
+          sha256sum dist-arda-dj/* > dist-arda-dj/SHA256SUMS.txt
+
+      - name: Upload unsigned release
+        uses: actions/upload-artifact@v4
+        with:
+          name: ARDA-DJ-1.6.0-QA
+          path: dist-arda-dj/
+          retention-days: 3
