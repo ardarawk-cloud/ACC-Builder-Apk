@@ -122,3 +122,171 @@ body.focus-mode .platter{width:min(31vw,38vh,245px)!important}
 }
 .playing .record{animation:spin 1.8s linear infinite!important}
 .wave{image-rendering:auto}
+
+/* ARDA DJ v1.6 — professional controller polish */
+:root{
+  --deck-a:#26a9ff;
+  --deck-b:#ff9c2b;
+  --surface:#0b0e12;
+  --surface-2:#11161c;
+  --stroke:#29313a;
+}
+.app-shell{grid-template-rows:44px minmax(0,1fr)}
+.topbar{
+  min-height:44px;
+  padding:0 10px;
+  background:linear-gradient(180deg,#090c10,#06080b);
+  border-bottom:1px solid #1e252c;
+}
+.brand{font-size:15px;gap:8px}
+.brand-disc{width:28px;height:28px;border-width:1.5px}
+.top-actions{gap:5px}
+.top-btn{
+  width:34px;height:32px;padding:0;justify-content:center;
+  border-radius:8px;background:#11161c;border-color:#2a323b;
+  box-shadow:none;
+}
+.top-btn span{display:none}
+.status-zone{gap:6px}
+.status-zone>span{display:none}
+.status-zone i{width:7px;height:7px;box-shadow:0 0 8px #48e36d66}
+.full-btn{
+  width:30px;height:30px;padding:0;border-radius:8px;
+  background:#0e1318;border:1px solid #27313a;color:#aeb8c2;
+  font-size:17px;font-weight:700;line-height:1;box-shadow:none;
+}
+.full-btn:active{color:#fff;border-color:#5b6773}
+
+.controller{grid-template-columns:minmax(0,1fr) 84px minmax(0,1fr)}
+.deck{
+  background:linear-gradient(180deg,#11161b 0%,#0d1116 58%,#0a0d11 100%);
+  border-top:1px solid #1e252c;
+}
+.deck:last-child{
+  background:linear-gradient(180deg,#15120f 0%,#100f10 58%,#0a0d11 100%);
+}
+.track-head{
+  background:#080b0f;
+  border-bottom:1px solid #222a32;
+  padding:6px 10px;
+}
+.deck:first-of-type .track-head{box-shadow:inset 3px 0 0 var(--deck-a)}
+.deck:last-child .track-head{box-shadow:inset -3px 0 0 var(--deck-b)}
+.track-copy strong{font-size:13px;font-weight:800}
+.track-copy small{color:#7f8994}
+.track-stats b{font-variant-numeric:tabular-nums;font-weight:900}
+.wave-box{
+  background:#06090c;
+  border-bottom:1px solid #1c232b;
+  box-shadow:inset 0 1px 0 #0e141a;
+}
+.wave{background:#04070a}
+.wave-overview{opacity:.72}
+
+.center-strip{
+  background:linear-gradient(180deg,#0b0f13,#07090c);
+  border-left:1px solid #202830;border-right:1px solid #202830;
+  padding:5px 7px;
+}
+.center-logo{
+  font-size:14px;line-height:13px;letter-spacing:.06em;
+  opacity:.92;
+}
+.meters>div{gap:4px}
+.meters meter{width:8px}
+.xfader input{height:22px}
+
+.deck-body{background:radial-gradient(circle at 50% 48%,rgba(255,255,255,.025),transparent 58%)}
+.platter{
+  border-width:6px;
+  box-shadow:0 0 0 1px #69717a88 inset,0 0 0 7px #151a1f,0 12px 28px #0009;
+}
+.record{box-shadow:inset 0 0 0 1px #222,0 0 18px #0007}
+.sync-btn{
+  min-width:70px;height:36px;top:9px;
+  border-width:1.5px;border-radius:9px;
+  background:#0c1116;box-shadow:none;
+  font-size:10px;letter-spacing:.04em;
+}
+.sync-btn.synced{box-shadow:0 0 0 1px #1da2ff55 inset}
+.deck:last-child .sync-btn.synced{box-shadow:0 0 0 1px #ff9e2e55 inset}
+.pitch{color:#8e98a3}
+.pitch input{accent-color:#d6dde3}
+.pitch output{font-variant-numeric:tabular-nums;color:#aab3bc}
+
+.sync-state{
+  bottom:8px;padding:3px 7px;border-radius:999px;
+  background:#090d11cc;border:1px solid #252d35;
+  font-size:7px;font-weight:900;letter-spacing:.08em;
+}
+.sync-state.locked{border-color:#2d7040;color:#62df82!important}
+.sync-state.chasing{border-color:#245a79;color:#68cfff!important}
+.sync-state.armed{border-color:#695b2d;color:#f4cb64!important}
+
+.transport{
+  gap:5px;padding:5px 7px;background:#080b0f;border-top:1px solid #222a32;
+}
+.transport button{
+  height:42px;border-radius:8px;border-color:#303943;
+  background:linear-gradient(180deg,#161c22,#0f1419);
+  box-shadow:inset 0 1px 0 #ffffff08;
+  font-size:9px;letter-spacing:.04em;
+}
+.transport button:active{transform:translateY(1px);background:#0d1217}
+.play-btn{
+  width:50px!important;height:50px!important;
+  border-width:2px!important;
+  box-shadow:0 0 0 1px #48e36d22 inset;
+}
+.cue-point{border-color:#d7ba5c!important;color:#f4dfa0!important}
+.pad-btn{color:#d8dfe5!important}
+.fx-btn{color:#77ceff!important}
+
+.track-select{
+  border-radius:8px;
+  border-color:#2b3540;
+  background:#0e141a;
+}
+.track-select:after{
+  width:15px;height:15px;font-size:7px;right:1px;bottom:1px;
+  box-shadow:0 0 0 1px #07131a;
+}
+.cover-wrap img{background:#0c1116}
+
+body.focus-mode .app-shell{grid-template-rows:0 minmax(0,1fr)!important}
+body.focus-mode .controller{
+  grid-template-columns:minmax(0,1fr) 66px minmax(0,1fr)!important;
+  height:100dvh!important;
+}
+body.focus-mode .topbar{
+  top:4px!important;right:4px!important;width:26px!important;height:26px!important;
+  pointer-events:none!important;
+}
+body.focus-mode .topbar .status-zone{
+  display:block!important;width:26px!important;height:26px!important;pointer-events:auto!important;
+}
+body.focus-mode .topbar .full-btn{
+  width:24px!important;height:24px!important;
+  padding:0!important;border:0!important;border-radius:50%!important;
+  background:#080b0e88!important;color:#c7d0d8!important;
+  font-size:17px!important;line-height:20px!important;
+  opacity:.18!important;box-shadow:none!important;
+}
+body.focus-mode .topbar .full-btn:active,
+body.focus-mode .topbar .full-btn:focus{opacity:.85!important;background:#0b1015dd!important}
+body.focus-mode .center-strip{
+  padding-left:4px!important;padding-right:4px!important;
+}
+body.focus-mode .track-head{padding-left:8px;padding-right:8px}
+body.focus-mode .sync-btn{top:7px}
+body.focus-mode .transport{padding:4px 6px}
+body.focus-mode .backdrop{inset:0!important}
+
+@media(max-height:620px){
+  .app-shell{grid-template-rows:40px minmax(0,1fr)}
+  .topbar{min-height:40px}
+  .controller{grid-template-columns:minmax(0,1fr) 74px minmax(0,1fr)}
+  .transport button{height:38px}
+  .play-btn{width:46px!important;height:46px!important}
+  body.focus-mode .controller{grid-template-columns:minmax(0,1fr) 60px minmax(0,1fr)!important}
+}
