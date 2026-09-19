@@ -113,9 +113,9 @@ jobs:
           npx cap sync android
 
           # Native DJ MODE bridge: hide Android status/navigation bars only while focus-mode is active.
-          MAIN_ACTIVITY="$BUILD_DIR/android/app/src/main/java/com/acc/dj/MainActivity.java"
+          MAIN_ACTIVITY="$BUILD_DIR/android/app/src/main/java/com/arda/dj/beta/MainActivity.java"
           cat > "$MAIN_ACTIVITY" <<'JAVA'
-          package com.acc.dj;
+          package com.arda.dj.beta;
 
           import android.os.Bundle;
           import android.view.View;
