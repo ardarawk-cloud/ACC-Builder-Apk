@@ -137,28 +137,46 @@
     if(!bpm)return {anchor:0,confidence:0};
     const beat=60/bpm;
     const bins=72;
-    const hist=new Float64Array(bins);
-    let mean=0;
-    for(let i=0;i<flux.length;i++)mean+=flux[i];
-    mean/=Math.max(1,flux.length);
-    let variance=0;
-    for(let i=0;i<flux.length;i++){const d=flux[i]-mean;variance+=d*d;}
-    const std=Math.sqrt(variance/Math.max(1,flux.length));
-    const threshold=mean+std*.55;
-    for(let i=1;i<flux.length-1;i++) {
-      const v=flux[i];
-      if(v<threshold || v<flux[i-1] || v<flux[i+1])continue;
-      const t=i/fps;
-      const phase=mod(t,beat)/beat;
-      const bi=Math.min(bins-1,Math.floor(phase*bins));
-      hist[bi]+=v;
-      hist[(bi+1)%bins]+=v*.35;
-      hist[(bi-1+bins)%bins]+=v*.35;
+    const duration=flux.length/fps;
+    const scores=new Float64Array(bins);
+
+    // Score each possible quarter-note phase against low-frequency onset energy.
+    // Penalizing the half-beat helps avoid locking a snare/offbeat as beat 1.
+    for(let b=0;b<bins;b++) {
+      const phase=(b/bins)*beat;
+      let on=0,off=0,count=0;
+      for(let t=phase;t<duration;t+=beat) {
+        const i=Math.round(t*fps);
+        let peak=0;
+        for(let k=-2;k<=2;k++) {
+          const ix=i+k;
+          if(ix>=0&&ix<flux.length) peak=Math.max(peak,flux[ix]||0);
+        }
+        const hi=Math.round((t+beat*.5)*fps);
+        let half=0;
+        for(let k=-2;k<=2;k++) {
+          const ix=hi+k;
+          if(ix>=0&&ix<flux.length) half=Math.max(half,flux[ix]||0);
+        }
+        on+=peak;
+        off+=half;
+        count++;
+      }
+      scores[b]=count?((on-.22*off)/count):0;
     }
-    let best=0,total=0;
-    for(let i=0;i<bins;i++){total+=hist[i];if(hist[i]>hist[best])best=i;}
-    const avg=total/Math.max(1,bins);
-    const confidence=avg>0?hist[best]/avg:0;
+
+    let best=0,second=0;
+    for(let i=0;i<bins;i++) {
+      if(scores[i]>scores[best]) best=i;
+    }
+    for(let i=0;i<bins;i++) {
+      const circular=Math.min(Math.abs(i-best),bins-Math.abs(i-best));
+      if(circular<=2) continue;
+      if(scores[i]>scores[second] || second===best) second=i;
+    }
+    const bestScore=Math.max(0,scores[best]);
+    const secondScore=Math.max(0,scores[second]);
+    const confidence=bestScore>0 ? bestScore/(secondScore+1e-9) : 0;
     return {anchor:((best+.5)/bins)*beat,confidence};
   }
 
@@ -206,7 +224,7 @@
       const phase=estimateAnchor(flux,fps,bpm);
       if(state[id].token!==token)return;
       Object.assign(state[id],{
-        ready:!!(bpm && phase.confidence>1.05),
+        ready:!!(bpm && phase.confidence>1.08),
         analyzing:false,
         failed:false,
         peaks,
