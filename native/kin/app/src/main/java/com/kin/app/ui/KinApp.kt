@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -83,19 +86,38 @@ fun KinApp(graph: KinAppGraph, session: KinSession) {
                     KinCompactHeader(selected = selected, skinId = skinId)
                 },
                 bottomBar = {
-                    NavigationBar(containerColor = tokens.surface.copy(alpha = 0.97f)) {
+                    NavigationBar(
+                        containerColor = tokens.surface.copy(alpha = 0.98f),
+                        tonalElevation = 3.dp,
+                    ) {
                         KinRoot.entries.forEach { root ->
+                            val isCreate = root == KinRoot.CREATE
                             NavigationBarItem(
                                 selected = selected == root,
                                 onClick = { selected = root },
-                                icon = { Text(root.symbol, fontWeight = FontWeight.Bold) },
-                                label = { Text(root.label) },
+                                icon = {
+                                    if (isCreate) {
+                                        Surface(
+                                            modifier = Modifier.size(42.dp),
+                                            shape = CircleShape,
+                                            color = tokens.accent,
+                                            contentColor = if (skinId == "midnight") Color(0xFF25133F) else Color.White,
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text("+", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                                            }
+                                        }
+                                    } else {
+                                        Text(root.symbol, fontWeight = FontWeight.Bold)
+                                    }
+                                },
+                                label = { if (!isCreate) Text(root.label) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = tokens.accent,
                                     selectedTextColor = tokens.textPrimary,
                                     unselectedIconColor = tokens.textMuted,
                                     unselectedTextColor = tokens.textMuted,
-                                    indicatorColor = tokens.surfaceVariant,
+                                    indicatorColor = if (isCreate) Color.Transparent else tokens.surfaceVariant,
                                 ),
                             )
                         }
@@ -153,16 +175,24 @@ private fun KinCompactHeader(selected: KinRoot, skinId: String) {
                 fontWeight = FontWeight.Black,
                 color = tokens.textPrimary,
             )
-            Text(
-                when (selected) {
-                    KinRoot.HOME -> "My People"
-                    KinRoot.CREATE -> "New Post"
-                    KinRoot.ME -> "My Space"
-                    else -> selected.label.lowercase().replaceFirstChar { it.uppercase() }
-                },
-                style = MaterialTheme.typography.labelLarge,
-                color = tokens.textSecondary,
-            )
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = tokens.surfaceVariant.copy(alpha = if (skinId == "midnight") 0.82f else 0.74f),
+                contentColor = tokens.textSecondary,
+            ) {
+                Text(
+                    when (selected) {
+                        KinRoot.HOME -> "My People"
+                        KinRoot.CREATE -> "New Post"
+                        KinRoot.ME -> "My Space"
+                        else -> selected.label.lowercase().replaceFirstChar { it.uppercase() }
+                    },
+                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 5.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = tokens.textSecondary,
+                )
+            }
         }
     }
 }
