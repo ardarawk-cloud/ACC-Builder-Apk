@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -21,6 +22,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -253,9 +255,24 @@ fun KinFeedPostCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Surface(
+                    modifier = Modifier.size(42.dp),
+                    shape = CircleShape,
+                    color = tokens.accent.copy(alpha = if (skinId == "midnight") 0.22f else 0.14f),
+                    contentColor = tokens.textPrimary,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            post.authorDisplayName.take(1).uppercase(),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            color = tokens.textPrimary,
+                        )
+                    }
+                }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         post.authorDisplayName,
@@ -271,26 +288,32 @@ fun KinFeedPostCard(
                 }
                 Surface(
                     shape = kinCardShape(skinId),
-                    color = tokens.accent.copy(alpha = if (skinId == "midnight") 0.18f else 0.13f),
+                    color = tokens.accent.copy(alpha = if (skinId == "midnight") 0.18f else 0.11f),
                     contentColor = tokens.textPrimary,
                 ) {
                     Text(
                         audienceLabel(post.audience),
                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
                         style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
                         color = tokens.textPrimary,
                     )
                 }
             }
 
             if (media.isNotEmpty()) {
-                Box(modifier = Modifier.padding(horizontal = if (skinId == "y2k") 8.dp else 10.dp)) {
+                Box(modifier = Modifier.padding(horizontal = if (skinId == "y2k") 8.dp else 0.dp)) {
                     KinPostMediaStrip(media = media, skinId = skinId, compact = compact)
                 }
             }
 
             Column(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = if (media.isEmpty()) 0.dp else 2.dp),
+                modifier = Modifier.padding(
+                    start = 14.dp,
+                    end = 14.dp,
+                    top = if (media.isEmpty()) 0.dp else 4.dp,
+                    bottom = 12.dp,
+                ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (editing) {
