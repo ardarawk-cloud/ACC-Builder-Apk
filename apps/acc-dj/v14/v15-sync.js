@@ -100,6 +100,7 @@
     if(!linked[id]||id===master)return;
     const f=audio(id),m=audio(master),rate=nominalRate(id);
     if(!f||!m||!rate){setStatus(id,'GRID');return;}
+
     const pct=(rate-1)*100;
     if(Math.abs(pct)>15){setStatus(id,'TEMPO');return;}
     updatePitchUi(id,rate);
@@ -118,6 +119,7 @@
     }
 
     if(!gridReady(id)||!gridReady(master)){
+      // Beat Sync never guesses phase. Keep only tempo matched until both grids are valid.
       f.playbackRate=rate;
       stable[id]=0;
       setStatus(id,'GRID');
@@ -128,22 +130,28 @@
     if(e===null){f.playbackRate=rate;setStatus(id,'GRID');return;}
     const abs=Math.abs(e),now=performance.now();
 
-    if(force || (abs>.10 && now-lastHard[id]>900)){
+    // Stable engine: fixed tempo + occasional phase correction.
+    // No continuous playback-rate hunting.
+    f.playbackRate=rate;
+
+    if(force){
       hardAlign(id);
-      f.playbackRate=rate;
       setStatus(id,'ALIGN');
       return;
     }
 
-    if(abs>.022){
-      const micro=clamp(-e*.045,-.0035,.0035);
-      f.playbackRate=rate*(1+micro);
+    if(abs>.060 && now-lastHard[id]>1800){
+      hardAlign(id);
+      setStatus(id,'ALIGN');
+      return;
+    }
+
+    if(abs<=.028){
+      stable[id]++;
+      setStatus(id,stable[id]>=3?'LOCK':'ALIGN');
+    }else{
       stable[id]=0;
       setStatus(id,'ALIGN');
-    }else{
-      f.playbackRate=rate;
-      stable[id]++;
-      setStatus(id,stable[id]>=5?'LOCK':'ALIGN');
     }
   }
 
@@ -209,7 +217,7 @@
     if(master===id&&linked[other]&&mode[other]==='BEAT')align(other,true);
   });
 
-  setInterval(()=>{align('A');align('B');},120);
+  setInterval(()=>{align('A');align('B');},360);
 
   window.ARDADJSync={
     setMaster,toggle,setMode,getMode:(id)=>mode[id],linked,gridReady,getMaster:()=>master,align
