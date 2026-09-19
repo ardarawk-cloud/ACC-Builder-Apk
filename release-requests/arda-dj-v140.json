@@ -1,8 +1,8 @@
 {
   "project_id": "acc-dj",
   "product_name": "ARDA DJ",
-  "release": "1.5.0",
-  "version_code": 10,
+  "release": "1.5.1",
+  "version_code": 11,
   "package_id": "com.acc.dj",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
   "mode": "permanent-release",
@@ -30,6 +30,12 @@
     "deterministic-beat-sync",
     "manual-grid-nudge",
     "manual-set-beat",
-    "bpm-half-double"
+    "bpm-half-double",
+    "audius-rest-fail-fast",
+    "yielding-track-analysis",
+    "no-fake-spectrum-waveform",
+    "audio-state-jog-rotation",
+    "visible-platter-marker",
+    "stable-fixed-rate-beat-sync"
   ]
 }
