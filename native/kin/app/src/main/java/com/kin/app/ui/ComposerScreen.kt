@@ -197,17 +197,8 @@ fun ComposerScreen(
 
         item {
             Text("Moment", fontWeight = FontWeight.Bold, color = tokens.textPrimary)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Happy", "Chill", "Excited").forEach { option ->
-                    FilterChip(
-                        selected = feeling == option,
-                        onClick = { feeling = if (feeling == option) "" else option },
-                        label = { Text(option) },
-                    )
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Busy", "Grateful", "Tired").forEach { option ->
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(listOf("Happy", "Chill", "Excited", "Busy", "Grateful", "Tired")) { option ->
                     FilterChip(
                         selected = feeling == option,
                         onClick = { feeling = if (feeling == option) "" else option },
@@ -259,15 +250,13 @@ fun ComposerScreen(
                     color = tokens.textSecondary,
                 )
             } else {
-                people.take(8).chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        row.forEach { person ->
-                            FilterChip(
-                                selected = withPersonId == person.person.id,
-                                onClick = { withPersonId = if (withPersonId == person.person.id) "" else person.person.id },
-                                label = { Text(person.person.displayName) },
-                            )
-                        }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(people.take(8), key = { it.person.id }) { person ->
+                        FilterChip(
+                            selected = withPersonId == person.person.id,
+                            onClick = { withPersonId = if (withPersonId == person.person.id) "" else person.person.id },
+                            label = { Text(person.person.displayName, maxLines = 1) },
+                        )
                     }
                 }
             }
@@ -292,17 +281,15 @@ fun ComposerScreen(
         if (audience == "Circle") {
             item {
                 Text("Choose Circles", fontWeight = FontWeight.Bold, color = tokens.textPrimary)
-                circles.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        row.forEach { circle ->
-                            FilterChip(
-                                selected = circle.id in selectedCircleIds,
-                                onClick = {
-                                    selectedCircleIds = if (circle.id in selectedCircleIds) selectedCircleIds - circle.id else selectedCircleIds + circle.id
-                                },
-                                label = { Text(circle.name) },
-                            )
-                        }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(circles, key = { it.id }) { circle ->
+                        FilterChip(
+                            selected = circle.id in selectedCircleIds,
+                            onClick = {
+                                selectedCircleIds = if (circle.id in selectedCircleIds) selectedCircleIds - circle.id else selectedCircleIds + circle.id
+                            },
+                            label = { Text(circle.name, maxLines = 1) },
+                        )
                     }
                 }
                 Text(
