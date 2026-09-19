@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
@@ -91,6 +92,7 @@ fun MeScreen(graph: KinAppGraph, session: KinSession) {
     val username = profile?.username ?: session.username
     val displayName = profile?.displayName ?: session.displayName
     val skinId = profile?.skinId ?: "kin-original"
+    val tokens = kinSkinTokens(skinId)
     val ownPosts = posts.filter { it.authorUsername.equals(username, ignoreCase = true) }
     val mediaPosts = ownPosts.filter { kinPostMediaFromJson(it.mediaJson).isNotEmpty() }
     val highlight = ownPosts.firstOrNull()
@@ -122,10 +124,29 @@ fun MeScreen(graph: KinAppGraph, session: KinSession) {
                             Text(displayName.take(1).uppercase(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
                         }
                     }
-                    Text(displayName, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-                    Text("@$username", style = MaterialTheme.typography.bodyMedium)
-                    profile?.bio?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-                    Text("${kinSkinLabel(skinId)} Space", style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        displayName,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Black,
+                        color = tokens.textPrimary,
+                    )
+                    Text("@$username", style = MaterialTheme.typography.bodyMedium, color = tokens.textSecondary)
+                    profile?.bio?.takeIf { it.isNotBlank() }?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = tokens.textPrimary)
+                    }
+                    Surface(
+                        shape = kinCardShape(skinId),
+                        color = tokens.surface.copy(alpha = if (skinId == "midnight") 0.72f else 0.64f),
+                        contentColor = tokens.textPrimary,
+                    ) {
+                        Text(
+                            "${kinSkinLabel(skinId)} Space",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = tokens.textPrimary,
+                        )
+                    }
                 }
             }
         }
@@ -159,22 +180,28 @@ fun MeScreen(graph: KinAppGraph, session: KinSession) {
         }
 
         item {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp),
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                FilterChip(
-                    selected = tab == SpaceTab.JOURNAL,
-                    onClick = { tab = SpaceTab.JOURNAL },
-                    label = { Text("Journal") },
-                )
-                FilterChip(
-                    selected = tab == SpaceTab.MEDIA,
-                    onClick = { tab = SpaceTab.MEDIA },
-                    label = { Text("Photo Wall · Video") },
-                )
-                OutlinedButton(onClick = { route = MeRoute.RELATIONSHIPS }) {
-                    Text("People")
+                item {
+                    FilterChip(
+                        selected = tab == SpaceTab.JOURNAL,
+                        onClick = { tab = SpaceTab.JOURNAL },
+                        label = { Text("Journal") },
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = tab == SpaceTab.MEDIA,
+                        onClick = { tab = SpaceTab.MEDIA },
+                        label = { Text("Photo Wall · Video") },
+                    )
+                }
+                item {
+                    OutlinedButton(onClick = { route = MeRoute.RELATIONSHIPS }) {
+                        Text("People")
+                    }
                 }
             }
         }
