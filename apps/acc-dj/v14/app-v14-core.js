@@ -23,7 +23,7 @@
     lastQuery: '',
     lastTrending: true,
     searchOffset: 0,
-    pageSize: 28,
+    pageSize: 18,
     renderedTrackIds: new Set(),
     deferredInstallPrompt: null,
     focusMode: false,
@@ -427,21 +427,21 @@
     if (genre) params.set('genre', genre);
     if (!trending) params.set('query', query);
     const path = trending ? 'tracks/trending' : 'tracks/search';
-    const urls = [
-      `${PUBLIC_API}/${path}?${params}`,
-      `${LEGACY_PUBLIC_API}/${path}?${params}`
-    ];
-    let lastError = null;
-    for (const url of urls) {
-      try {
-        const json = await fetchJsonWithTimeout(url, 6500);
-        return json?.data || [];
-      } catch (err) {
-        lastError = err;
-        if (err?.name === 'AbortError') throw err;
-      }
+    const url = `${PUBLIC_API}/${path}?${params}`;
+
+    try { state.searchAbort?.abort(); } catch (_) {}
+    const controller = new AbortController();
+    state.searchAbort = controller;
+    const timer = setTimeout(() => controller.abort(), 4200);
+    try {
+      const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+      if (!response.ok) throw new Error(`Audius HTTP ${response.status}`);
+      const json = await response.json();
+      return json?.data || [];
+    } finally {
+      clearTimeout(timer);
+      if (state.searchAbort === controller) state.searchAbort = null;
     }
-    throw lastError || new Error('Audius unavailable');
   }
 
   async function searchTracks(query, trending = false, append = false) {
@@ -458,23 +458,11 @@
     setMessage(append ? 'Mengambil track berikutnya…' : 'Menghubungkan ke Audius…');
 
     try {
-      let tracks = [];
-      if (state.sdk) {
-        try {
-          const sdkPromise = trending
-            ? state.sdk.tracks.getTrendingTracks({ limit: state.pageSize, offset, ...(genre ? { genre } : {}) })
-            : state.sdk.tracks.searchTracks({ query, limit: state.pageSize, offset, sortMethod: 'relevant', ...(genre ? { genre: [genre] } : {}) });
-          const response = await withTimeout(sdkPromise, 5500, 'Audius SDK timeout');
-          tracks = response?.data || [];
-        } catch (sdkErr) {
-          console.warn('Audius SDK fallback to public API', sdkErr);
-          tracks = await publicAudiusTracks(query, trending, genre, offset);
-        }
-      } else {
-        tracks = await publicAudiusTracks(query, trending, genre, offset);
-      }
-
+      // Browser/mobile browsing uses the official REST endpoint directly.
+      // The SDK is still available for streaming, but not allowed to hold the Library UI.
+      let tracks = await publicAudiusTracks(query, trending, genre, offset);
       if (requestId !== state.searchSeq) return;
+
       state.searchOffset = offset;
       const rawCount = tracks.length;
       const beforeFilter = tracks.length;
@@ -483,18 +471,20 @@
       const hidden = Math.max(0, beforeFilter - tracks.length);
       const totalShown = state.renderedTrackIds.size;
       $('moreBtn').hidden = rawCount < state.pageSize;
+
       if (tracks.length || append) {
-        setMessage(`${totalShown} track tersedia${hidden ? ` • ${hidden} non-streamable dilewati` : ''}${state.apiKey ? ' • API key aktif' : ' • Public Mode'}.`);
+        setMessage(`${totalShown} track tersedia${hidden ? ` • ${hidden} non-streamable dilewati` : ''}.`);
       } else {
         setMessage('Tidak ada track streamable. Coba genre/search lain atau DRIVE / FILES.', true);
       }
     } catch (err) {
       if (requestId !== state.searchSeq) return;
-      console.error(err);
+      console.warn('Audius browse unavailable', err);
       const timeout = err?.name === 'AbortError' || /timeout/i.test(String(err?.message || ''));
       setMessage(timeout
-        ? 'Audius lambat/tidak merespons. Library tetap aktif — pakai DRIVE / FILES atau tekan TRENDING untuk coba lagi.'
-        : 'Audius tidak tersedia. Library tetap aktif — pakai DRIVE / FILES atau coba lagi.', true);
+        ? 'Audius timeout. Library tetap aktif — DRIVE / FILES bisa dipakai sekarang.'
+        : 'Audius tidak tersedia. Library tetap aktif — gunakan DRIVE / FILES atau coba lagi.', true);
+      $('moreBtn').hidden = true;
     }
   }
 

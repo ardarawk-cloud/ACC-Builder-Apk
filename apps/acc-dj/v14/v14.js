@@ -86,11 +86,20 @@
   ['A','B'].forEach(id=>{
     const cover=$(`cover${id}`),label=$(`label${id}`),
       play=document.querySelector(`[data-action="play"][data-deck="${id}"]`),
-      deck=document.querySelector(`.deck[data-deck="${id}"]`);
+      deck=document.querySelector(`.deck[data-deck="${id}"]`),
+      audio=$(`audio${id}`);
     const syncCover=()=>{if(label){label.src=cover?.src||'';label.style.opacity=cover?.src?'1':'.2';}};
     if(cover)new MutationObserver(syncCover).observe(cover,{attributes:true,attributeFilter:['src']});syncCover();
-    const syncPlay=()=>deck?.classList.toggle('playing',!!play?.classList.contains('playing'));
-    if(play)new MutationObserver(syncPlay).observe(play,{attributes:true,attributeFilter:['class']});syncPlay();
+
+    const syncPlay=()=>{
+      const isPlaying=audio ? !audio.paused && !audio.ended : !!play?.classList.contains('playing');
+      deck?.classList.toggle('playing',isPlaying);
+    };
+    if(play)new MutationObserver(syncPlay).observe(play,{attributes:true,attributeFilter:['class']});
+    audio?.addEventListener('play',syncPlay);
+    audio?.addEventListener('pause',syncPlay);
+    audio?.addEventListener('ended',syncPlay);
+    syncPlay();
   });
 
   function cueButton(id){return $(`cuePoint${id}`);}

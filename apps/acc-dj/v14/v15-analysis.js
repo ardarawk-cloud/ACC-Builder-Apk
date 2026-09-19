@@ -46,16 +46,20 @@
     return out;
   }
 
-  function makePeaks(buffer) {
+  const yieldUi = () => new Promise(resolve => setTimeout(resolve, 0));
+
+  async function makePeaks(buffer, token, id) {
     const channels=channelArrays(buffer);
     const chCount=Math.max(1,channels.length);
     const len=buffer.length;
-    const bins=clamp(Math.round(buffer.duration*22),1400,5200);
+    const bins=clamp(Math.round(buffer.duration*20),1200,4800);
     const peaks=new Float32Array(bins);
+
     for(let b=0;b<bins;b++) {
+      if(state[id].token!==token) throw new Error('Analysis superseded');
       const start=Math.floor((b/bins)*len);
       const end=Math.max(start+1,Math.floor(((b+1)/bins)*len));
-      const step=Math.max(1,Math.floor((end-start)/72));
+      const step=Math.max(1,Math.floor((end-start)/56));
       let max=0;
       for(let i=start;i<end;i+=step) {
         let v=0;
@@ -64,11 +68,12 @@
         if(a>max)max=a;
       }
       peaks[b]=Math.min(1,max);
+      if((b&63)===63) await yieldUi();
     }
     return peaks;
   }
 
-  function onsetEnvelope(buffer) {
+  async function onsetEnvelope(buffer, token, id) {
     const channels=channelArrays(buffer);
     const chCount=Math.max(1,channels.length);
     const hop=1024;
@@ -76,27 +81,31 @@
     const fps=buffer.sampleRate/hop;
     const count=Math.max(1,Math.floor((buffer.length-frame)/hop));
     const energy=new Float32Array(count);
-    let previousSample=0;
+    let lp=0;
+
     for(let f=0;f<count;f++) {
+      if(state[id].token!==token) throw new Error('Analysis superseded');
       const start=f*hop;
-      let sum=0, n=0;
+      let sum=0,n=0;
       for(let i=start;i<start+frame && i<buffer.length;i+=16) {
         let x=0;
         for(let ch=0;ch<channels.length;ch++) x+=channels[ch][i]||0;
         x/=chCount;
-        const hp=x-previousSample;
-        previousSample=x;
-        sum += hp*hp;
+        // One-pole low-pass proxy: emphasize kick/bass instead of hi-hat transients.
+        lp += .24*(x-lp);
+        sum += lp*lp;
         n++;
       }
       energy[f]=Math.sqrt(sum/Math.max(1,n));
+      if((f%160)===159) await yieldUi();
     }
+
     const flux=new Float32Array(count);
     let avg=0;
     for(let i=1;i<count;i++) {
       const d=Math.max(0,energy[i]-energy[i-1]);
-      avg = i===1 ? d : avg*.985 + d*.015;
-      flux[i]=Math.max(0,d-avg*1.10);
+      avg=i===1?d:avg*.985+d*.015;
+      flux[i]=Math.max(0,d-avg*1.05);
     }
     return {flux,fps};
   }
@@ -161,7 +170,7 @@
     finally{try{await ctx.close();}catch(_){}}
   }
 
-  async function fetchArrayBuffer(url, timeout=14000) {
+  async function fetchArrayBuffer(url, timeout=7000) {
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),timeout);
     try {
@@ -188,9 +197,11 @@
       const buffer=await decode(bytes);
       if(state[id].token!==token)return;
       await new Promise(r=>setTimeout(r,0));
-      const peaks=makePeaks(buffer);
-      await new Promise(r=>setTimeout(r,0));
-      const {flux,fps}=onsetEnvelope(buffer);
+      const peaks=await makePeaks(buffer,token,id);
+      state[id].peaks=peaks;
+      state[id].duration=buffer.duration;
+      await yieldUi();
+      const {flux,fps}=await onsetEnvelope(buffer,token,id);
       const bpm=estimateBpm(flux,fps,hintedBpm);
       const phase=estimateAnchor(flux,fps,bpm);
       if(state[id].token!==token)return;
@@ -281,20 +292,18 @@
   }
 
   function drawFallback(id,canvas) {
-    const analyser=window.ARDADJCore?.getAnalyser?.(id);
-    if(!analyser)return;
-    const data=new Uint8Array(analyser.fftSize||2048);
-    analyser.getByteTimeDomainData(data);
+    const d=state[id];
     const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height;
     c.fillStyle='#05080b';c.fillRect(0,0,w,h);
-    c.strokeStyle=COLORS[id];c.lineWidth=1.5;c.beginPath();
-    for(let x=0;x<w;x++) {
-      const idx=Math.floor((x/w)*data.length);
-      const y=(data[idx]/255)*h;
-      if(x===0)c.moveTo(x,y);else c.lineTo(x,y);
-    }
-    c.stroke();
-    c.strokeStyle='rgba(255,255,255,.8)';c.beginPath();c.moveTo(w/2,0);c.lineTo(w/2,h);c.stroke();
+    c.strokeStyle='rgba(255,255,255,.12)';
+    c.beginPath();c.moveTo(0,h/2);c.lineTo(w,h/2);c.stroke();
+    c.fillStyle=d?.failed?'#c98f8f':'#8c96a2';
+    c.font='700 24px system-ui,sans-serif';
+    c.textAlign='center';
+    c.textBaseline='middle';
+    c.fillText(d?.analyzing?'ANALYZING TRACK…':(d?.failed?'WAVEFORM UNAVAILABLE':'LOAD TRACK'),w/2,h/2);
+    c.fillStyle='rgba(255,255,255,.85)';
+    c.fillRect(Math.floor(w*.42),0,2,h);
   }
 
   function drawDeck(id) {

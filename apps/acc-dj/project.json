@@ -1,17 +1,17 @@
 {
   "id": "acc-dj",
   "name": "ARDA DJ",
-  "version": 10,
-  "version_name": "1.5.0",
-  "version_code": 10,
+  "version": 11,
+  "version_name": "1.5.1",
+  "version_code": 11,
   "provider": "manual-wrapper-dj-am-v9",
-  "qc": "real-waveform-beatgrid-sync-pending-build",
+  "qc": "runtime-wave-sync-freeze-fix-pending-build",
   "source_repository": "balinightlife666-web/DJ-AM",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
   "package_id": "com.acc.dj",
-  "last_request_id": "arda-dj-v150-wave-sync-20260919",
-  "last_prompt": "Replace spectrum bars with real decoded audio waveform: scrolling enlarged waveform + full-track overview + beatgrid/playhead. Analyze Drive/local audio offline for BPM and beat phase; use fixed beatgrid for deterministic Beat Sync. Add manual grid nudge/set beat/BPM half-double. Preserve ARDA DJ, Drive, FX, Pads and permanent package.",
+  "last_request_id": "arda-dj-v151-runtime-20260919",
+  "last_prompt": "Fix device QC: keep Library responsive with fail-fast Audius browsing, move waveform/beat analysis into yielding chunks, never fake spectrum as track waveform, bind platter rotation to actual audio play state with visible marker, and simplify Beat Sync to fixed tempo plus occasional phase correction without continuous hunting.",
   "last_build": "pending",
   "created_at": "2026-09-09T12:28:00Z",
-  "updated_at": "2026-09-19T02:05:00+08:00"
+  "updated_at": "2026-09-19T11:52:00+08:00"
 }

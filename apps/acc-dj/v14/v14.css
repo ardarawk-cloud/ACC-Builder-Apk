@@ -105,3 +105,20 @@ body.focus-mode .platter{width:min(31vw,38vh,245px)!important}
   body.focus-mode .deck{grid-template-rows:58px 50px minmax(0,1fr) 52px!important}
   body.focus-mode .platter{width:min(30vw,36vh,210px)!important}
 }
+
+/* ARDA DJ v1.5.1 runtime visibility */
+.record:before{
+  content:"";
+  position:absolute;
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  top:12%;
+  left:50%;
+  transform:translateX(-50%);
+  background:#eef3f7;
+  box-shadow:0 0 0 2px #111,0 0 10px #ffffff66;
+  z-index:4;
+}
+.playing .record{animation:spin 1.8s linear infinite!important}
+.wave{image-rendering:auto}
