@@ -1,8 +1,8 @@
 {
   "project_id": "acc-dj",
   "product_name": "ARDA DJ",
-  "release": "1.5.1",
-  "version_code": 11,
+  "release": "1.6.0",
+  "version_code": 12,
   "package_id": "com.acc.dj",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
   "mode": "permanent-release",
@@ -36,6 +36,12 @@
     "no-fake-spectrum-waveform",
     "audio-state-jog-rotation",
     "visible-platter-marker",
-    "stable-fixed-rate-beat-sync"
+    "stable-fixed-rate-beat-sync",
+    "ghost-dj-mode-control",
+    "professional-controller-polish",
+    "narrow-center-strip",
+    "improved-kick-phase-grid",
+    "filtered-sync-drift",
+    "limited-sync-micronudge"
   ]
 }
