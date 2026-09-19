@@ -2,5 +2,7 @@
   "product": "ARDA DJ QA",
   "release": "1.6.0",
   "package_id": "com.arda.dj.beta",
-  "purpose": "side-by-side physical sync and UI QC"
+  "purpose": "side-by-side physical sync and UI QC",
+  "retry": 2,
+  "requested_at": "2026-09-20T02:24:00+08:00"
 }
