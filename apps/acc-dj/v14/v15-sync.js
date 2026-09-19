@@ -5,6 +5,8 @@
   const mode={A:'BEAT',B:'BEAT'};
   const stable={A:0,B:0};
   const lastHard={A:0,B:0};
+  const driftEma={A:0,B:0};
+  const badTicks={A:0,B:0};
   let master='A';
 
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -102,12 +104,14 @@
     if(!f||!m||!rate){setStatus(id,'GRID');return;}
 
     const pct=(rate-1)*100;
-    if(Math.abs(pct)>15){setStatus(id,'TEMPO');return;}
+    if(Math.abs(pct)>12){setStatus(id,'TEMPO');return;}
     updatePitchUi(id,rate);
 
     if(f.paused||m.paused){
       f.playbackRate=rate;
       stable[id]=0;
+      driftEma[id]=0;
+      badTicks[id]=0;
       setStatus(id,mode[id]==='TEMPO'?'TEMPO':'ARM');
       return;
     }
@@ -119,40 +123,59 @@
     }
 
     if(!gridReady(id)||!gridReady(master)){
-      // Beat Sync never guesses phase. Keep only tempo matched until both grids are valid.
       f.playbackRate=rate;
       stable[id]=0;
+      driftEma[id]=0;
+      badTicks[id]=0;
       setStatus(id,'GRID');
       return;
     }
 
     const e=phaseError(id);
     if(e===null){f.playbackRate=rate;setStatus(id,'GRID');return;}
-    const abs=Math.abs(e),now=performance.now();
 
-    // Stable engine: fixed tempo + occasional phase correction.
-    // No continuous playback-rate hunting.
-    f.playbackRate=rate;
+    const beat=60/Math.max(1,bpm(id));
+    const errorSec=e*beat;
+    driftEma[id]=driftEma[id]*.72+errorSec*.28;
+    const absSec=Math.abs(driftEma[id]);
+    const now=performance.now();
 
     if(force){
       hardAlign(id);
+      f.playbackRate=rate;
+      driftEma[id]=0;
+      badTicks[id]=0;
       setStatus(id,'ALIGN');
       return;
     }
 
-    if(abs>.060 && now-lastHard[id]>1800){
-      hardAlign(id);
-      setStatus(id,'ALIGN');
-      return;
-    }
-
-    if(abs<=.028){
-      stable[id]++;
-      setStatus(id,stable[id]>=3?'LOCK':'ALIGN');
+    // Large, persistent drift gets one phase jump. Small drift is corrected with
+    // a very small temporary rate nudge, then returns to the exact target tempo.
+    if(absSec>.075){
+      badTicks[id]++;
+      if(badTicks[id]>=2 && now-lastHard[id]>1400){
+        hardAlign(id);
+        f.playbackRate=rate;
+        driftEma[id]=0;
+        badTicks[id]=0;
+        setStatus(id,'ALIGN');
+        return;
+      }
     }else{
-      stable[id]=0;
-      setStatus(id,'ALIGN');
+      badTicks[id]=0;
     }
+
+    if(absSec<=.014){
+      f.playbackRate=rate;
+      stable[id]++;
+      setStatus(id,stable[id]>=4?'LOCK':'ALIGN');
+      return;
+    }
+
+    stable[id]=0;
+    const nudge=clamp(-driftEma[id]/10,-.0025,.0025);
+    f.playbackRate=rate*(1+nudge);
+    setStatus(id,'ALIGN');
   }
 
   function toggle(id,event){
@@ -169,6 +192,8 @@
     linked[id]=!linked[id];
     stable[id]=0;
     lastHard[id]=0;
+    driftEma[id]=0;
+    badTicks[id]=0;
     if(!linked[id]){
       const r=nominalRate(id);
       if(r)audio(id).playbackRate=r;
@@ -217,7 +242,7 @@
     if(master===id&&linked[other]&&mode[other]==='BEAT')align(other,true);
   });
 
-  setInterval(()=>{align('A');align('B');},360);
+  setInterval(()=>{align('A');align('B');},220);
 
   window.ARDADJSync={
     setMaster,toggle,setMode,getMode:(id)=>mode[id],linked,gridReady,getMaster:()=>master,align
