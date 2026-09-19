@@ -1,4 +1,4 @@
-name: Build ARDA DJ v1.5.0 Permanent
+name: Build ARDA DJ v1.5.1 Permanent
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Build ARDA DJ v1.5.0 unsigned release
+      - name: Build ARDA DJ v1.5.1 unsigned release
         shell: bash
         run: |
           set -euo pipefail
@@ -93,7 +93,7 @@ jobs:
           cat > package.json <<'JSON'
           {
             "name":"arda-dj-release",
-            "version":"1.5.0",
+            "version":"1.5.1",
             "private":true,
             "dependencies":{"@capacitor/core":"^7.0.0","@capacitor/android":"^7.0.0"},
             "devDependencies":{"@capacitor/cli":"^7.0.0"}
@@ -173,8 +173,8 @@ jobs:
           import re
           p=Path('android/app/build.gradle')
           s=p.read_text()
-          s=re.sub(r'versionCode\s+\d+', 'versionCode 10', s, count=1)
-          s=re.sub(r'versionName\s+["\'][^"\']+["\']', 'versionName "1.5.0"', s, count=1)
+          s=re.sub(r'versionCode\s+\d+', 'versionCode 11', s, count=1)
+          s=re.sub(r'versionName\s+["\'][^"\']+["\']', 'versionName "1.5.1"', s, count=1)
           if 'applicationId "com.acc.dj"' not in s and "applicationId 'com.acc.dj'" not in s:
               raise SystemExit('Package drift: expected com.acc.dj')
           p.write_text(s)
@@ -190,14 +190,14 @@ jobs:
           ./gradlew assembleRelease bundleRelease --stacktrace
 
           mkdir -p "$GITHUB_WORKSPACE/dist-arda-dj"
-          cp app/build/outputs/apk/release/app-release-unsigned.apk "$GITHUB_WORKSPACE/dist-arda-dj/ARDA-DJ-1.5.0-unsigned.apk"
-          cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/dist-arda-dj/ARDA-DJ-1.5.0-unsigned.aab"
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "$GITHUB_WORKSPACE/dist-arda-dj/ARDA-DJ-1.5.1-unsigned.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/dist-arda-dj/ARDA-DJ-1.5.1-unsigned.aab"
           cd "$GITHUB_WORKSPACE"
           sha256sum dist-arda-dj/* > dist-arda-dj/SHA256SUMS.txt
 
       - name: Upload unsigned release
         uses: actions/upload-artifact@v4
         with:
-          name: ARDA-DJ-1.5.0-UNSIGNED
+          name: ARDA-DJ-1.5.1-UNSIGNED
           path: dist-arda-dj/
           retention-days: 3
