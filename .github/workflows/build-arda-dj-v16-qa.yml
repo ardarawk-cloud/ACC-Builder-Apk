@@ -189,7 +189,7 @@ jobs:
           ./gradlew assembleDebug --stacktrace
 
           mkdir -p "$GITHUB_WORKSPACE/dist-arda-dj"
-          cp app/build/outputs/apk/release/app-release-unsigned.apk "$GITHUB_WORKSPACE/dist-arda-dj/ARDA-DJ-1.6.0-unsigned.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/dist-arda-dj/ARDA-DJ-1.6.0-QA.apk"
           cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/dist-arda-dj/ARDA-DJ-1.6.0-unsigned.aab"
           cd "$GITHUB_WORKSPACE"
           sha256sum dist-arda-dj/* > dist-arda-dj/SHA256SUMS.txt
