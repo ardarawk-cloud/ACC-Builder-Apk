@@ -677,11 +677,13 @@
     if (!state.audioReady) return;
     ['A', 'B'].forEach(id => {
       const deck = state.decks[id];
-      maintainSync(id);
+      // v1.5+ owns sync and beatgrid. Keep the legacy engine completely dormant
+      // so two sync loops cannot fight over playbackRate / phase.
+      if (!window.ARDADJSync) maintainSync(id);
       const analyser = deck.analyser;
       const data = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(data);
-      observeBeat(id, data);
+      if (!window.ARDADJAnalysis) observeBeat(id, data);
       if (!window.ARDADJAnalysis?.ownsWaveform) {
         const canvas = $(`wave${id}`);
         const c = canvas.getContext('2d');
@@ -766,11 +768,18 @@
     $('djModeBtn').addEventListener('click', toggleDjMode);
     syncDjModeButton();
     document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement && document.body.classList.contains('focus-mode')) {
-        document.body.classList.remove('focus-mode');
-        state.focusMode = false;
-      }
+      // Android's file picker can temporarily drop DOM fullscreen. Do not leave
+      // DJ layout just because a song was selected outside the WebView.
+      document.body.classList.toggle('focus-mode', !!state.focusMode);
       syncDjModeButton();
+    });
+    const restoreDjMode = () => {
+      if (state.focusMode) document.body.classList.add('focus-mode');
+      syncDjModeButton();
+    };
+    window.addEventListener('focus', restoreDjMode);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) restoreDjMode();
     });
     $('installBtn').addEventListener('click', installPwa);
     if (!isStandalone()) $('installBtn').hidden = false;

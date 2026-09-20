@@ -223,8 +223,11 @@
       const bpm=estimateBpm(flux,fps,hintedBpm);
       const phase=estimateAnchor(flux,fps,bpm);
       if(state[id].token!==token)return;
+      const usableGrid=!!(bpm && Number.isFinite(phase.anchor) && phase.confidence>1.00);
+      const trustedGrid=!!(usableGrid && phase.confidence>=1.08);
       Object.assign(state[id],{
-        ready:!!(bpm && phase.confidence>1.08),
+        ready:usableGrid,
+        trusted:trustedGrid,
         analyzing:false,
         failed:false,
         peaks,
@@ -234,7 +237,7 @@
         confidence:phase.confidence
       });
       if(bpm)setBpmUi(id,bpm);
-      setGridUi(id,state[id].ready?'GRID ✓':'GRID ?',state[id].ready);
+      setGridUi(id,usableGrid?(trustedGrid?'GRID ✓':'GRID AUTO'):'GRID ?',usableGrid);
       window.dispatchEvent(new CustomEvent('arda-analysis-ready',{detail:{id,analysis:{...state[id],peaks:null}}}));
     } catch(err) {
       console.warn('ARDA DJ offline analysis failed',id,err);
