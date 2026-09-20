@@ -5,11 +5,12 @@
     A: fresh(),
     B: fresh()
   };
+  let pausedForLibrary = false;
   const COLORS = { A:'#42b9ff', B:'#ffad4a' };
   function fresh() {
     return {
       ready:false, analyzing:false, failed:false, peaks:null, duration:0,
-      bpm:0, anchor:0, confidence:0, source:'', token:0
+      bpm:0, anchor:0, confidence:0, source:'', token:0, lastPayload:null
     };
   }
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -203,8 +204,14 @@
   async function analyze(id, payload) {
     const hintedBpm=Number(payload?.track?.bpm)||0;
     const token=reset(id,hintedBpm);
-    state[id].analyzing=true;
+    state[id].lastPayload=payload||null;
     state[id].source=payload?.file?'local':'stream';
+    if(pausedForLibrary){
+      state[id].analyzing=false;
+      setGridUi(id,hintedBpm?'GRID WAIT':'ANALYZE');
+      return;
+    }
+    state[id].analyzing=true;
     try {
       let bytes;
       if(payload?.file) bytes=await payload.file.arrayBuffer();
@@ -365,6 +372,28 @@
   }
   requestAnimationFrame(loop);
 
+  function pauseForLibrary() {
+    pausedForLibrary=true;
+    ['A','B'].forEach(id=>{
+      if(state[id]?.analyzing){
+        state[id].token++;
+        state[id].analyzing=false;
+        setGridUi(id,state[id].bpm?'GRID WAIT':'ANALYZE');
+      }
+    });
+  }
+
+  function resumeAfterLibrary() {
+    pausedForLibrary=false;
+    ['A','B'].forEach(id=>{
+      const d=state[id];
+      if(d?.lastPayload && !d.ready && !d.analyzing){
+        const payload=d.lastPayload;
+        setTimeout(()=>analyze(id,payload),220);
+      }
+    });
+  }
+
   window.addEventListener('arda-track-loaded',(e)=>{
     const id=e.detail?.id;
     if(!['A','B'].includes(id))return;
@@ -372,6 +401,7 @@
   });
 
   window.ARDADJAnalysis={
-    ownsWaveform:true,get,getBpm,getAnchor,gridReady,nudge,setBeatHere,scaleBpm,analyze
+    ownsWaveform:true,get,getBpm,getAnchor,gridReady,nudge,setBeatHere,scaleBpm,analyze,
+    pauseForLibrary,resumeAfterLibrary
   };
 })();
