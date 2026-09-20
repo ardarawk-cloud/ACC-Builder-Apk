@@ -1,8 +1,8 @@
 {
   "project_id": "acc-dj",
   "product_name": "ARDA DJ",
-  "release": "1.6.1",
-  "version_code": 13,
+  "release": "1.6.2",
+  "version_code": 14,
   "package_id": "com.acc.dj",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
   "mode": "permanent-release",
@@ -47,6 +47,11 @@
     "legacy-sync-disabled",
     "usable-grid-auto",
     "dj-mode-persist-after-file-picker",
-    "focus-layout-persist-after-load"
+    "focus-layout-persist-after-load",
+    "multisong-lazy-library",
+    "drive-render-batching",
+    "drive-library-pagination",
+    "analysis-pause-during-library",
+    "analysis-resume-after-library"
   ]
 }
