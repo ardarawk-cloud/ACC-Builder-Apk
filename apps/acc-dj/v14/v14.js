@@ -13,15 +13,18 @@
   const fxState={A:{type:null,amount:.45},B:{type:null,amount:.45}};
 
   function closePanels(){
+    const driveWasOpen = $('drivePopup') && !$('drivePopup').hidden;
     panels.forEach(id=>{
       const p=$(id); if(!p)return;
       if(id==='musicDrawer'){p.classList.remove('open');p.setAttribute('aria-hidden','true');}
       else p.hidden=true;
     });
     if(backdrop)backdrop.hidden=true;
+    if(driveWasOpen) window.ARDADJAnalysis?.resumeAfterLibrary?.();
   }
 
   function openPanel(id){
+    if(id==='drivePopup') window.ARDADJAnalysis?.pauseForLibrary?.();
     panels.forEach(pid=>{
       if(pid===id)return;
       const p=$(pid);if(!p)return;
@@ -123,36 +126,103 @@
     $(`audio${id}`)?.addEventListener('loadedmetadata',()=>{cuePoints[id]=0;hotCues[id]=[null,null,null,null];beatLoops[id]=null;rolls[id]=null;updateCue(id);});
   });
 
-  $('drivePickerBtn')?.addEventListener('click',()=>$('driveInput')?.click());
+  $('drivePickerBtn')?.addEventListener('click',()=>{
+    window.ARDADJAnalysis?.pauseForLibrary?.();
+    requestAnimationFrame(()=>$('driveInput')?.click());
+  });
   const nice=n=>String(n||'Local Track').replace(/\.[^.]+$/,'').replace(/_/g,' ');
   const size=n=>n<1048576?`${Math.max(1,Math.round(n/1024))} KB`:`${(n/1048576).toFixed(1)} MB`;
   function renderFiles(files){
     const list=$('driveList'),status=$('driveStatus');if(!list||!status)return;
+    const PAGE=24;
+    const CHUNK=6;
+    const generation=(renderFiles.generation=(renderFiles.generation||0)+1);
+    let shown=0;
     list.innerHTML='';
-    if(!files.length){status.textContent='Tidak ada file audio dipilih.';list.innerHTML='<div class="empty-state">Pilih MP3 / M4A / AAC / WAV / FLAC / OGG.</div>';return;}
-    status.textContent=`${files.length} lagu siap${targetDeck?` → Deck ${targetDeck}`:''}.`;
-    files.forEach(file=>{
+
+    if(!files.length){
+      status.textContent='Tidak ada file audio dipilih.';
+      list.innerHTML='<div class="empty-state">Pilih MP3 / M4A / AAC / WAV / FLAC / OGG.</div>';
+      return;
+    }
+
+    status.textContent=`${files.length} lagu siap${targetDeck?` → Deck ${targetDeck}`:''}. Menampilkan bertahap agar tetap ringan.`;
+
+    function makeRow(file){
       const row=document.createElement('div');row.className='drive-track';
       const meta=document.createElement('div');meta.innerHTML='<b></b><span></span>';
       meta.querySelector('b').textContent=nice(file.name);
       meta.querySelector('span').textContent=`${file.type||'audio'} • ${size(file.size)}`;
       const acts=document.createElement('div');acts.className='drive-load';
       const decks=targetDeck?[targetDeck]:['A','B'];
+
       decks.forEach(id=>{
         const b=document.createElement('button');b.textContent=`LOAD ${id}`;
         b.addEventListener('click',async()=>{
+          if(b.disabled)return;
+          b.disabled=true;
           try{
             status.textContent=`Loading ${file.name} → Deck ${id}…`;
             await window.ARDADJCore?.loadLocal?.(id,file);
             cuePoints[id]=0;hotCues[id]=[null,null,null,null];beatLoops[id]=null;rolls[id]=null;updateCue(id);
             status.textContent=`${file.name} → Deck ${id} siap.`;
             setTargetDeck(null);closePanels();
-          }catch(err){console.error(err);status.textContent=`Gagal membuka ${file.name}.`;}
+          }catch(err){
+            console.error(err);
+            status.textContent=`Gagal membuka ${file.name}.`;
+            b.disabled=false;
+          }
         });
         acts.appendChild(b);
       });
-      row.append(meta,acts);list.appendChild(row);
-    });
+
+      row.append(meta,acts);
+      return row;
+    }
+
+    function removeMoreButton(){
+      list.querySelector('.drive-more-btn')?.remove();
+    }
+
+    function addMoreButton(){
+      removeMoreButton();
+      if(shown>=files.length)return;
+      const more=document.createElement('button');
+      more.className='drive-more-btn';
+      more.type='button';
+      more.textContent=`TAMPILKAN ${Math.min(PAGE,files.length-shown)} LAGU BERIKUTNYA • ${shown}/${files.length}`;
+      more.addEventListener('click',()=>{
+        more.remove();
+        renderPage();
+      },{once:true});
+      list.appendChild(more);
+    }
+
+    function renderPage(){
+      if(generation!==renderFiles.generation)return;
+      const target=Math.min(files.length,shown+PAGE);
+
+      function appendChunk(){
+        if(generation!==renderFiles.generation)return;
+        const stop=Math.min(target,shown+CHUNK);
+        const frag=document.createDocumentFragment();
+        while(shown<stop){
+          frag.appendChild(makeRow(files[shown]));
+          shown++;
+        }
+        list.appendChild(frag);
+        if(shown<target){
+          requestAnimationFrame(appendChunk);
+        }else{
+          status.textContent=`${files.length} lagu dipilih • ${shown} ditampilkan${targetDeck?` • target Deck ${targetDeck}`:''}.`;
+          addMoreButton();
+        }
+      }
+
+      requestAnimationFrame(appendChunk);
+    }
+
+    renderPage();
   }
   $('driveInput')?.addEventListener('change',e=>renderFiles(Array.from(e.target.files||[])));
 
