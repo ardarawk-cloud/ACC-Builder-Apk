@@ -86,6 +86,21 @@
     if(l)l.textContent=`${pct>=0?'+':''}${pct.toFixed(1)}%`;
   }
 
+  function updateSyncBpmUi(id){
+    const el=$(`bpm${id}`);
+    if(!el)return;
+    const a=audio(id);
+    const base=bpm(id);
+    if(!a||!base)return;
+    if(linked[id] && id!==master){
+      const m=audio(master);
+      const target=bpm(master)*(m?.playbackRate||1);
+      if(target>0) el.textContent=`BPM ${target.toFixed(1)}`;
+      return;
+    }
+    el.textContent=`BPM ${(base*(a.playbackRate||1)).toFixed(1)}`;
+  }
+
   function hardAlign(id){
     const f=audio(id),base=bpm(id),e=phaseError(id);
     if(!f||!base||e===null)return false;
@@ -106,6 +121,7 @@
     const pct=(rate-1)*100;
     if(Math.abs(pct)>12){setStatus(id,'TEMPO');return;}
     updatePitchUi(id,rate);
+    updateSyncBpmUi(id);
 
     if(f.paused||m.paused){
       f.playbackRate=rate;
@@ -198,10 +214,12 @@
       const r=nominalRate(id);
       if(r)audio(id).playbackRate=r;
       setStatus(id,'FREE');
+      updateSyncBpmUi(id);
       return;
     }
     const r=nominalRate(id);
     if(r){audio(id).playbackRate=r;updatePitchUi(id,r);}
+    updateSyncBpmUi(id);
     setStatus(id,mode[id]==='TEMPO'?'TEMPO':(gridReady(id)&&gridReady(master)?'ALIGN':'GRID'));
     if(mode[id]==='BEAT'&&gridReady(id)&&gridReady(master)&&!audio(id).paused&&!audio(master).paused)align(id,true);
   }
@@ -242,7 +260,10 @@
     if(master===id&&linked[other]&&mode[other]==='BEAT')align(other,true);
   });
 
-  setInterval(()=>{align('A');align('B');},220);
+  setInterval(()=>{
+    align('A');align('B');
+    updateSyncBpmUi('A');updateSyncBpmUi('B');
+  },220);
 
   window.ARDADJSync={
     setMaster,toggle,setMode,getMode:(id)=>mode[id],linked,gridReady,getMaster:()=>master,align
