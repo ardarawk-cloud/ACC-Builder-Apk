@@ -5,13 +5,13 @@
   "version_name": "1.6.1",
   "version_code": 13,
   "provider": "manual-wrapper-dj-am-v9",
-  "qc": "sync-effective-bpm-focus-pending-build",
+  "qc": "v1.6.1-build-pass-runtime-pending",
   "source_repository": "balinightlife666-web/DJ-AM",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
   "package_id": "com.acc.dj",
   "last_request_id": "arda-dj-v161-sync-display-focus-20260920",
   "last_prompt": "Fix real-device QC: synced follower BPM display must show effective/master BPM, legacy sync/beat observer must not fight v1.5 engine, low-confidence analyzed grids become usable GRID AUTO, and DJ mode must stay full-size after Android file picker/song load.",
-  "last_build": "pending",
+  "last_build": "PASS — GitHub Actions run 35506143704; permanent APK/AAB signed and verified locally",
   "created_at": "2026-09-09T12:28:00Z",
-  "updated_at": "2026-09-20T18:45:00+08:00"
+  "updated_at": "2026-09-20T18:55:00+08:00"
 }
