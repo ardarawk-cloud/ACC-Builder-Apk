@@ -290,3 +290,21 @@ body.focus-mode .backdrop{inset:0!important}
   .play-btn{width:46px!important;height:46px!important}
   body.focus-mode .controller{grid-template-columns:minmax(0,1fr) 60px minmax(0,1fr)!important}
 }
+
+/* ARDA DJ v1.6.2 — multi-song library virtualization */
+.drive-list{contain:content}
+.drive-track{content-visibility:auto;contain-intrinsic-size:72px}
+.drive-more-btn{
+  width:100%;
+  min-height:42px;
+  margin:8px 0 2px;
+  border:1px solid #33404c;
+  border-radius:9px;
+  background:#10161c;
+  color:#9fdcff;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.04em;
+}
+.drive-more-btn:active{background:#16202a}
+.drive-load button:disabled{opacity:.45;pointer-events:none}
