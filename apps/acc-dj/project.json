@@ -5,13 +5,13 @@
   "version_name": "1.6.0",
   "version_code": 12,
   "provider": "manual-wrapper-dj-am-v9",
-  "qc": "pro-polish-sync-v160-pending-build",
+  "qc": "v1.6.0-build-pass-runtime-pending",
   "source_repository": "balinightlife666-web/DJ-AM",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
   "package_id": "com.acc.dj",
   "last_request_id": "arda-dj-v160-pro-sync-20260920",
   "last_prompt": "Professional DJ polish: unobtrusive icon-only DJ mode/exit control, cleaner deck hierarchy and transport styling, narrower center strip, improved low-frequency beat phase detection, and stabilized Beat Sync with filtered drift correction plus limited micro-nudge/hard-align behavior.",
-  "last_build": "pending",
+  "last_build": "PASS — GitHub Actions run 35460396017; permanent APK/AAB signed and verified locally",
   "created_at": "2026-09-09T12:28:00Z",
-  "updated_at": "2026-09-20T02:12:00+08:00"
+  "updated_at": "2026-09-20T18:30:00+08:00"
 }
