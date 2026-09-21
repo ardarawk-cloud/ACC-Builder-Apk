@@ -1,0 +1,81 @@
+name: PSL v17 HB Inflow Tracking
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-v17-hb-inflow-trigger/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply v17 HB inflow patch
+        run: python3 scripts/psl_v17_hb_inflow_tracking.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V17_HB_INFLOW_TRACKING' "$F"
+          grep -q 'Total HB Masuk' "$F"
+          grep -q "type==='hb_add'" "$F"
+          grep -q 'PSL_V16_OUTLET_STOCKOUT' "$F"
+          grep -q 'PSL_V15_COMPLETE_REPORTS' "$F"
+          grep -q 'PSL_V13_CLOSED_STOCKOUT_CORRECTION' "$F"
+          grep -q 'PSL_V11_SMART_SALE_PREMIUM' "$F"
+          grep -q 'PSL_V10_TRANSACTION_EDIT' "$F"
+          grep -q 'PSL_V5_BACKDATE_HB_PATCH' "$F"
+          grep -q 'MutationObserver' "$F" && { echo 'Unsafe observer found'; exit 1; } || true
+          test "$(head -c 15 "$F")" = '<!DOCTYPE html>'
+          tail -n 8 "$F" | grep -q '</html>'
+
+      - name: Bump v17 metadata and stable request
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          p=Path('apps/papa-sauce-lab/project.json')
+          m=json.loads(p.read_text())
+          m['version']=17
+          m['provider']='manual-hotfix'
+          m['model']='none'
+          m['qc']='passed'
+          m['last_request_id']='papa-sauce-lab-hb-inflow-v17-20260921'
+          m['last_prompt']='Track Total HB Masuk as ACTIVE hb_add only, excluding HB Awal and rollover to avoid double counting; show daily dashboard card plus daily/weekly/monthly/all-data report totals and drilldown.'
+          m['last_build']='pending'
+          m['updated_at']=datetime.now(timezone.utc).isoformat()
+          p.write_text(json.dumps(m,indent=2,ensure_ascii=False)+'\n')
+          r=Path('psl-build-requests/v17-hb-inflow-20260921.json')
+          r.parent.mkdir(exist_ok=True)
+          r.write_text(json.dumps({
+            'request_id':'papa-sauce-lab-stable-v17-hb-inflow-20260921',
+            'project_id':'papa-sauce-lab',
+            'version':17,
+            'mode':'stable_signed_update',
+            'reason':'Build stable v17 with Total HB Masuk tracking and report drilldown'
+          },indent=2)+'\n')
+          PY
+
+      - name: Commit v17 patch and trigger stable build
+        shell: bash
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json psl-build-requests/v17-hb-inflow-20260921.json
+          git commit -m "PSL v17: track HB inflow totals" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
