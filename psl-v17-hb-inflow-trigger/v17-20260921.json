@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-hb-inflow-v17-20260921",
+  "project_id": "papa-sauce-lab",
+  "version": 17,
+  "mode": "patch_then_stable_signed_update",
+  "reason": "Track total Tambah HB as HB Masuk without counting rollover twice"
+}
