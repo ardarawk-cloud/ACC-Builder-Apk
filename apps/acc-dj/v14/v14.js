@@ -274,6 +274,25 @@
   document.querySelectorAll('[data-grid-nudge]').forEach(b=>b.addEventListener('click',()=>{
     window.ARDADJAnalysis?.nudge?.(performanceDeck,Number(b.dataset.gridNudge));
   }));
+  document.querySelector('[data-grid-analyze]')?.addEventListener('click',async(e)=>{
+    const btn=e.currentTarget;
+    if(btn.disabled)return;
+    btn.disabled=true;
+    const original=btn.textContent;
+    btn.textContent='ANALYZING…';
+    try{
+      const ok=await window.ARDADJAnalysis?.requestAnalyze?.(performanceDeck);
+      btn.textContent=ok?'ANALYZED ✓':original;
+      if(ok)setTimeout(()=>{btn.textContent=original;},900);
+      else setTimeout(()=>{btn.textContent=original;},500);
+    }catch(err){
+      console.error(err);
+      btn.textContent='ANALYZE FAILED';
+      setTimeout(()=>{btn.textContent=original;},1000);
+    }finally{
+      btn.disabled=false;
+    }
+  });
   document.querySelector('[data-grid-set]')?.addEventListener('click',()=>{
     window.ARDADJAnalysis?.setBeatHere?.(performanceDeck);
   });
@@ -318,14 +337,17 @@
   });
 
   function performanceLoop(){
-    ['A','B'].forEach(id=>{
-      const a=$(`audio${id}`);if(!a||a.paused)return;
-      const r=rolls[id];
-      if(r && a.currentTime>=r.end-.008){try{a.currentTime=r.start;}catch(_){}return;}
-      const l=beatLoops[id];
-      if(l && a.currentTime>=l.end-.008){try{a.currentTime=l.start;}catch(_){}}
-    });
-    requestAnimationFrame(performanceLoop);
+    const active=!!(rolls.A||rolls.B||beatLoops.A||beatLoops.B);
+    if(active){
+      ['A','B'].forEach(id=>{
+        const a=$(`audio${id}`);if(!a||a.paused)return;
+        const r=rolls[id];
+        if(r && a.currentTime>=r.end-.008){try{a.currentTime=r.start;}catch(_){}return;}
+        const l=beatLoops[id];
+        if(l && a.currentTime>=l.end-.008){try{a.currentTime=l.start;}catch(_){}}
+      });
+    }
+    setTimeout(()=>requestAnimationFrame(performanceLoop),active?8:80);
   }
   requestAnimationFrame(performanceLoop);
 
