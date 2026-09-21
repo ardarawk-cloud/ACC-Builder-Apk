@@ -6,6 +6,8 @@
     B: fresh()
   };
   let pausedForLibrary = false;
+  let activeAnalysis = null;
+  let renderStamp = 0;
   const COLORS = { A:'#42b9ff', B:'#ffad4a' };
   function fresh() {
     return {
@@ -329,7 +331,7 @@
     c.font='700 24px system-ui,sans-serif';
     c.textAlign='center';
     c.textBaseline='middle';
-    c.fillText(d?.analyzing?'ANALYZING TRACK…':(d?.failed?'WAVEFORM UNAVAILABLE':'LOAD TRACK'),w/2,h/2);
+    c.fillText(d?.analyzing?'ANALYZING TRACK…':(d?.failed?'WAVEFORM UNAVAILABLE':(d?.lastPayload?'PADS → ANALYZE':'LOAD TRACK')),w/2,h/2);
     c.fillStyle='rgba(255,255,255,.85)';
     c.fillRect(Math.floor(w*.42),0,2,h);
   }
@@ -366,14 +368,18 @@
     }
   }
 
-  function loop(){
-    drawDeck('A');drawDeck('B');
+  function loop(ts){
     requestAnimationFrame(loop);
+    if(document.hidden)return;
+    if(ts-renderStamp<42)return;
+    renderStamp=ts;
+    drawDeck('A');drawDeck('B');
   }
   requestAnimationFrame(loop);
 
   function pauseForLibrary() {
     pausedForLibrary=true;
+    activeAnalysis=null;
     ['A','B'].forEach(id=>{
       if(state[id]?.analyzing){
         state[id].token++;
@@ -385,23 +391,52 @@
 
   function resumeAfterLibrary() {
     pausedForLibrary=false;
-    ['A','B'].forEach(id=>{
-      const d=state[id];
-      if(d?.lastPayload && !d.ready && !d.analyzing){
-        const payload=d.lastPayload;
-        setTimeout(()=>analyze(id,payload),220);
-      }
-    });
+  }
+
+  function registerTrack(id,payload){
+    const hintedBpm=Number(payload?.track?.bpm)||0;
+    reset(id,hintedBpm);
+    state[id].lastPayload=payload||null;
+    state[id].source=payload?.file?'local':'stream';
+    state[id].analyzing=false;
+    state[id].failed=false;
+    setGridUi(id,'ANALYZE');
+  }
+
+  async function requestAnalyze(id){
+    if(!['A','B'].includes(id))return false;
+    const d=state[id];
+    if(!d?.lastPayload || d.analyzing)return false;
+    const a=$(`audio${id}`);
+    if(a && !a.paused){
+      setGridUi(id,'PAUSE → ANALYZE');
+      return false;
+    }
+    if(pausedForLibrary){
+      setGridUi(id,'ANALYZE');
+      return false;
+    }
+    if(activeAnalysis && activeAnalysis!==id){
+      setGridUi(id,'WAIT');
+      return false;
+    }
+    activeAnalysis=id;
+    try{
+      await analyze(id,d.lastPayload);
+      return !!state[id].ready;
+    }finally{
+      if(activeAnalysis===id)activeAnalysis=null;
+    }
   }
 
   window.addEventListener('arda-track-loaded',(e)=>{
     const id=e.detail?.id;
     if(!['A','B'].includes(id))return;
-    analyze(id,e.detail);
+    registerTrack(id,e.detail);
   });
 
   window.ARDADJAnalysis={
-    ownsWaveform:true,get,getBpm,getAnchor,gridReady,nudge,setBeatHere,scaleBpm,analyze,
+    ownsWaveform:true,get,getBpm,getAnchor,gridReady,nudge,setBeatHere,scaleBpm,analyze,requestAnalyze,
     pauseForLibrary,resumeAfterLibrary
   };
 })();
