@@ -3,9 +3,9 @@
   "product_name": "ARDA DJ",
   "release": "1.6.2",
   "version_code": 14,
-  "package_id": "com.acc.dj",
+  "package_id": "com.arda.dj",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
-  "mode": "permanent-release",
+  "mode": "new-permanent-signing-baseline",
   "features": [
     "rebrand-arda-dj",
     "cover-tap-library-per-deck",
@@ -52,6 +52,8 @@
     "drive-render-batching",
     "drive-library-pagination",
     "analysis-pause-during-library",
-    "analysis-resume-after-library"
+    "analysis-resume-after-library",
+    "new-permanent-package-com-arda-dj",
+    "new-permanent-signing-baseline"
   ]
 }
