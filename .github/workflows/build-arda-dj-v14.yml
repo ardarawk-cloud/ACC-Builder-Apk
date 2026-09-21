@@ -101,7 +101,7 @@ jobs:
           JSON
           cat > capacitor.config.json <<'JSON'
           {
-            "appId":"com.acc.dj",
+            "appId":"com.arda.dj",
             "appName":"ARDA DJ",
             "webDir":"www",
             "server":{"androidScheme":"https"}
@@ -113,9 +113,9 @@ jobs:
           npx cap sync android
 
           # Native DJ MODE bridge: hide Android status/navigation bars only while focus-mode is active.
-          MAIN_ACTIVITY="$BUILD_DIR/android/app/src/main/java/com/acc/dj/MainActivity.java"
+          MAIN_ACTIVITY="$BUILD_DIR/android/app/src/main/java/com/arda/dj/MainActivity.java"
           cat > "$MAIN_ACTIVITY" <<'JAVA'
-          package com.acc.dj;
+          package com.arda.dj;
 
           import android.os.Bundle;
           import android.view.View;
@@ -175,8 +175,8 @@ jobs:
           s=p.read_text()
           s=re.sub(r'versionCode\s+\d+', 'versionCode 14', s, count=1)
           s=re.sub(r'versionName\s+["\'][^"\']+["\']', 'versionName "1.6.2"', s, count=1)
-          if 'applicationId "com.acc.dj"' not in s and "applicationId 'com.acc.dj'" not in s:
-              raise SystemExit('Package drift: expected com.acc.dj')
+          if 'applicationId "com.arda.dj"' not in s and "applicationId 'com.arda.dj'" not in s:
+              raise SystemExit('Package drift: expected com.arda.dj')
           p.write_text(s)
           m=Path('android/app/src/main/AndroidManifest.xml')
           x=m.read_text()
