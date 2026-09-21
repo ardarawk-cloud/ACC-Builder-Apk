@@ -5,13 +5,13 @@
   "version_name": "1.6.2",
   "version_code": 14,
   "provider": "manual-wrapper-dj-am-v9",
-  "qc": "v1.6.2-unsigned-build-pass-signing-pending",
+  "qc": "new-permanent-signing-baseline-pending-build",
   "source_repository": "balinightlife666-web/DJ-AM",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
-  "package_id": "com.acc.dj",
-  "last_request_id": "arda-dj-v162-multisong-freeze-20260921",
-  "last_prompt": "Fix Android multi-song Drive freeze: pause expensive waveform/beatgrid analysis while Drive library is open, lazy-render selected files in small animation-frame chunks, show only 24 rows per page with explicit more button, and resume analysis after leaving the library.",
-  "last_build": "PASS — GitHub Actions run 35524726514 unsigned APK/AAB; permanent signing pending because existing signing backup is encrypted",
+  "package_id": "com.arda.dj",
+  "last_request_id": "arda-dj-v162-new-signing-baseline-20260921",
+  "last_prompt": "Establish new permanent ARDA DJ signing baseline after old signing backup password was lost. Change Android package to com.arda.dj, keep v1.6.2 runtime fixes, and sign with a new backed-up permanent keystore.",
+  "last_build": "pending",
   "created_at": "2026-09-09T12:28:00Z",
-  "updated_at": "2026-09-21T01:15:00+08:00"
+  "updated_at": "2026-09-21T10:48:00+08:00"
 }
