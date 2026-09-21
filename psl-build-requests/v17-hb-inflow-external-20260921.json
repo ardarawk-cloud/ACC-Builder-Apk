@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-stable-v17-hb-inflow-external-20260921",
+  "project_id": "papa-sauce-lab",
+  "version": 17,
+  "mode": "stable_signed_update",
+  "reason": "External trigger for stable v17 HB inflow tracking build"
+}
