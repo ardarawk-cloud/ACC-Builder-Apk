@@ -308,3 +308,17 @@ body.focus-mode .backdrop{inset:0!important}
 }
 .drive-more-btn:active{background:#16202a}
 .drive-load button:disabled{opacity:.45;pointer-events:none}
+
+/* ARDA DJ v1.6.3 — stability mode */
+.performance-pads.grid-edit{grid-template-columns:repeat(3,1fr)}
+.performance-pads.grid-edit .analyze-pad{
+  grid-column:1 / -1;
+  min-height:42px;
+  border-color:#2b6e91;
+  color:#8edcff;
+  background:#0d1820;
+}
+.performance-pads.grid-edit .analyze-pad:disabled{
+  opacity:.55;
+  pointer-events:none;
+}
