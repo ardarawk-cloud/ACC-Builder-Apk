@@ -5,15 +5,15 @@
   "version_name": "1.6.3",
   "version_code": 15,
   "provider": "manual-wrapper-dj-am-v9",
-  "qc": "stability-mode-manual-analysis-pending-build",
+  "qc": "v1.6.3-stability-mode-signed-pass",
   "source_repository": "balinightlife666-web/DJ-AM",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
   "package_id": "com.arda.dj",
   "last_request_id": "arda-dj-v163-stability-mode-20260921",
   "last_prompt": "Eliminate intermittent Android WebView freezes: disable automatic waveform/beatgrid analysis on track load, add manual ANALYZE TRACK action, run only one analysis at a time while decks are paused, stop auto-resume after library, throttle waveform/core rendering, reuse analyser buffers, and reduce idle performance-loop load.",
-  "last_build": "pending",
+  "last_build": "PASS — GitHub Actions run 35556621462; signed with permanent com.arda.dj baseline; APK v1/v2/v3 verified; AAB jarsigner verified",
   "created_at": "2026-09-09T12:28:00Z",
-  "updated_at": "2026-09-21T10:58:00+08:00",
+  "updated_at": "2026-09-21T11:20:00+08:00",
   "signing_baseline": {
     "established_at": "2026-09-21T10:52:00+08:00",
     "package_id": "com.arda.dj",
@@ -21,5 +21,11 @@
     "cert_sha256": "945ea95032f9f164b5d823a0da8994433ed0b0fd8a8a658e295af3bd74a9f768",
     "keystore_backup": "ChatGPT Library /APK-SIGNING/ARDA-DJ/ARDA-DJ-PERMANENT-SIGNING-BACKUP.zip",
     "credentials_backup": "ChatGPT Library /APK-SIGNING/ARDA-DJ/ARDA-DJ-SIGNING-CREDENTIALS.txt"
+  },
+  "latest_artifacts": {
+    "apk": "ARDA-DJ-1.6.3-PERMANENT.apk",
+    "aab": "ARDA-DJ-1.6.3-PLAYSTORE.aab",
+    "apk_sha256": "bc72a39ee703ef90f3d7e189d5d83701ca14a765cc3046d794be3c2d0daf9f74",
+    "aab_sha256": "ed2efde0ec4b55c6204205fba372aa760a0cfa4c7094d32a0dcc34290b85d055"
   }
 }
