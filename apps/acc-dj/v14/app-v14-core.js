@@ -673,24 +673,36 @@
     document.querySelector(`[data-action="sync"][data-deck="${id}"]`)?.classList.remove('synced');
   }
 
-  function drawLoop() {
+  function drawLoop(ts = 0) {
     if (!state.audioReady) return;
+    requestAnimationFrame(drawLoop);
+    if (document.hidden) return;
+    if (!state.lastDrawTs) state.lastDrawTs = 0;
+    if (ts - state.lastDrawTs < 34) return;
+    state.lastDrawTs = ts;
+
     ['A', 'B'].forEach(id => {
       const deck = state.decks[id];
-      // v1.5+ owns sync and beatgrid. Keep the legacy engine completely dormant
-      // so two sync loops cannot fight over playbackRate / phase.
       if (!window.ARDADJSync) maintainSync(id);
       const analyser = deck.analyser;
-      const data = new Uint8Array(analyser.frequencyBinCount);
+
+      if (!deck._freqData || deck._freqData.length !== analyser.frequencyBinCount) {
+        deck._freqData = new Uint8Array(analyser.frequencyBinCount);
+      }
+      const data = deck._freqData;
       analyser.getByteFrequencyData(data);
       if (!window.ARDADJAnalysis) observeBeat(id, data);
+
       if (!window.ARDADJAnalysis?.ownsWaveform) {
         const canvas = $(`wave${id}`);
         const c = canvas.getContext('2d');
         const w = canvas.width, h = canvas.height;
         c.clearRect(0, 0, w, h);
         c.fillStyle = '#080c15'; c.fillRect(0,0,w,h);
-        const timeData = new Uint8Array(analyser.fftSize);
+        if (!deck._timeData || deck._timeData.length !== analyser.fftSize) {
+          deck._timeData = new Uint8Array(analyser.fftSize);
+        }
+        const timeData = deck._timeData;
         analyser.getByteTimeDomainData(timeData);
         c.strokeStyle = id === 'A' ? '#42b9ff' : '#ffad4a';
         c.lineWidth = 1.5;
@@ -702,7 +714,10 @@
         }
         c.stroke();
       }
-      const avg = data.reduce((a,b)=>a+b,0) / (data.length*255 || 1);
+
+      let sum=0;
+      for(let i=0;i<data.length;i++) sum+=data[i];
+      const avg = sum / (data.length*255 || 1);
       $(`meter${id}`).value = Math.min(1, avg * 2.2);
 
       const audio = deck.audio;
@@ -712,7 +727,6 @@
         $(`duration${id}`).textContent = formatTime(audio.duration);
       }
     });
-    requestAnimationFrame(drawLoop);
   }
 
   function isStandalone() {
