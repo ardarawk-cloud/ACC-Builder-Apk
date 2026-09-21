@@ -5,13 +5,21 @@
   "version_name": "1.6.2",
   "version_code": 14,
   "provider": "manual-wrapper-dj-am-v9",
-  "qc": "new-permanent-signing-baseline-pending-build",
+  "qc": "v1.6.2-new-permanent-baseline-signed-pass",
   "source_repository": "balinightlife666-web/DJ-AM",
   "source_commit": "90a5af34d641f29992c8ecfe245e6cda833dbf2c",
   "package_id": "com.arda.dj",
   "last_request_id": "arda-dj-v162-new-signing-baseline-20260921",
   "last_prompt": "Establish new permanent ARDA DJ signing baseline after old signing backup password was lost. Change Android package to com.arda.dj, keep v1.6.2 runtime fixes, and sign with a new backed-up permanent keystore.",
-  "last_build": "pending",
+  "last_build": "PASS — GitHub Actions run 35555426839; signed locally with new permanent ARDA DJ keystore; APK v1/v2/v3 verified; AAB jarsigner verified",
   "created_at": "2026-09-09T12:28:00Z",
-  "updated_at": "2026-09-21T10:48:00+08:00"
+  "updated_at": "2026-09-21T10:52:00+08:00",
+  "signing_baseline": {
+    "established_at": "2026-09-21T10:52:00+08:00",
+    "package_id": "com.arda.dj",
+    "alias": "arda-dj-permanent",
+    "cert_sha256": "945ea95032f9f164b5d823a0da8994433ed0b0fd8a8a658e295af3bd74a9f768",
+    "keystore_backup": "ChatGPT Library /APK-SIGNING/ARDA-DJ/ARDA-DJ-PERMANENT-SIGNING-BACKUP.zip",
+    "credentials_backup": "ChatGPT Library /APK-SIGNING/ARDA-DJ/ARDA-DJ-SIGNING-CREDENTIALS.txt"
+  }
 }
