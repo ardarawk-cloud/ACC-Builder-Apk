@@ -1,13 +1,13 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 16,
+  "version": 17,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-outlet-stockout-v16-20260916",
-  "last_prompt": "Add mandatory PSK/PSP/PSBK destination selection for manual Stock Out, preserve outlet on corrections, and add daily/weekly/monthly/all-data outlet distribution monitoring by product.",
+  "last_request_id": "papa-sauce-lab-hb-inflow-v17-20260921",
+  "last_prompt": "Track Total HB Masuk as ACTIVE hb_add only, excluding HB Awal and rollover to avoid double counting; show daily dashboard card plus daily/weekly/monthly/all-data report totals and drilldown.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
-  "updated_at": "2026-09-16T15:27:26.438556+00:00"
+  "updated_at": "2026-09-21T04:04:36.345228+00:00"
 }
