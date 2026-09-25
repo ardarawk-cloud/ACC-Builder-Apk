@@ -1,0 +1,70 @@
+name: PSL v18 Cloud Sync WhatsApp
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-v18-trigger/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply v18 patch
+        run: python3 scripts/psl_v18_sync_whatsapp.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V18_CLOUD_SYNC_WHATSAPP' "$F"
+          grep -q 'https://agent.nadmo.id/psl-sync' "$F"
+          grep -q 'x-psl-sync-code' "$F"
+          grep -q 'shareCurrentReportWA18' "$F"
+          grep -q 'PSL_V17_HB_INFLOW_TRACKING' "$F"
+          grep -q 'PSL_V16_OUTLET_STOCKOUT' "$F"
+          ! grep -q 'MutationObserver' "$F"
+
+      - name: Bump v18 metadata and stable build request
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          p=Path('apps/papa-sauce-lab/project.json')
+          m=json.loads(p.read_text())
+          m['version']=18
+          m['qc']='passed'
+          m['last_request_id']='papa-sauce-lab-cloud-sync-whatsapp-v18-20260926'
+          m['last_prompt']='Add automatic HP/Desktop sync through existing agent.nadmo.id VPS backend plus WhatsApp report sharing.'
+          m['last_build']='pending'
+          m['updated_at']=datetime.now(timezone.utc).isoformat()
+          p.write_text(json.dumps(m,indent=2,ensure_ascii=False)+'\n')
+          r=Path('psl-build-requests/v18-cloud-sync-whatsapp.json')
+          r.write_text(json.dumps({
+            'request_id':'psl-stable-v18-cloud-sync-whatsapp',
+            'project_id':'papa-sauce-lab',
+            'version':18,
+            'mode':'stable_signed_update'
+          },indent=2)+'\n')
+          PY
+
+      - name: Commit v18
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json psl-build-requests/v18-cloud-sync-whatsapp.json
+          git commit -m "PSL v18: sync HP desktop and WhatsApp reports" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
