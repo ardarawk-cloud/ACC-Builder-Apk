@@ -23,7 +23,7 @@ style=r'''
 js=r'''
 <script id="PSL_V18_CLOUD_SYNC_WHATSAPP">
 (() => {
-  const DEFAULT_API18='__PSL_SYNC_API__';
+  const DEFAULT_API18='https://agent.nadmo.id/psl-sync';
   const STORES18=['transactions','stock_movements','snapshots','corrections','periods'];
   let syncing18=false;
   let lastSync18=0;
@@ -68,7 +68,7 @@ js=r'''
     if(!api||!key)throw new Error('SYNC_NOT_CONFIGURED');
     const res=await fetch(api+path,{
       ...opts,
-      headers:{'content-type':'application/json','x-psl-sync-key':key,...(opts.headers||{})}
+      headers:{'content-type':'application/json','x-psl-sync-code':key,...(opts.headers||{})}
     });
     if(!res.ok)throw new Error('HTTP_'+res.status);
     return res.json();
@@ -110,9 +110,9 @@ js=r'''
     try{
       const local=await collect18();
       const push=await request18('/sync/push',{method:'POST',body:JSON.stringify({records:local})});
-      const pull=await request18('/sync/pull');
+      const since=Number(localStorage.getItem('psl_sync_since_v18')||0);\n      const pull=await request18('/sync/pull?since='+encodeURIComponent(since));
       const pulled=await merge18(pull.records||[]);
-      lastSync18=Date.now();
+      lastSync18=Date.now();\n      if(pull.serverTime)localStorage.setItem('psl_sync_since_v18',String(pull.serverTime));
       badge18('SYNC OK','ok');
       await refreshAfterSync18();
       if(!silent)alert('Sync selesai · '+Number(push.accepted||0)+' terkirim · '+pulled+' diterima');
@@ -194,7 +194,7 @@ js=r'''
     if(typeof db!=='undefined'&&db){
       clearInterval(timer18);ensureBadge18();ensureWA18();
       if(api18()&&key18())await syncNow18(true);else badge18('SYNC SETUP','warn');
-      setInterval(()=>{if(api18()&&key18()&&Date.now()-lastSync18>12000)syncNow18(true)},15000);
+      setInterval(()=>{if(api18()&&key18()&&Date.now()-lastSync18>25000)syncNow18(true)},30000);
     }else if(boot18>60)clearInterval(timer18);
   },100);
 
