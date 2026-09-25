@@ -1,0 +1,60 @@
+name: PSL Desktop Windows Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-desktop-trigger/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop/papa-sauce-lab
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Prepare desktop app
+        run: python prepare_desktop.py
+
+      - name: Verify desktop payload
+        shell: bash
+        run: |
+          set -e
+          grep -q "PSL_DESKTOP_BUILD" app/index.html
+          grep -q "PSL_V17_HB_INFLOW_TRACKING" app/index.html
+          grep -q "PSL_V16_OUTLET_STOCKOUT" app/index.html
+          grep -q "PSL_V15_COMPLETE_REPORTS" app/index.html
+          grep -q "PSL_DESKTOP_BACKUP_V1" app/bridge.js
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build Windows portable EXE
+        run: npm run build:win
+
+      - name: Verify EXE
+        shell: bash
+        run: |
+          set -e
+          ls -lh dist/*.exe
+          test -n "$(find dist -maxdepth 1 -name 'Papa-Sauce-Lab-Desktop-*.exe' -print -quit)"
+
+      - name: Upload Desktop EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: papa-sauce-lab-desktop-windows
+          path: desktop/papa-sauce-lab/dist/Papa-Sauce-Lab-Desktop-*.exe
+          if-no-files-found: error
+          retention-days: 30
