@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-desktop-v1-20260925",
+  "source": "apps/papa-sauce-lab",
+  "source_version": 17,
+  "target": "windows-portable-x64",
+  "reason": "Desktop version for daily Papa Sauce Lab work on PC"
+}
