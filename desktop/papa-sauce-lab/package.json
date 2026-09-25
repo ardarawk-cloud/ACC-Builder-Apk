@@ -1,0 +1,33 @@
+{
+  "name": "papa-sauce-lab-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Papa Sauce Lab Desktop for Windows",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "id.nadmo.papasaucelab.desktop",
+    "productName": "Papa Sauce Lab Desktop",
+    "asar": true,
+    "files": [
+      "main.js",
+      "app/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "Papa-Sauce-Lab-Desktop-${version}.exe"
+    }
+  }
+}
