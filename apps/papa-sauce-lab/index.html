@@ -2253,9 +2253,9 @@ bottom-nav{background:rgba(255,253,250,.96)!important;border-top:1px solid #e9e3
   function render15(title,m){
     const root=document.getElementById('reportContent');if(!root)return;
     root.innerHTML=`<div class="psl15-summary"><div class="psl15-title">${esc15(title)}</div><div class="psl15-sub">${m.start} s/d ${m.end}</div>
-      <div class="psl15-grid"><div class="psl15-kpi"><span>Total Sales</span><b>${rp15(m.totalSales)}</b></div><div class="psl15-kpi"><span>Total Pengeluaran</span><b class="psl15-red">${rp15(m.totalOut)}</b></div><div class="psl15-kpi"><span>Total Produksi</span><b class="psl15-green">${m.production}</b></div><div class="psl15-kpi"><span>Total Stock Out</span><b class="psl15-red">${m.stockOut}</b></div></div>
+      <div class="psl15-grid"><div class="psl15-kpi"><span>Sales Lab</span><b>${rp15(m.totalSales)}</b></div><div class="psl15-kpi"><span>Pengeluaran Lab</span><b class="psl15-red">${rp15(m.totalOut)}</b></div><div class="psl15-kpi"><span>Total Produksi</span><b class="psl15-green">${m.production}</b></div><div class="psl15-kpi"><span>Total Stock Out</span><b class="psl15-red">${m.stockOut}</b></div></div>
       <div class="report-row"><span>Cash</span><b>${rp15(m.channels.cash)}</b></div><div class="report-row"><span>QRIS</span><b>${rp15(m.channels.qris)}</b></div><div class="report-row"><span>Gojek</span><b>${rp15(m.channels.gojek)}</b></div><div class="report-row"><span>Grab</span><b>${rp15(m.channels.grab)}</b></div>
-      <div class="report-row"><span>Selisih Sales - Pengeluaran</span><b class="${m.net<0?'psl15-red':'psl15-green'}">${rp15(m.net)}</b></div><div class="report-row"><span>Jumlah Entri Sales</span><b>${m.salesCount}</b></div><div class="report-row"><span>Jumlah Entri Pengeluaran</span><b>${m.expenseCount}</b></div>
+      <div class="report-row"><span>Jumlah Entri Sales Lab</span><b>${m.salesCount}</b></div><div class="report-row"><span>Jumlah Entri Pengeluaran Lab</span><b>${m.expenseCount}</b></div>
       <div class="report-row"><span>Stock Awal Periode</span><b>${m.openingStock}</b></div><div class="report-row"><span>Total Produksi Periode</span><b class="psl15-green">+${m.production}</b></div><div class="report-row"><span>Total Stock Out Periode</span><b class="psl15-red">-${m.stockOut}</b></div><div class="report-row"><span>Stock Akhir Periode</span><b>${m.closingStock}</b></div>
       <div class="psl15-title" style="margin-top:14px">Rincian Produk</div>${rows15(m)}<div class="psl15-period-note">Jumlah Transaksi generik dihapus. Laporan sekarang memisahkan entri Sales, Pengeluaran, Produksi, Stock Out, serta saldo stock.</div></div>`;
   }
@@ -2535,7 +2535,7 @@ bottom-nav{background:rgba(255,253,250,.96)!important;border-top:1px solid #e9e3
     });
     root.querySelectorAll('.report-row').forEach(row=>{
       const label=(row.querySelector('span')?.textContent||'').trim();
-      if(label==='Selisih Sales - Pengeluaran')row.remove();
+      
     });
   }
 
@@ -2702,6 +2702,28 @@ bottom-nav{background:rgba(255,253,250,.96)!important;border-top:1px solid #e9e3
   };
 
   console.log('PSL v19 safe migration active');
+})();
+</script>
+
+
+<script id="PSL_V20_REMOVE_MISLEADING_DELTA">
+(() => {
+  const clean20=()=>{
+    const root=document.getElementById('reportContent');
+    if(!root)return;
+    root.querySelectorAll('.report-row').forEach(row=>{
+      const label=(row.querySelector('span')?.textContent||'').trim().toLowerCase();
+      if(label.includes('sales') && label.includes('pengeluaran') && label.includes('selisih')) row.remove();
+    });
+  };
+  const wrap=name=>{
+    const old=Reports[name]?.bind(Reports);
+    if(!old)return;
+    Reports[name]=async function(){await old(); clean20();};
+  };
+  ['generate','generateWeekly','generateMonthly','generateAll'].forEach(wrap);
+  clean20();
+  console.log('PSL v20 misleading delta removed');
 })();
 </script>
 
