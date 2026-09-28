@@ -1,13 +1,13 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 18,
+  "version": 19,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-cost-center-v18-20260929",
-  "last_prompt": "Reframe Papa Sauce Lab as a production cost center: keep outlet books separate, rename Sales/Out/Register labels for Lab context, remove misleading Sales-minus-Expense row, and add operational funding section using opening funds + HB additions + Lab sales - Lab expenses. Do not alter locked register formula or snapshots.",
+  "last_request_id": "papa-sauce-lab-safe-migration-v19-20260929",
+  "last_prompt": "Safe migration build after signing-key rotation: add full JSON export/import including snapshots, settings, corrections and periods; remain compatible with old backups.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
-  "updated_at": "2026-09-28T18:07:42.884314+00:00"
+  "updated_at": "2026-09-28T18:18:09.260529+00:00"
 }
