@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-safe-migration-v19-20260929",
+  "project_id": "papa-sauce-lab",
+  "version": 19,
+  "mode": "patch_then_v2_stable",
+  "reason": "Signing key rotated; build side-by-side migration-safe package with full backup import"
+}
