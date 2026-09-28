@@ -1,13 +1,13 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 17,
+  "version": 18,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-hb-inflow-v17-20260921",
-  "last_prompt": "Track Total HB Masuk as ACTIVE hb_add only, excluding HB Awal and rollover to avoid double counting; show daily dashboard card plus daily/weekly/monthly/all-data report totals and drilldown.",
+  "last_request_id": "papa-sauce-lab-cost-center-v18-20260929",
+  "last_prompt": "Reframe Papa Sauce Lab as a production cost center: keep outlet books separate, rename Sales/Out/Register labels for Lab context, remove misleading Sales-minus-Expense row, and add operational funding section using opening funds + HB additions + Lab sales - Lab expenses. Do not alter locked register formula or snapshots.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
-  "updated_at": "2026-09-21T04:04:36.345228+00:00"
+  "updated_at": "2026-09-28T18:07:42.884314+00:00"
 }

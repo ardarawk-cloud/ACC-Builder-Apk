@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-stable-v18-cost-center-20260929",
+  "project_id": "papa-sauce-lab",
+  "version": 18,
+  "mode": "stable_signed_update",
+  "reason": "Build stable v18 with Lab cost-center reporting and non-misleading operational funding view"
+}
