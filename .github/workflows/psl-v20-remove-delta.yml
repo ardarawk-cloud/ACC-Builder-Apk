@@ -1,0 +1,80 @@
+name: PSL v20 Remove Misleading Delta
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-v20-delta-trigger/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply v20 patch
+        run: python3 scripts/psl_v20_remove_misleading_delta.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V20_REMOVE_MISLEADING_DELTA' "$F"
+          ! grep -q 'Selisih Sales - Pengeluaran' "$F"
+          grep -q 'Sales Lab' "$F"
+          grep -q 'Pengeluaran Lab' "$F"
+          grep -q 'PSL_V19_SAFE_MIGRATION' "$F"
+          grep -q 'PSL_V18_LAB_COST_CENTER_REPORT' "$F"
+          grep -q 'PSL_V17_HB_INFLOW_TRACKING' "$F"
+          grep -q 'PSL_V16_OUTLET_STOCKOUT' "$F"
+          grep -q 'MutationObserver' "$F" && { echo 'Unsafe observer found'; exit 1; } || true
+
+      - name: Bump v20 metadata and request V2 build
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          p=Path('apps/papa-sauce-lab/project.json')
+          m=json.loads(p.read_text())
+          m['version']=20
+          m['provider']='manual-hotfix'
+          m['model']='none'
+          m['qc']='passed'
+          m['last_request_id']='papa-sauce-lab-v20-remove-delta-20260929'
+          m['last_prompt']='Remove Selisih Sales - Pengeluaran from report source entirely; label sales and expenses explicitly as Lab values; retain cost-center funding section and all v19 migration data.'
+          m['last_build']='pending'
+          m['updated_at']=datetime.now(timezone.utc).isoformat()
+          p.write_text(json.dumps(m,indent=2,ensure_ascii=False)+'\n')
+
+          r=Path('psl-v2-build-requests/v20-remove-delta-20260929.json')
+          r.parent.mkdir(exist_ok=True)
+          r.write_text(json.dumps({
+            'request_id':'papa-sauce-lab-v2-v20-remove-delta-20260929',
+            'project_id':'papa-sauce-lab',
+            'version':20,
+            'package_id':'com.nadmo.papasaucelab',
+            'mode':'stable_signed_update',
+            'reason':'Remove misleading sales-expense delta from Lab report'
+          },indent=2)+'\n')
+          PY
+
+      - name: Commit v20 patch
+        shell: bash
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json psl-v2-build-requests/v20-remove-delta-20260929.json
+          git commit -m "PSL v20: remove misleading report delta" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
