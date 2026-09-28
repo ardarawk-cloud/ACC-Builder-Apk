@@ -1,0 +1,81 @@
+name: PSL v18 Lab Cost Center Report
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-v18-lab-cost-center-trigger/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply v18 lab cost-center report patch
+        run: python3 scripts/psl_v18_lab_cost_center_report.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V18_LAB_COST_CENTER_REPORT' "$F"
+          grep -q 'Dana Operasional Lab' "$F"
+          grep -q 'Bukan laporan laba/rugi' "$F"
+          grep -q "Stock Out ke PSK / PSP / PSBK" "$F"
+          grep -q 'PSL_V17_HB_INFLOW_TRACKING' "$F"
+          grep -q 'PSL_V16_OUTLET_STOCKOUT' "$F"
+          grep -q 'PSL_V15_COMPLETE_REPORTS' "$F"
+          grep -q 'PSL_V5_BACKDATE_HB_PATCH' "$F"
+          grep -q 'MutationObserver' "$F" && { echo 'Unsafe observer found'; exit 1; } || true
+          grep -q 'totalRegister:houseBank+totalSales-totalOut' "$F"
+          test "$(head -c 15 "$F")" = '<!DOCTYPE html>'
+          tail -n 8 "$F" | grep -q '</html>'
+
+      - name: Bump v18 metadata and stable request
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          p=Path('apps/papa-sauce-lab/project.json')
+          m=json.loads(p.read_text())
+          m['version']=18
+          m['provider']='manual-hotfix'
+          m['model']='none'
+          m['qc']='passed'
+          m['last_request_id']='papa-sauce-lab-cost-center-v18-20260929'
+          m['last_prompt']='Reframe Papa Sauce Lab as a production cost center: keep outlet books separate, rename Sales/Out/Register labels for Lab context, remove misleading Sales-minus-Expense row, and add operational funding section using opening funds + HB additions + Lab sales - Lab expenses. Do not alter locked register formula or snapshots.'
+          m['last_build']='pending'
+          m['updated_at']=datetime.now(timezone.utc).isoformat()
+          p.write_text(json.dumps(m,indent=2,ensure_ascii=False)+'\n')
+          r=Path('psl-build-requests/v18-lab-cost-center-20260929.json')
+          r.parent.mkdir(exist_ok=True)
+          r.write_text(json.dumps({
+            'request_id':'papa-sauce-lab-stable-v18-cost-center-20260929',
+            'project_id':'papa-sauce-lab',
+            'version':18,
+            'mode':'stable_signed_update',
+            'reason':'Build stable v18 with Lab cost-center reporting and non-misleading operational funding view'
+          },indent=2)+'\n')
+          PY
+
+      - name: Commit v18 patch and stable request
+        shell: bash
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json psl-build-requests/v18-lab-cost-center-20260929.json
+          git commit -m "PSL v18: reframe Lab operational reporting" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
