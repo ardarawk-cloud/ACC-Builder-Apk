@@ -22,6 +22,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify release identity lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          p='apps/papa-sauce-lab/release-lock.json'
+          d=json.load(open(p))
+          assert d['release_channel']=='V2_STABLE'
+          assert d['canonical_package_id']=='com.nadmo.papasaucelab'
+          assert d['canonical_certificate_sha256']=='2620121f6003647bd9c35713647c296cb4479aecef6efadfcf7fece471edbfe5'
+          assert d['legacy_status']=='FROZEN_DO_NOT_BUILD'
+          print('PSL release identity lock OK')
+          PY
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -54,7 +69,7 @@ jobs:
           set -euo pipefail
           PROJECT="papa-sauce-lab"
           APP_NAME="Papa Sauce Lab NEW"
-          APP_ID="com.nadmo.papasaucelab"
+          APP_ID="$(python3 -c "import json;print(json.load(open('apps/papa-sauce-lab/release-lock.json'))['canonical_package_id'])")"
           VERSION="$(python3 -c "import json;print(int(json.load(open('apps/papa-sauce-lab/project.json'))['version']))")"
           BUILD_DIR="$RUNNER_TEMP/psl-v2-mobile"
           mkdir -p "$BUILD_DIR/www"
@@ -121,7 +136,9 @@ jobs:
           TOOL="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner"
           CERT="$($TOOL verify --print-certs "$APK" 2>&1)"
           echo "$CERT"
-          echo "$CERT" | grep -q "2620121f6003647bd9c35713647c296cb4479aecef6efadfcf7fece471edbfe5"
+          EXPECTED_CERT="$(python3 -c "import json;print(json.load(open('apps/papa-sauce-lab/release-lock.json'))['canonical_certificate_sha256'])")"
+          ACTUAL_CERT="$(echo "$CERT" | sed -n 's/.*certificate SHA-256 digest: //p' | head -1 | tr '[:upper:]' '[:lower:]')"
+          test "$ACTUAL_CERT" = "$EXPECTED_CERT" || { echo "FATAL: signer mismatch"; exit 1; }
           unzip -p "$APK" assets/public/index.html | grep -q 'PSL_V19_SAFE_MIGRATION'
           unzip -p "$APK" assets/public/index.html | grep -q 'PSL_V18_LAB_COST_CENTER_REPORT'
           unzip -p "$APK" assets/public/index.html | grep -q 'Import JSON Backup'
