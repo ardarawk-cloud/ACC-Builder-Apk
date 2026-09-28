@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-v20-remove-delta-20260929",
+  "project_id": "papa-sauce-lab",
+  "version": 20,
+  "mode": "patch_then_v2_stable",
+  "reason": "Remove misleading Selisih Sales - Pengeluaran row entirely"
+}
