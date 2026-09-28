@@ -1,0 +1,79 @@
+name: PSL v19 Safe Migration Patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psl-v19-migration-trigger/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Apply v19 safe migration patch
+        run: python3 scripts/psl_v19_safe_migration.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=apps/papa-sauce-lab/index.html
+          grep -q 'PSL_V19_SAFE_MIGRATION' "$F"
+          grep -q 'Export JSON Backup' "$F"
+          grep -q 'Import JSON Backup' "$F"
+          grep -q "putMany19('snapshots'" "$F"
+          grep -q 'PSL_V18_LAB_COST_CENTER_REPORT' "$F"
+          grep -q 'PSL_V17_HB_INFLOW_TRACKING' "$F"
+          grep -q 'PSL_V16_OUTLET_STOCKOUT' "$F"
+          grep -q 'MutationObserver' "$F" && { echo 'Unsafe observer found'; exit 1; } || true
+
+      - name: Bump v19 metadata and request V2 build
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          p=Path('apps/papa-sauce-lab/project.json')
+          m=json.loads(p.read_text())
+          m['version']=19
+          m['provider']='manual-hotfix'
+          m['model']='none'
+          m['qc']='passed'
+          m['last_request_id']='papa-sauce-lab-safe-migration-v19-20260929'
+          m['last_prompt']='Safe migration build after signing-key rotation: add full JSON export/import including snapshots, settings, corrections and periods; remain compatible with old backups.'
+          m['last_build']='pending'
+          m['updated_at']=datetime.now(timezone.utc).isoformat()
+          p.write_text(json.dumps(m,indent=2,ensure_ascii=False)+'\n')
+
+          r=Path('psl-v2-build-requests/v19-safe-migration-20260929.json')
+          r.parent.mkdir(exist_ok=True)
+          r.write_text(json.dumps({
+            'request_id':'papa-sauce-lab-v2-v19-safe-migration-20260929',
+            'project_id':'papa-sauce-lab',
+            'version':19,
+            'package_id':'com.nadmo.papasaucelab',
+            'mode':'stable_signed_side_by_side_migration',
+            'reason':'Install alongside old signed APK, import backup, verify data safely'
+          },indent=2)+'\n')
+          PY
+
+      - name: Commit v19 patch
+        shell: bash
+        run: |
+          git config user.name "ACC PSL Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/papa-sauce-lab/index.html apps/papa-sauce-lab/project.json psl-v2-build-requests/v19-safe-migration-20260929.json
+          git commit -m "PSL v19: add safe migration and V2 build request" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
