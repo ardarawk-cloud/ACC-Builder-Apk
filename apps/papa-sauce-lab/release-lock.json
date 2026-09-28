@@ -1,0 +1,16 @@
+{
+  "project": "papa-sauce-lab",
+  "release_channel": "V2_STABLE",
+  "canonical_package_id": "com.nadmo.papasaucelab",
+  "canonical_certificate_sha256": "2620121f6003647bd9c35713647c296cb4479aecef6efadfcf7fece471edbfe5",
+  "legacy_package_id": "com.accbuilder.papasaucelab",
+  "legacy_certificate_sha256": "b5932d2bcc0923e36662ae563bda12946f4e77202c414eded7c5b09f66161e83",
+  "legacy_status": "FROZEN_DO_NOT_BUILD",
+  "rules": [
+    "Never rotate the release certificate automatically.",
+    "Never change canonical package id automatically.",
+    "Fail the build if the release certificate is unavailable.",
+    "Fail the build if the certificate fingerprint differs.",
+    "Do not publish new releases using the legacy package."
+  ]
+}
