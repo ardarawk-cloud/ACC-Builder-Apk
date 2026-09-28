@@ -1,0 +1,30 @@
+name: PSL Signing Cache Keepalive
+
+on:
+  schedule:
+    - cron: "17 3 */3 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore PSL signing cache
+        id: pslcache
+        uses: actions/cache@v4
+        with:
+          path: ~/.psl-signing
+          key: psl-stable-signing-v1
+
+      - name: Require cached signing file
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$HOME/.psl-signing/papa-sauce-lab.jks" || {
+            echo "PSL signing cache missing; no replacement key will be generated."
+            exit 1
+          }
+          echo "PSL signing cache present."
