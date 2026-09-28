@@ -1,0 +1,8 @@
+{
+  "request_id": "papa-sauce-lab-v2-v20-external-20260929",
+  "project_id": "papa-sauce-lab",
+  "version": 20,
+  "package_id": "com.nadmo.papasaucelab",
+  "mode": "stable_signed_update",
+  "reason": "External trigger after v20 patch completed"
+}
