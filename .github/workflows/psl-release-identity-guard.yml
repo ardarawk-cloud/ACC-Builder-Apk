@@ -1,0 +1,49 @@
+name: PSL Release Identity Guard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/papa-sauce-lab/**"
+      - ".github/workflows/psl-v2-stable-build.yml"
+      - ".github/workflows/psl-stable-update-build.yml"
+      - "psl-v2-build-requests/*.json"
+  pull_request:
+    paths:
+      - "apps/papa-sauce-lab/**"
+      - ".github/workflows/psl-v2-stable-build.yml"
+      - ".github/workflows/psl-stable-update-build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify locked release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          lock=json.loads(Path('apps/papa-sauce-lab/release-lock.json').read_text())
+          assert lock['release_channel']=='V2_STABLE'
+          assert lock['canonical_package_id']=='com.nadmo.papasaucelab'
+          assert lock['canonical_certificate_sha256']=='2620121f6003647bd9c35713647c296cb4479aecef6efadfcf7fece471edbfe5'
+          assert lock['legacy_status']=='FROZEN_DO_NOT_BUILD'
+
+          v2=Path('.github/workflows/psl-v2-stable-build.yml').read_text()
+          legacy=Path('.github/workflows/psl-stable-update-build.yml').read_text()
+
+          assert 'release-lock.json' in v2
+          assert 'keytool -genkeypair' not in v2
+          assert 'Refusing to generate a new key' in v2
+          assert 'workflow_dispatch' in legacy
+          assert 'psl-build-requests/*.json' not in legacy
+          print('PSL release identity guard PASS')
+          PY
