@@ -1,12 +1,12 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 20,
+  "version": 21,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-v20-remove-delta-20260929",
-  "last_prompt": "Remove Selisih Sales - Pengeluaran from report source entirely; label sales and expenses explicitly as Lab values; retain cost-center funding section and all v19 migration data.",
+  "last_request_id": "papa-sauce-lab-v21-local-date",
+  "last_prompt": "Use device local date for operational day boundaries only; keep House Bank logic unchanged.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
   "updated_at": "2026-09-28T18:27:35.188325+00:00"
