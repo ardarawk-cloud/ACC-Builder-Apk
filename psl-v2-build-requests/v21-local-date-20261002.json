@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-v2-v21-local-date",
+  "project_id": "papa-sauce-lab",
+  "version": 21,
+  "mode": "stable_signed_update",
+  "reason": "Fix local operational date boundary only; House Bank logic unchanged"
+}
