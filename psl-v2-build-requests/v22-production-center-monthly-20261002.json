@@ -1,0 +1,7 @@
+{
+  "request_id":"papa-sauce-lab-v2-v22-production-center-monthly",
+  "project_id":"papa-sauce-lab",
+  "version":22,
+  "mode":"stable_signed_update",
+  "reason":"Production-center monthly reporting; carry only ending HB balance; no sales-vs-expense comparison"
+}
