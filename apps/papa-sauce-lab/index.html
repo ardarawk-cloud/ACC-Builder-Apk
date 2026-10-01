@@ -2262,20 +2262,18 @@ window.PSLLocalDate = function(d){
   function render15(title,m){
     const root=document.getElementById('reportContent');if(!root)return;
     root.innerHTML=`<div class="psl15-summary"><div class="psl15-title">${esc15(title)}</div><div class="psl15-sub">${m.start} s/d ${m.end}</div>
-      <div class="psl15-grid"><div class="psl15-kpi"><span>Sales Lab</span><b>${rp15(m.totalSales)}</b></div><div class="psl15-kpi"><span>Pengeluaran Lab</span><b class="psl15-red">${rp15(m.totalOut)}</b></div><div class="psl15-kpi"><span>Total Produksi</span><b class="psl15-green">${m.production}</b></div><div class="psl15-kpi"><span>Total Stock Out</span><b class="psl15-red">${m.stockOut}</b></div></div>
-      <div class="report-row"><span>Cash</span><b>${rp15(m.channels.cash)}</b></div><div class="report-row"><span>QRIS</span><b>${rp15(m.channels.qris)}</b></div><div class="report-row"><span>Gojek</span><b>${rp15(m.channels.gojek)}</b></div><div class="report-row"><span>Grab</span><b>${rp15(m.channels.grab)}</b></div>
-      <div class="report-row"><span>Jumlah Entri Sales Lab</span><b>${m.salesCount}</b></div><div class="report-row"><span>Jumlah Entri Pengeluaran Lab</span><b>${m.expenseCount}</b></div>
-      <div class="report-row"><span>Stock Awal Periode</span><b>${m.openingStock}</b></div><div class="report-row"><span>Total Produksi Periode</span><b class="psl15-green">+${m.production}</b></div><div class="report-row"><span>Total Stock Out Periode</span><b class="psl15-red">-${m.stockOut}</b></div><div class="report-row"><span>Stock Akhir Periode</span><b>${m.closingStock}</b></div>
-      <div class="psl15-title" style="margin-top:14px">Rincian Produk</div>${rows15(m)}<div class="psl15-period-note">Jumlah Transaksi generik dihapus. Laporan sekarang memisahkan entri Sales, Pengeluaran, Produksi, Stock Out, serta saldo stock.</div></div>`;
+      <div class="psl15-grid"><div class="psl15-kpi"><span>Total Produksi</span><b class="psl15-green">${m.production}</b></div><div class="psl15-kpi"><span>Total Stock Out</span><b class="psl15-red">${m.stockOut}</b></div><div class="psl15-kpi"><span>Stock Awal</span><b>${m.openingStock}</b></div><div class="psl15-kpi"><span>Stock Akhir</span><b>${m.closingStock}</b></div></div>
+      <div class="report-row"><span>Total Produksi Periode</span><b class="psl15-green">+${m.production}</b></div><div class="report-row"><span>Total Stock Out Periode</span><b class="psl15-red">-${m.stockOut}</b></div>
+      <div class="psl15-title" style="margin-top:14px">Rincian Produk</div>${rows15(m)}<div class="psl15-period-note"><b>Fokus laporan Lab: produksi, distribusi stock, dan dana operasional.</b> Penjualan langsung Lab hanya dicatat bila memang ada order langsung; tidak dibandingkan dengan biaya produksi sebagai laba/rugi.</div></div>`;
   }
   function installButtons15(){
     const tab=document.getElementById('tab-laporan');if(!tab)return;
     const date=document.getElementById('reportDate');if(date&&!date.dataset.psl15){date.dataset.psl15='1';date.value=opDate15();const title=date.closest('.card')?.querySelector('.card-title');if(title)title.textContent='Periode Acuan · otomatis ikut Tanggal Operasional';}
-    const wrap=date?.parentElement?.querySelector('div[style*="display:flex"]');if(wrap&&!document.getElementById('psl15DailyBtn')){wrap.style.flexWrap='wrap';wrap.insertAdjacentHTML('afterbegin','<button id="psl15DailyBtn" class="btn btn-secondary btn-sm" onclick="Reports.generate()">Harian</button>');wrap.insertAdjacentHTML('beforeend','<button id="psl15AllBtn" class="btn btn-secondary btn-sm" onclick="Reports.generateAll()">Semua Data</button>');}
+    const wrap=date?.parentElement?.querySelector('div[style*="display:flex"]');if(wrap&&!document.getElementById('psl15DailyBtn')){wrap.style.flexWrap='wrap';wrap.insertAdjacentHTML('afterbegin','<button id="psl15DailyBtn" class="btn btn-secondary btn-sm" onclick="Reports.generate()">Harian</button>');wrap.insertAdjacentHTML('beforeend','<button id="psl15AllBtn" class="btn btn-secondary btn-sm" onclick="Reports.generateAll()">Bulan Ini</button>');}
   }
   Reports.generateWeekly=async function(){const anchor=document.getElementById('reportDate')?.value||opDate15(),d=new Date(anchor+'T12:00:00'),day=d.getDay(),delta=day===0?-6:1-day,startD=new Date(d);startD.setDate(d.getDate()+delta);const endD=new Date(startD);endD.setDate(startD.getDate()+6);const start=fmt15(startD),end=fmt15(endD);render15('Laporan Mingguan',await summary15(start,end));};
   Reports.generateMonthly=async function(){const anchor=document.getElementById('reportDate')?.value||opDate15(),[y,m]=anchor.split('-').map(Number),start=`${y}-${String(m).padStart(2,'0')}-01`,end=fmt15(new Date(y,m,0,12));render15('Laporan Bulanan '+anchor.slice(0,7),await summary15(start,end));};
-  Reports.generateAll=async function(){const {tx,mv}=await all15(),dates=[...(tx||[]).map(x=>x?.date),...(mv||[]).map(x=>x?.date)].filter(Boolean).sort(),end=opDate15(),start=dates[0]||end;render15('Rangkuman Semua Data',await summary15(start,end));};
+  Reports.generateAll=async function(){const anchor=document.getElementById('reportDate')?.value||opDate15(),[y,m]=anchor.split('-').map(Number),start=`${y}-${String(m).padStart(2,'0')}-01`,end=anchor;render15('Rangkuman Bulan Berjalan '+anchor.slice(0,7),await summary15(start,end));};
   const oldGenerate15=Reports.generate?.bind(Reports);Reports.generate=async function(){installButtons15();const d=document.getElementById('reportDate');if(d&&!d.value)d.value=opDate15();if(oldGenerate15)await oldGenerate15();};
   let tries=0;const timer=setInterval(()=>{tries++;if(document.getElementById('tab-laporan')){clearInterval(timer);installButtons15();}else if(tries>40)clearInterval(timer)},100);
   console.log('PSL v15 complete reports active');
@@ -2422,7 +2420,7 @@ window.PSLLocalDate = function(d){
 
   function hbBox17(m,title='Pemasukan House Bank'){
     const rows=m.rows.map(x=>`<div class="psl17-hb-row"><span>${esc17(x.date||'-')}</span><span>${esc17(x.note||'Tambah HB')}</span><b>${rp17(x.amount)}</b></div>`).join('')||'<div class="empty-state" style="padding:16px">Belum ada Tambah HB pada periode ini.</div>';
-    return `<div class="psl17-hb-box"><div class="psl17-hb-title">${esc17(title)}</div><div class="report-row"><span>Total HB Masuk</span><b class="psl17-hb-value">${rp17(m.total)}</b></div><div class="report-row"><span>Jumlah Tambah HB</span><b>${m.count}</b></div>${rows}<div class="psl17-hb-note">Yang dihitung hanya <b>Tambah HB</b> sebagai modal/kas baru. HB Awal dan rollover Register hari sebelumnya tidak dihitung lagi supaya tidak double count.</div></div>`;
+    return `<div class="psl17-hb-box"><div class="psl17-hb-title">${esc17(title)}</div><div class="report-row"><span>Tambah HB Periode Ini</span><b class="psl17-hb-value">${rp17(m.total)}</b></div><div class="report-row"><span>Jumlah Tambah HB</span><b>${m.count}</b></div>${rows}<div class="psl17-hb-note">Yang dihitung hanya <b>Tambah HB pada periode yang dipilih</b>. Saldo sisa periode sebelumnya menjadi Saldo Dana Awal dan tidak dihitung ulang sebagai HB masuk.</div></div>`;
   }
 
   async function append17(start,end,title){
@@ -2432,7 +2430,7 @@ window.PSLLocalDate = function(d){
     const grid=root.querySelector('.psl15-grid');
     if(grid){
       grid.querySelectorAll('.psl17-hb-kpi').forEach(x=>x.remove());
-      grid.insertAdjacentHTML('beforeend',`<div class="psl15-kpi psl17-hb-kpi"><span>Total HB Masuk</span><b class="psl17-hb-value">${rp17(m.total)}</b></div>`);
+      grid.insertAdjacentHTML('beforeend',`<div class="psl15-kpi psl17-hb-kpi"><span>Tambah HB Periode</span><b class="psl17-hb-value">${rp17(m.total)}</b></div>`);
     }
     root.insertAdjacentHTML('beforeend',hbBox17(m,title));
   }
@@ -2484,10 +2482,9 @@ window.PSLLocalDate = function(d){
   const oldAll17=Reports.generateAll?.bind(Reports);
   Reports.generateAll=async function(){
     if(oldAll17)await oldAll17();
-    const tx=await dbGetAll('transactions'),mv=await dbGetAll('stock_movements');
-    const dates=[...(tx||[]).map(x=>x?.date),...(mv||[]).map(x=>x?.date)].filter(Boolean).sort();
-    const end=opDate17(),start=dates[0]||end;
-    await append17(start,end,'Pemasukan HB · Semua Data');
+    const anchor=document.getElementById('reportDate')?.value||opDate17(),[y,m]=anchor.split('-').map(Number);
+    const start=`${y}-${String(m).padStart(2,'0')}-01`,end=anchor;
+    await append17(start,end,'Tambah HB · Bulan Berjalan');
   };
 
   let tries=0;const timer=setInterval(async()=>{tries++;if(db&&document.getElementById('cardTotalStock')){clearInterval(timer);await renderDash17();}else if(tries>=50)clearInterval(timer)},100);
@@ -2550,16 +2547,14 @@ window.PSLLocalDate = function(d){
 
   function box18(m,start,end){
     const cls=m.close<0?'psl18-negative':'psl18-positive';
-    const gap=m.close<0?`<div class="psl18-gap">Dana operasional belum tertutup: ${rp18(-m.close)}</div>`:'';
     return `<div class="psl18-fund-box">
       <div class="psl18-fund-title">Dana Operasional Lab</div>
-      <div class="psl18-fund-row"><span>Saldo Dana Awal</span><b>${signedRp18(m.open)}</b></div>
-      <div class="psl18-fund-row"><span>HB Masuk Periode</span><b class="psl18-positive">+${rp18(m.hbAdd)}</b></div>
-      <div class="psl18-fund-row"><span>Sales Lab</span><b class="psl18-positive">+${rp18(m.sales)}</b></div>
-      <div class="psl18-fund-row"><span>Pengeluaran Lab</span><b class="psl18-negative">-${rp18(m.out)}</b></div>
+      <div class="psl18-fund-row"><span>Saldo Dana Awal Periode</span><b>${signedRp18(m.open)}</b></div>
+      <div class="psl18-fund-row"><span>Tambah HB Periode Ini</span><b class="psl18-positive">+${rp18(m.hbAdd)}</b></div>
+      <div class="psl18-fund-row"><span>Penjualan Langsung Lab (jika ada)</span><b class="psl18-positive">+${rp18(m.sales)}</b></div>
+      <div class="psl18-fund-row"><span>Biaya Produksi & Operasional</span><b class="psl18-negative">-${rp18(m.out)}</b></div>
       <div class="psl18-fund-row psl18-fund-final"><span>Saldo Dana Akhir Periode</span><b class="${cls}">${signedRp18(m.close)}</b></div>
-      ${gap}
-      <div class="psl18-note"><b>Bukan laporan laba/rugi.</b> Papa Sauce Lab diperlakukan sebagai pusat produksi. Stock Out ke PSK / PSP / PSBK adalah distribusi internal dan tidak dihitung sebagai penjualan Lab. Pembukuan outlet tetap terpisah.</div>
+      <div class="psl18-note"><b>Bukan laporan omzet atau laba/rugi.</b> Papa Sauce Lab adalah pusat produksi. Penjualan langsung hanya dicatat bila ada order langsung. Stock Out ke PSK / PSP / PSBK adalah distribusi internal. Saat ganti bulan, yang dibawa ke periode baru adalah Saldo Dana Akhir periode sebelumnya; Tambah HB bulan baru mulai dari nol.</div>
     </div>`;
   }
 
@@ -2613,9 +2608,8 @@ window.PSLLocalDate = function(d){
   const oldAll18=Reports.generateAll?.bind(Reports);
   Reports.generateAll=async function(){
     if(oldAll18)await oldAll18();
-    const tx=await dbGetAll('transactions'),mv=await dbGetAll('stock_movements');
-    const dates=[...(tx||[]).map(x=>x?.date),...(mv||[]).map(x=>x?.date)].filter(Boolean).sort();
-    const end=opDate18(),start=dates[0]||end;
+    const anchor=document.getElementById('reportDate')?.value||opDate18(),[y,m]=anchor.split('-').map(Number);
+    const start=`${y}-${String(m).padStart(2,'0')}-01`,end=anchor;
     await apply18(start,end);
   };
 
