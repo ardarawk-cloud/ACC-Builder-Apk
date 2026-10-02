@@ -1,12 +1,12 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 26,
+  "version": 27,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-v26-ocr-price-without-rp",
-  "last_prompt": "OCR expense import must also read lines whose final price has no Rp prefix, e.g. Cumi 2kg 190.000 and Tongkol 2kg 110.000, without confusing quantities as prices. No HB, package, signer, or deployment changes.",
+  "last_request_id": "papa-sauce-lab-v27-sticky-date-and-batch-move",
+  "last_prompt": "Keep operational date sticky until Tutup Hari advances it. Add owner-only audited move for the latest OCR photo expense batch to a corrected open date. Do not alter HB formulas, snapshots, package ID, signer, or deployment path.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
   "updated_at": "2026-09-28T18:27:35.188325+00:00"
