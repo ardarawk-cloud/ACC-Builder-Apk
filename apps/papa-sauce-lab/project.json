@@ -1,12 +1,12 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 24,
+  "version": 25,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-v24-report-export",
-  "last_prompt": "Fix WhatsApp report to include the full visible report and make PDF export create a real PDF file; do not change data, House Bank logic, package ID, signer, or deployment path.",
+  "last_request_id": "papa-sauce-lab-v25-ocr-photo-expense",
+  "last_prompt": "Add photo/screenshot OCR import for expense lists: detect rows with Rp amounts, preview/edit/category, prevent duplicate image import, then save selected rows as expenses. Do not change HB logic, data model fundamentals, package ID, signer, or deployment path.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
   "updated_at": "2026-09-28T18:27:35.188325+00:00"
