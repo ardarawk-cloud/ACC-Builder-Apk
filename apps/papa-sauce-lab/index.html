@@ -2699,7 +2699,7 @@ window.PSLLocalDate = function(d){
       <button class="btn btn-secondary btn-block" onclick="Export.jsonBackup()" style="margin-bottom:8px">📥 Export JSON Backup</button>
       <input type="file" accept=".json,application/json" onchange="Import.json(event)" style="display:none" id="importFile19">
       <button class="btn btn-primary btn-block" onclick="document.getElementById('importFile19').click()">📤 Import JSON Backup</button>
-      <div class="psl19-import-ok">PSL v19 · Safe Migration Ready</div>
+      <div class="psl19-import-ok">PSL v__PSL_APP_VERSION__ · Stable Update</div>
     `;
     UI.showModal('detail');
   };
