@@ -1,12 +1,12 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 22,
+  "version": 23,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-v22-production-center-monthly",
-  "last_prompt": "Make Lab reporting production-center focused: monthly HB carry only ending balance, new-month HB additions reset, direct Lab sales informational only, no sales-vs-expense comparison.",
+  "last_request_id": "papa-sauce-lab-v23-version-display",
+  "last_prompt": "Show the actual installed build version in Settings automatically; do not change data, reports, House Bank, package ID, signer, or deployment path.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
   "updated_at": "2026-09-28T18:27:35.188325+00:00"
