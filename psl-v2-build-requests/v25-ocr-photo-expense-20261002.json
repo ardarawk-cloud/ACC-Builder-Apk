@@ -1,0 +1,7 @@
+{
+  "request_id":"papa-sauce-lab-v2-v25-ocr-photo-expense",
+  "project_id":"papa-sauce-lab",
+  "version":25,
+  "mode":"stable_signed_update",
+  "reason":"OCR photo expense import with review and duplicate protection; no HB or release identity changes"
+}
