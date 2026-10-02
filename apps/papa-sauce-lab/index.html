@@ -2502,26 +2502,45 @@ window.PSLLocalDate = function(d){
   const prev18=d=>{const x=new Date(d+'T12:00:00');x.setDate(x.getDate()-1);return fmt18(x)};
 
   async function opening18(date){
-    const snaps=await dbGetAll('snapshots');
-    const prev=(snaps||[]).find(x=>x&&x.date===prev18(date)&&x.type!=='period_end');
-    if(prev)return Number(prev.closingRegister??prev.totalRegister??0);
+    const [snaps,tx]=await Promise.all([dbGetAll('snapshots'),dbGetAll('transactions')]);
+    const daily=(snaps||[])
+      .filter(x=>x&&x.type!=='period_end'&&x.date<date)
+      .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    const active=(tx||[]).filter(x=>x&&x.status!=='CORRECTED');
 
-    const tx=await dbGetAll('transactions');
-    const active=(tx||[]).filter(x=>x&&x.date===date&&x.status==='ACTIVE');
-    const initial=active.filter(x=>x.type==='hb_initial').reduce((a,x)=>a+Number(x.amount||0),0);
-    if(initial)return initial;
-
-    const daily=(snaps||[]).filter(x=>x&&x.type!=='period_end');
-    if(!daily.length){
-      const legacy=await dbGet('settings','openingHB');
-      return Number(legacy?.value||0);
+    // Source of truth for opening period balance:
+    // latest closed balance before the period + any still-open ledger movement after it.
+    if(daily.length){
+      const last=daily[daily.length-1];
+      let balance=Number(last.closingRegister??last.totalRegister??0);
+      active.filter(x=>x.date>last.date&&x.date<date).forEach(x=>{
+        if(x.type==='hb_add'||x.type==='sales')balance+=Number(x.amount||0);
+        else if(x.type==='expense')balance-=Number(x.amount||0);
+      });
+      return balance;
     }
-    return 0;
+
+    // Migration/legacy fallback: use the latest HB Awal before/on the period start,
+    // then carry forward ledger movements without double-counting the HB initial.
+    const initials=active.filter(x=>x.type==='hb_initial'&&x.date<=date)
+      .sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.datetime||'').localeCompare(String(b.datetime||'')));
+    if(initials.length){
+      const base=initials[initials.length-1];
+      let balance=Number(base.amount||0);
+      active.filter(x=>x.date>=base.date&&x.date<date&&x.id!==base.id).forEach(x=>{
+        if(x.type==='hb_add'||x.type==='sales')balance+=Number(x.amount||0);
+        else if(x.type==='expense')balance-=Number(x.amount||0);
+      });
+      return balance;
+    }
+
+    const legacy=await dbGet('settings','openingHB');
+    return Number(legacy?.value||0);
   }
 
   async function funding18(start,end){
     const tx=await dbGetAll('transactions');
-    const active=(tx||[]).filter(x=>x&&x.status==='ACTIVE'&&x.date>=start&&x.date<=end);
+    const active=(tx||[]).filter(x=>x&&x.status!=='CORRECTED'&&x.date>=start&&x.date<=end);
     const hbAdd=active.filter(x=>x.type==='hb_add').reduce((a,x)=>a+Number(x.amount||0),0);
     const sales=active.filter(x=>x.type==='sales').reduce((a,x)=>a+Number(x.amount||0),0);
     const out=active.filter(x=>x.type==='expense').reduce((a,x)=>a+Number(x.amount||0),0);
@@ -2618,6 +2637,8 @@ window.PSLLocalDate = function(d){
 })();
 </script>
 
+
+<script id="PSL_V28_MONTH_OPENING_CARRY_FIX">console.log('PSL v28 month opening carry fix active');</script>
 
 <script id="PSL_V19_SAFE_MIGRATION">
 (() => {
