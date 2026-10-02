@@ -2882,8 +2882,13 @@ window.PSLLocalDate = function(d){
     String(text||'').split(/\r?\n/).forEach(function(line){
       let x=line.replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
       if(!x)return;
-      const m=x.match(/\bRp\.?\s*([0-9][0-9.,]*)\s*$/i);
+
+      // Accept both "... Rp 90.000" and "... 190.000".
+      // Without "Rp", only a money-looking final token is accepted so qty like 2kg/250gr is not mistaken for price.
+      let m=x.match(/\bRp\.?\s*([0-9][0-9.,]*)\s*$/i);
+      if(!m)m=x.match(/(?:^|\s)([0-9]{1,3}(?:[.,][0-9]{3})+|[0-9]{4,})\s*$/);
       if(!m)return;
+
       const amount=Number(String(m[1]).replace(/\D/g,''));
       if(!amount)return;
       const note=x.slice(0,m.index).replace(/[-:]+$/,'').trim();
