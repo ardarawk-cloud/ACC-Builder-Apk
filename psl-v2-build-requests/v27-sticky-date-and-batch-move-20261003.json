@@ -1,0 +1,7 @@
+{
+  "request_id":"papa-sauce-lab-v2-v27-sticky-date-and-batch-move",
+  "project_id":"papa-sauce-lab",
+  "version":27,
+  "mode":"stable_signed_update",
+  "reason":"Keep operational date until close and allow audited move of latest OCR expense batch to correct open date"
+}
