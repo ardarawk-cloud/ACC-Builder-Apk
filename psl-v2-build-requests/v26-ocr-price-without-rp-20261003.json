@@ -1,0 +1,7 @@
+{
+  "request_id":"papa-sauce-lab-v2-v26-ocr-price-without-rp",
+  "project_id":"papa-sauce-lab",
+  "version":26,
+  "mode":"stable_signed_update",
+  "reason":"OCR parser accepts trailing prices without Rp while protecting quantity parsing"
+}
