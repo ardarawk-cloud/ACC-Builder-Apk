@@ -2730,5 +2730,118 @@ window.PSLLocalDate = function(d){
 })();
 </script>
 
+
+<script id="PSL_V24_EXPORT_REPORT_FIX">
+(function(){
+  function reportText24(date){
+    var root=document.getElementById('reportContent');
+    if(!root) return 'PAPA SAUCE LAB\nLaporan Operasional '+date;
+    var clone=root.cloneNode(true);
+    clone.querySelectorAll('button').forEach(function(x){x.remove();});
+    clone.style.position='fixed';
+    clone.style.left='-99999px';
+    clone.style.top='0';
+    clone.style.width='600px';
+    document.body.appendChild(clone);
+    var body=(clone.innerText||clone.textContent||'')
+      .replace(/\u00a0/g,' ')
+      .replace(/[ \t]+/g,' ')
+      .replace(/\n[ \t]+/g,'\n')
+      .replace(/\n{3,}/g,'\n\n')
+      .trim();
+    clone.remove();
+    return 'PAPA SAUCE LAB\nLaporan Operasional '+date+'\n\n'+body;
+  }
+
+  Export.whatsapp=async function(date){
+    date=date||document.getElementById('reportDate')?.value||document.getElementById('operationalDateV5')?.value||PSLLocalDate();
+    var text=reportText24(date);
+    window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
+  };
+
+  function ascii24(v){
+    return String(v==null?'':v)
+      .normalize('NFKD')
+      .replace(/[^\x20-\x7E]/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+  function escPdf24(v){
+    return ascii24(v).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');
+  }
+  function wrap24(line,max){
+    max=max||92;
+    var raw=ascii24(line);
+    if(!raw) return [''];
+    var out=[],cur='';
+    raw.split(/\s+/).forEach(function(w){
+      if(!cur){cur=w;return;}
+      if((cur+' '+w).length<=max)cur+=' '+w;
+      else{out.push(cur);cur=w;}
+    });
+    if(cur)out.push(cur);
+    return out;
+  }
+  function pdfBlob24(text){
+    var source=String(text||'').split(/\r?\n/), lines=[];
+    source.forEach(function(line){ lines.push.apply(lines,wrap24(line,92)); });
+    var perPage=48,pages=[];
+    for(var i=0;i<lines.length;i+=perPage)pages.push(lines.slice(i,i+perPage));
+    if(!pages.length)pages=[['Papa Sauce Lab']];
+
+    var objects={},pageIds=[],contentIds=[],next=4;
+    for(var p=0;p<pages.length;p++){pageIds.push(next++);contentIds.push(next++);}
+    objects[1]='<< /Type /Catalog /Pages 2 0 R >>';
+    objects[2]='<< /Type /Pages /Kids ['+pageIds.map(function(id){return id+' 0 R';}).join(' ')+'] /Count '+pages.length+' >>';
+    objects[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+
+    pages.forEach(function(page,idx){
+      var pid=pageIds[idx],cid=contentIds[idx];
+      var stream='BT\n/F1 10 Tf\n40 800 Td\n';
+      page.forEach(function(line,j){
+        if(j>0)stream+='0 -15 Td\n';
+        stream+='('+escPdf24(line)+') Tj\n';
+      });
+      stream+='ET\n';
+      var len=new TextEncoder().encode(stream).length;
+      objects[cid]='<< /Length '+len+' >>\nstream\n'+stream+'endstream';
+      objects[pid]='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents '+cid+' 0 R >>';
+    });
+
+    var maxId=Math.max.apply(null,Object.keys(objects).map(Number));
+    var pdf='%PDF-1.4\n',offsets=[0],enc=new TextEncoder();
+    for(var id=1;id<=maxId;id++){
+      offsets[id]=enc.encode(pdf).length;
+      pdf+=id+' 0 obj\n'+objects[id]+'\nendobj\n';
+    }
+    var xref=enc.encode(pdf).length;
+    pdf+='xref\n0 '+(maxId+1)+'\n0000000000 65535 f \n';
+    for(var id2=1;id2<=maxId;id2++)pdf+=String(offsets[id2]).padStart(10,'0')+' 00000 n \n';
+    pdf+='trailer\n<< /Size '+(maxId+1)+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';
+    return new Blob([enc.encode(pdf)],{type:'application/pdf'});
+  }
+
+  Export.pdf=async function(date){
+    date=date||document.getElementById('reportDate')?.value||document.getElementById('operationalDateV5')?.value||PSLLocalDate();
+    var blob=pdfBlob24(reportText24(date));
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='papa-sauce-lab-report-'+date+'.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},3000);
+  };
+
+  window.print=function(){
+    var d=document.getElementById('reportDate')?.value||document.getElementById('operationalDateV5')?.value||PSLLocalDate();
+    Export.pdf(d);
+  };
+
+  console.log('PSL v24 report export fix active');
+})();
+</script>
+
 </body>
 </html>
