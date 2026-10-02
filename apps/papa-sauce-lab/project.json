@@ -1,12 +1,12 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 25,
+  "version": 26,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-v25-ocr-photo-expense",
-  "last_prompt": "Add photo/screenshot OCR import for expense lists: detect rows with Rp amounts, preview/edit/category, prevent duplicate image import, then save selected rows as expenses. Do not change HB logic, data model fundamentals, package ID, signer, or deployment path.",
+  "last_request_id": "papa-sauce-lab-v26-ocr-price-without-rp",
+  "last_prompt": "OCR expense import must also read lines whose final price has no Rp prefix, e.g. Cumi 2kg 190.000 and Tongkol 2kg 110.000, without confusing quantities as prices. No HB, package, signer, or deployment changes.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
   "updated_at": "2026-09-28T18:27:35.188325+00:00"
