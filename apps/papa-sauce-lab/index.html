@@ -3071,5 +3071,154 @@ window.PSLLocalDate = function(d){
 })();
 </script>
 
+
+<style id="PSL_V27_STICKY_OPERATIONAL_DATE_STYLE">
+.psl27-fixbox{margin-top:10px;padding:12px;border:1px solid #eadfcf;border-radius:12px;background:#fffaf1}
+.psl27-fixbox b{display:block;margin-bottom:5px}.psl27-fixbox p{font-size:11px;line-height:1.45;color:#6f6864;margin:0 0 9px}
+</style>
+<script id="PSL_V27_STICKY_OPERATIONAL_DATE">
+(function(){
+  const KEY='PSL_OPERATIONAL_DATE_V27';
+
+  function today27(){return PSLLocalDate();}
+  function prev27(d){const x=new Date(d+'T12:00:00');x.setDate(x.getDate()-1);return PSLLocalDate(x);}
+  async function closed27(date){
+    const snaps=await dbGetAll('snapshots');
+    return (snaps||[]).some(x=>x&&x.date===date&&x.type!=='period_end');
+  }
+  async function setOperational27(date){
+    if(!date||date>today27())return false;
+    const el=document.getElementById('operationalDateV5');
+    if(!el)return false;
+    if(el.value!==date){
+      el.value=date;
+      el.dispatchEvent(new Event('change',{bubbles:true}));
+      await new Promise(r=>setTimeout(r,120));
+    }
+    localStorage.setItem(KEY,date);
+    return true;
+  }
+  async function restore27(){
+    const el=document.getElementById('operationalDateV5');
+    if(!el)return false;
+    const saved=localStorage.getItem(KEY);
+    if(saved&&saved<=today27()){
+      if(await closed27(saved)){
+        const next=(()=>{const x=new Date(saved+'T12:00:00');x.setDate(x.getDate()+1);return PSLLocalDate(x);})();
+        if(next<=today27())await setOperational27(next);
+      }else{
+        await setOperational27(saved);
+      }
+    }else{
+      localStorage.setItem(KEY,el.value||today27());
+    }
+
+    if(!el.dataset.psl27Sticky){
+      el.dataset.psl27Sticky='1';
+      el.addEventListener('change',()=>{if(el.value)localStorage.setItem(KEY,el.value);});
+    }
+    return true;
+  }
+
+  const oldClose27=UI.tutupHari?.bind(UI);
+  if(oldClose27){
+    UI.tutupHari=async function(){
+      const before=document.getElementById('operationalDateV5')?.value||localStorage.getItem(KEY)||today27();
+      await oldClose27();
+      const after=document.getElementById('operationalDateV5')?.value||before;
+      localStorage.setItem(KEY,after);
+    };
+  }
+
+  async function latestOcrBatch27(){
+    const all=await dbGetAll('transactions');
+    const active=(all||[]).filter(x=>x&&x.status!=='CORRECTED'&&x.source==='ocr_image'&&x.ocrBatchId);
+    if(!active.length)return null;
+    active.sort((a,b)=>String(b.datetime||'').localeCompare(String(a.datetime||'')));
+    const id=active[0].ocrBatchId;
+    const rows=active.filter(x=>x.ocrBatchId===id);
+    return {id,rows,date:rows[0]?.date||'',total:rows.reduce((a,x)=>a+Number(x.amount||0),0)};
+  }
+  function rp27(n){return 'Rp '+Number(n||0).toLocaleString('id-ID');}
+  function uid27(){return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);}
+
+  window.PSLDateFix27={
+    moveLatestOcrBatch:async function(){
+      if(currentRole!=='OWNER')return alert('Hanya OWNER yang bisa memindahkan tanggal batch.');
+      const batch=await latestOcrBatch27();
+      if(!batch)return alert('Tidak ada batch Foto Belanja aktif yang bisa dipindah.');
+      const def=prev27(batch.date||today27());
+      let target=prompt(
+        'Pindah '+batch.rows.length+' pengeluaran Foto Belanja ('+rp27(batch.total)+') dari '+batch.date+' ke tanggal berapa?',
+        def
+      );
+      if(target===null)return;
+      target=String(target).trim();
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(target))return alert('Format tanggal harus YYYY-MM-DD');
+      if(target>today27())return alert('Tanggal masa depan tidak diperbolehkan');
+      if(target===batch.date)return alert('Tanggal tujuan sama dengan tanggal asal');
+      if(await closed27(target))return alert('Tanggal '+target+' sudah CLOSED. Batch tidak dipindah supaya snapshot lama tidak berubah.');
+      if(!confirm('Pindahkan seluruh batch dari '+batch.date+' ke '+target+'?\n\n'+batch.rows.length+' baris · '+rp27(batch.total)+'\n\nData asal tetap tersimpan sebagai CORRECTED untuk audit.'))return;
+
+      const now=new Date().toISOString();
+      for(const old of batch.rows){
+        const newId=uid27();
+        const oldCopy={...old,status:'CORRECTED',correctedTo:newId,correctionReason:'Pindah tanggal batch OCR '+batch.date+' → '+target,correctedAt:now,correctedBy:currentRole};
+        await dbPut('transactions',oldCopy);
+
+        const replacement={...old,id:newId,date:target,datetime:now,status:'ACTIVE',correctedFrom:old.id,correctionReason:'Pindah tanggal batch OCR '+batch.date+' → '+target,movedFromDate:batch.date};
+        delete replacement.correctedTo;
+        delete replacement.correctedAt;
+        delete replacement.correctedBy;
+        await dbPut('transactions',replacement);
+
+        await dbPut('corrections',{
+          id:'corr-'+newId,
+          originalId:old.id,
+          replacementId:newId,
+          date:batch.date,
+          newDate:target,
+          oldValue:Number(old.amount||0),
+          newValue:Number(old.amount||0),
+          reason:'Pindah tanggal batch OCR',
+          user:currentRole,
+          time:now,
+          action:'MOVE_TRANSACTION_DATE'
+        });
+      }
+
+      await setOperational27(target);
+      if(UI.updateDashboard)await UI.updateDashboard();
+      if(UI.renderTodayTransactions)await UI.renderTodayTransactions();
+      if(UI.renderHistory)await UI.renderHistory();
+      alert('Berhasil. '+batch.rows.length+' pengeluaran '+rp27(batch.total)+' dipindah ke '+target+'.');
+    }
+  };
+
+  async function injectFix27(){
+    const trans=document.querySelector('#tab-transaksi .card:first-child');
+    if(trans&&!document.getElementById('psl27MoveOcr')){
+      const box=document.createElement('div');
+      box.id='psl27MoveOcr';
+      box.className='psl27-fixbox owner-only';
+      box.innerHTML='<b>Perbaiki Salah Tanggal Foto</b><p>Kalau Foto Belanja terlanjur masuk setelah lewat tengah malam, pindahkan seluruh batch sekaligus. Data asal tidak dihapus; ditandai CORRECTED untuk audit.</p><button class="btn btn-secondary btn-block" onclick="PSLDateFix27.moveLatestOcrBatch()">Pindah Input Foto Terakhir</button>';
+      trans.appendChild(box);
+    }
+  }
+
+  let tries=0;
+  const timer=setInterval(async()=>{
+    tries++;
+    if(db&&document.getElementById('operationalDateV5')){
+      clearInterval(timer);
+      await restore27();
+      await injectFix27();
+    }else if(tries>=60)clearInterval(timer);
+  },100);
+
+  console.log('PSL v27 sticky operational date + OCR batch date correction active');
+})();
+</script>
+
 </body>
 </html>
