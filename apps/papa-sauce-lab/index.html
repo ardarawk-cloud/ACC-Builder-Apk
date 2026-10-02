@@ -2941,6 +2941,37 @@ window.PSLLocalDate = function(d){
     if(typeof cap.registerPlugin==='function')return cap.registerPlugin('CapacitorPluginMlKitTextRecognition');
     return null;
   }
+  async function loadTesseract25(){
+    if(window.Tesseract&&typeof window.Tesseract.recognize==='function')return window.Tesseract;
+    await new Promise(function(resolve,reject){
+      const old=document.getElementById('psl25Tesseract');
+      if(old){
+        old.addEventListener('load',resolve,{once:true});
+        old.addEventListener('error',function(){reject(new Error('Gagal memuat OCR'));},{once:true});
+        return;
+      }
+      const sc=document.createElement('script');
+      sc.id='psl25Tesseract';
+      sc.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      sc.onload=resolve;
+      sc.onerror=function(){reject(new Error('Gagal memuat OCR. Pastikan internet aktif.'));};
+      document.head.appendChild(sc);
+    });
+    if(!window.Tesseract)throw new Error('OCR tidak tersedia');
+    return window.Tesseract;
+  }
+  async function recognize25(dataUrl,base64){
+    const plugin=plugin25();
+    if(plugin&&typeof plugin.detectText==='function'){
+      try{
+        const result=await plugin.detectText({base64Image:base64,rotation:0});
+        if(result&&result.text)return result.text;
+      }catch(e){console.warn('Native OCR fallback',e);}
+    }
+    const T=await loadTesseract25();
+    const result=await T.recognize(dataUrl,'eng');
+    return result&&result.data&&result.data.text?result.data.text:'';
+  }
 
   window.PSLOCR25={
     pick:function(){
@@ -2957,10 +2988,7 @@ window.PSLLocalDate = function(d){
           try{
             const dataUrl=await readFile25(file);
             const base64=dataUrl.split(',')[1]||'';
-            const plugin=plugin25();
-            if(!plugin||typeof plugin.detectText!=='function')throw new Error('OCR native belum tersedia di build ini');
-            const result=await plugin.detectText({base64Image:base64,rotation:0});
-            O25.rawText=result&&result.text?result.text:'';
+            O25.rawText=await recognize25(dataUrl,base64);
             O25.rows=parse25(O25.rawText);
             O25.batchId='ocr-'+hash25(base64);
             if(!O25.rows.length){
