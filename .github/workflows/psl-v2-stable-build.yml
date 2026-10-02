@@ -76,6 +76,16 @@ jobs:
           cp "apps/$PROJECT/index.html" "$BUILD_DIR/www/index.html"
           [ ! -f "apps/$PROJECT/icon.svg" ] || cp "apps/$PROJECT/icon.svg" "$BUILD_DIR/www/icon.svg"
 
+          python3 - "$BUILD_DIR/www/index.html" "$VERSION" <<'PY'
+          from pathlib import Path
+          import sys
+          p=Path(sys.argv[1]); version=sys.argv[2]; text=p.read_text(encoding='utf-8')
+          token='__PSL_APP_VERSION__'
+          if token not in text:
+              raise SystemExit('version display token missing')
+          p.write_text(text.replace(token,version),encoding='utf-8')
+          PY
+
           cd "$BUILD_DIR"
           cat > package.json <<'JSON'
           {
@@ -143,6 +153,8 @@ jobs:
           unzip -p "$APK" assets/public/index.html | grep -q 'PSL_V18_LAB_COST_CENTER_REPORT'
           unzip -p "$APK" assets/public/index.html | grep -q 'Import JSON Backup'
           unzip -p "$APK" assets/public/index.html | grep -q "putMany19('snapshots'"
+          unzip -p "$APK" assets/public/index.html | grep -q "PSL v${VERSION} · Stable Update"
+          ! unzip -p "$APK" assets/public/index.html | grep -q "__PSL_APP_VERSION__"
 
       - name: Upload V2 stable APK
         uses: actions/upload-artifact@v4
