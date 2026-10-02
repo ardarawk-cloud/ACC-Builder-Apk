@@ -2843,5 +2843,200 @@ window.PSLLocalDate = function(d){
 })();
 </script>
 
+
+<style id="PSL_V25_OCR_STYLE">
+#psl25OcrPreview{display:flex;flex-direction:column;gap:8px}
+.psl25-ocr-row{border:1px solid #e5ddd5;border-radius:12px;padding:10px;background:#fffdf9}
+.psl25-ocr-top{display:grid;grid-template-columns:28px 1fr 120px;gap:7px;align-items:center}
+.psl25-ocr-note,.psl25-ocr-amount,.psl25-ocr-cat{height:40px;border:1px solid #ddd7d1;border-radius:9px;padding:0 9px;background:#fff;font-size:12px;min-width:0}
+.psl25-ocr-cat{width:100%;margin-top:7px}
+.psl25-ocr-total{display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:11px;background:#fff4e2;font-weight:850;margin:10px 0}
+.psl25-ocr-info{font-size:11px;line-height:1.45;color:#656970;margin-bottom:10px}
+</style>
+<script id="PSL_V25_OCR_EXPENSE_IMPORT">
+(function(){
+  const CATS25=['bahan baku','packaging','operasional','transport','kebersihan','peralatan','lainnya'];
+  const O25={rows:[],batchId:'',rawText:''};
+
+  function opDate25(){
+    return document.getElementById('operationalDateV5')?.value || PSLLocalDate();
+  }
+  function rupiah25(n){return 'Rp '+Number(n||0).toLocaleString('id-ID');}
+  function esc25(v){return String(v??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function hash25(str){
+    let h=2166136261;
+    for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}
+    return (h>>>0).toString(16);
+  }
+  function autoCat25(text){
+    const t=String(text||'').toLowerCase();
+    if(/parkir|bensin|transport|ongkir|kurir/.test(t))return 'transport';
+    if(/plastik|box|cup|botol|kemasan|packaging|stiker|label/.test(t))return 'packaging';
+    if(/sabun|pel|sapu|tisu|kebersihan/.test(t))return 'kebersihan';
+    if(/pisau|wajan|panci|alat|blender|kompor/.test(t))return 'peralatan';
+    if(/listrik|gas|pulsa|admin|operasional/.test(t))return 'operasional';
+    return 'bahan baku';
+  }
+  function parse25(text){
+    const out=[];
+    String(text||'').split(/\r?\n/).forEach(function(line){
+      let x=line.replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
+      if(!x)return;
+      const m=x.match(/\bRp\.?\s*([0-9][0-9.,]*)\s*$/i);
+      if(!m)return;
+      const amount=Number(String(m[1]).replace(/\D/g,''));
+      if(!amount)return;
+      const note=x.slice(0,m.index).replace(/[-:]+$/,'').trim();
+      if(!note)return;
+      out.push({note:note,amount:amount,category:autoCat25(note),use:true});
+    });
+    return out;
+  }
+  function total25(){
+    return O25.rows.reduce(function(a,r){return a+(r.use?Number(r.amount||0):0);},0);
+  }
+  function render25(){
+    const title=document.getElementById('detailTitle'), body=document.getElementById('detailContent');
+    if(!title||!body)return;
+    title.textContent='Review Import Foto';
+    const rows=O25.rows.map(function(r,i){
+      return '<div class="psl25-ocr-row">'+
+        '<div class="psl25-ocr-top">'+
+          '<input type="checkbox" '+(r.use?'checked':'')+' onchange="PSLOCR25.setUse('+i+',this.checked)">'+
+          '<input class="psl25-ocr-note" value="'+esc25(r.note)+'" oninput="PSLOCR25.setNote('+i+',this.value)">'+
+          '<input type="number" class="psl25-ocr-amount" value="'+Number(r.amount||0)+'" oninput="PSLOCR25.setAmount('+i+',this.value)">'+
+        '</div>'+
+        '<select class="psl25-ocr-cat" onchange="PSLOCR25.setCat('+i+',this.value)">'+
+          CATS25.map(function(c){return '<option value="'+c+'" '+(c===r.category?'selected':'')+'>'+c+'</option>';}).join('')+
+        '</select>'+
+      '</div>';
+    }).join('');
+    body.innerHTML=
+      '<div class="psl25-ocr-info"><b>Foto sudah dibaca.</b> Cek dulu hasilnya sebelum disimpan. Setiap baris akan dibuat sebagai pengeluaran terpisah pada tanggal operasional <b>'+esc25(opDate25())+'</b>. Foto yang sama tidak bisa diimpor dua kali.</div>'+
+      '<div id="psl25OcrPreview">'+rows+'</div>'+
+      '<div class="psl25-ocr-total"><span>Total dipilih</span><b id="psl25OcrTotal">'+rupiah25(total25())+'</b></div>'+
+      '<button class="btn btn-primary btn-block" onclick="PSLOCR25.save()">Simpan Semua yang Dipilih</button>'+
+      '<button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="PSLOCR25.pick()">Pilih Foto Lain</button>';
+    UI.showModal('detail');
+  }
+  function updateTotal25(){
+    const el=document.getElementById('psl25OcrTotal');if(el)el.textContent=rupiah25(total25());
+  }
+  async function closed25(date){
+    const snaps=await dbGetAll('snapshots');
+    return (snaps||[]).some(function(x){return x&&x.date===date&&x.type!=='period_end';});
+  }
+  async function readFile25(file){
+    return await new Promise(function(resolve,reject){
+      const fr=new FileReader();
+      fr.onload=function(){resolve(String(fr.result||''));};
+      fr.onerror=function(){reject(fr.error||new Error('Gagal membaca gambar'));};
+      fr.readAsDataURL(file);
+    });
+  }
+  function plugin25(){
+    const cap=window.Capacitor;
+    if(!cap)return null;
+    if(cap.Plugins&&cap.Plugins.CapacitorPluginMlKitTextRecognition)return cap.Plugins.CapacitorPluginMlKitTextRecognition;
+    if(typeof cap.registerPlugin==='function')return cap.registerPlugin('CapacitorPluginMlKitTextRecognition');
+    return null;
+  }
+
+  window.PSLOCR25={
+    pick:function(){
+      let input=document.getElementById('psl25OcrFile');
+      if(!input){
+        input=document.createElement('input');
+        input.type='file'; input.accept='image/*'; input.id='psl25OcrFile'; input.style.display='none';
+        input.addEventListener('change',async function(e){
+          const file=e.target.files&&e.target.files[0];
+          e.target.value='';
+          if(!file)return;
+          const title=document.getElementById('detailTitle'),body=document.getElementById('detailContent');
+          if(title&&body){title.textContent='Membaca Foto';body.innerHTML='<div class="empty-state">OCR sedang membaca tulisan di gambar...</div>';UI.showModal('detail');}
+          try{
+            const dataUrl=await readFile25(file);
+            const base64=dataUrl.split(',')[1]||'';
+            const plugin=plugin25();
+            if(!plugin||typeof plugin.detectText!=='function')throw new Error('OCR native belum tersedia di build ini');
+            const result=await plugin.detectText({base64Image:base64,rotation:0});
+            O25.rawText=result&&result.text?result.text:'';
+            O25.rows=parse25(O25.rawText);
+            O25.batchId='ocr-'+hash25(base64);
+            if(!O25.rows.length){
+              if(body)body.innerHTML='<div class="empty-state">Tulisan terbaca, tapi belum menemukan baris dengan format nama + Rp nominal. Coba screenshot/foto yang lebih jelas.</div><button class="btn btn-primary btn-block" onclick="PSLOCR25.pick()">Pilih Foto Lagi</button>';
+              return;
+            }
+            render25();
+          }catch(err){
+            console.error('PSL OCR error',err);
+            if(body)body.innerHTML='<div class="empty-state">Gagal membaca foto: '+esc25(err&&err.message?err.message:String(err))+'</div><button class="btn btn-primary btn-block" onclick="PSLOCR25.pick()">Coba Lagi</button>';
+          }
+        });
+        document.body.appendChild(input);
+      }
+      input.click();
+    },
+    setUse:function(i,v){if(O25.rows[i])O25.rows[i].use=!!v;updateTotal25();},
+    setNote:function(i,v){if(O25.rows[i])O25.rows[i].note=v;},
+    setAmount:function(i,v){if(O25.rows[i])O25.rows[i].amount=Number(v||0);updateTotal25();},
+    setCat:function(i,v){if(O25.rows[i]&&CATS25.includes(v))O25.rows[i].category=v;},
+    save:async function(){
+      const date=opDate25();
+      if(await closed25(date))return alert('Tanggal '+date+' sudah CLOSED. Import foto diblokir supaya snapshot lama tidak berubah.');
+      const existing=await dbGetAll('transactions');
+      if((existing||[]).some(function(x){return x&&x.ocrBatchId===O25.batchId&&x.status!=='CORRECTED';})){
+        return alert('Foto ini sudah pernah diimpor. Dibatalkan supaya pengeluaran tidak dobel.');
+      }
+      const rows=O25.rows.filter(function(r){return r.use&&Number(r.amount)>0&&String(r.note||'').trim();});
+      if(!rows.length)return alert('Tidak ada baris yang dipilih.');
+      if(!confirm('Simpan '+rows.length+' pengeluaran dengan total '+rupiah25(rows.reduce(function(a,r){return a+Number(r.amount||0);},0))+'?'))return;
+      const stamp=Date.now();
+      for(let i=0;i<rows.length;i++){
+        const r=rows[i];
+        await dbPut('transactions',{
+          id:'ocr-'+stamp+'-'+i+'-'+Math.random().toString(36).slice(2,6),
+          date:date,
+          datetime:new Date().toISOString(),
+          type:'expense',
+          category:r.category,
+          amount:Number(r.amount||0),
+          channel:null,
+          note:String(r.note).trim()+' · OCR Foto',
+          user:currentRole,
+          status:'ACTIVE',
+          source:'ocr_image',
+          ocrBatchId:O25.batchId
+        });
+      }
+      UI.closeModal('detail');
+      if(UI.updateDashboard)await UI.updateDashboard();
+      if(UI.renderTodayTransactions)await UI.renderTodayTransactions();
+      if(UI.renderHistory)await UI.renderHistory();
+      alert('Import foto berhasil: '+rows.length+' pengeluaran.');
+    }
+  };
+
+  function install25(){
+    const box=document.querySelector('#tab-transaksi .card:first-child > div[style*="display:flex"]');
+    if(box&&!document.getElementById('psl25OcrBtn')){
+      const b=document.createElement('button');
+      b.id='psl25OcrBtn';b.className='btn btn-secondary btn-sm';b.textContent='📷 Foto Belanja';b.onclick=function(){PSLOCR25.pick();};
+      box.appendChild(b);
+    }
+    const q=document.querySelector('#tab-dashboard .quick-actions');
+    if(q&&!document.getElementById('psl25OcrQuick')){
+      const b=document.createElement('button');
+      b.id='psl25OcrQuick';b.className='quick-action';b.innerHTML='📷<br>Foto Belanja';b.onclick=function(){PSLOCR25.pick();};
+      const exp=q.querySelector('button[onclick*="expense"]');
+      if(exp&&exp.nextSibling)q.insertBefore(b,exp.nextSibling); else q.appendChild(b);
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install25,{once:true}); else install25();
+  setTimeout(install25,800);
+  console.log('PSL v25 OCR expense import ready');
+})();
+</script>
+
 </body>
 </html>
