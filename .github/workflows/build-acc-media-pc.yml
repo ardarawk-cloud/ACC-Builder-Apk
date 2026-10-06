@@ -1,0 +1,150 @@
+name: ACC Media PC - Windows Portable
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/acc-media-downloader/desktop/**"
+      - "apps/acc-media-downloader/index.html"
+      - "apps/acc-media-downloader/v3.js"
+      - "apps/acc-media-downloader/social-v4.js"
+      - "apps/acc-media-downloader/playlist-v5.js"
+      - "apps/acc-media-downloader/youtube-playlist-v6.js"
+      - "apps/acc-media-downloader/hotfix-v7.js"
+      - "apps/acc-media-downloader/playlist-queue-v62.js"
+      - ".github/workflows/build-acc-media-pc.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: acc-media-pc-windows
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Prepare desktop web bundle
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $app = Join-Path $env:GITHUB_WORKSPACE "apps\acc-media-downloader"
+          $desk = Join-Path $app "desktop"
+          $web = Join-Path $desk "web"
+
+          if (Test-Path $web) { Remove-Item $web -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $web | Out-Null
+
+          Copy-Item (Join-Path $app "index.html") (Join-Path $web "index.html")
+          Copy-Item (Join-Path $app "icon.svg") (Join-Path $web "icon.svg")
+          @(
+            "v3.js",
+            "social-v4.js",
+            "playlist-v5.js",
+            "youtube-playlist-v6.js",
+            "hotfix-v7.js",
+            "playlist-queue-v62.js"
+          ) | ForEach-Object {
+            Copy-Item (Join-Path $app $_) (Join-Path $web $_)
+          }
+          Copy-Item (Join-Path $desk "pc-bridge.js") (Join-Path $web "pc-bridge.js")
+
+          $indexPath = Join-Path $web "index.html"
+          $html = Get-Content -Raw -Path $indexPath
+          $scripts = @(
+            '<script src="v3.js"></script>',
+            '<script src="social-v4.js"></script>',
+            '<script src="playlist-v5.js"></script>',
+            '<script src="youtube-playlist-v6.js"></script>',
+            '<script src="hotfix-v7.js"></script>',
+            '<script src="playlist-queue-v62.js"></script>',
+            '<script src="pc-bridge.js"></script>'
+          )
+          foreach ($tag in $scripts) {
+            if (-not $html.Contains($tag)) {
+              $html = $html.Replace("</body>", $tag + [Environment]::NewLine + "</body>")
+            }
+          }
+          [System.IO.File]::WriteAllText($indexPath, $html, [System.Text.UTF8Encoding]::new($false))
+
+          if (-not $html.Contains('playlist-queue-v62.js')) { throw "Playlist queue layer missing from PC bundle" }
+          if (-not $html.Contains('pc-bridge.js')) { throw "PC bridge missing from bundle" }
+
+      - name: Install desktop dependencies
+        working-directory: apps/acc-media-downloader/desktop
+        shell: pwsh
+        run: npm install --no-audit --no-fund
+
+      - name: Bundle yt-dlp, FFmpeg and Deno
+        working-directory: apps/acc-media-downloader/desktop
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $bin = Join-Path (Get-Location) "bin"
+          if (Test-Path $bin) { Remove-Item $bin -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $bin | Out-Null
+
+          Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile (Join-Path $bin "yt-dlp.exe")
+
+          $denoZip = Join-Path $env:RUNNER_TEMP "deno.zip"
+          Invoke-WebRequest -Uri "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip" -OutFile $denoZip
+          Expand-Archive -Path $denoZip -DestinationPath $bin -Force
+
+          $ffmpeg = node -e "process.stdout.write(require('ffmpeg-static'))"
+          $ffprobe = node -e "process.stdout.write(require('ffprobe-static').path)"
+          Copy-Item $ffmpeg (Join-Path $bin "ffmpeg.exe") -Force
+          Copy-Item $ffprobe (Join-Path $bin "ffprobe.exe") -Force
+
+          & (Join-Path $bin "yt-dlp.exe") --version
+          & (Join-Path $bin "ffmpeg.exe") -version | Select-Object -First 1
+          & (Join-Path $bin "deno.exe") --version | Select-Object -First 1
+
+      - name: Build portable EXE
+        working-directory: apps/acc-media-downloader/desktop
+        shell: pwsh
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run build:win
+
+      - name: Verify portable EXE
+        id: artifact
+        working-directory: apps/acc-media-downloader/desktop
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = Get-ChildItem -Path "dist" -Filter "ACC-Media-PC-*-Portable.exe" | Select-Object -First 1
+          if (-not $exe) { throw "Portable EXE not found" }
+          if ($exe.Length -lt 50000000) { throw "Portable EXE unexpectedly small" }
+          "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
+          "name=$($exe.Name)" >> $env:GITHUB_OUTPUT
+          Write-Host "Portable EXE: $($exe.FullName) ($([math]::Round($exe.Length/1MB,1)) MB)"
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ACC-Media-PC-Windows
+          path: ${{ steps.artifact.outputs.path }}
+          retention-days: 14
+          compression-level: 0
+
+      - name: Create Windows release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "acc-media-pc-v1-${{ github.run_number }}"
+          $exe = "${{ steps.artifact.outputs.path }}"
+          gh release create $tag $exe --title "ACC Media Downloader PC v1.0.0" --notes "Windows x64 portable build. Bundled yt-dlp, FFmpeg and Deno. No installation required. Use only for media you own or are authorized to download." --target "${{ github.sha }}"
