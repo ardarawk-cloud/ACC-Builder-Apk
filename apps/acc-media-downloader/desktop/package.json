@@ -1,0 +1,45 @@
+{
+  "name": "acc-media-downloader-pc",
+  "version": "1.0.0",
+  "description": "ACC Media Downloader for Windows",
+  "main": "main.js",
+  "author": "NADMO Studio",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win portable --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12",
+    "ffmpeg-static": "^5.2.0",
+    "ffprobe-static": "^3.1.0"
+  },
+  "build": {
+    "appId": "id.nadmo.accmedia.pc",
+    "productName": "ACC Media Downloader",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "web/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "ACC-Media-PC-${version}-Portable.exe"
+    }
+  }
+}
