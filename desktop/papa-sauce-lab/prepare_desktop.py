@@ -1,6 +1,7 @@
 from pathlib import Path
 import shutil
 import json
+import re
 
 here = Path(__file__).resolve().parent
 repo = here.parents[1]
@@ -10,7 +11,9 @@ out = here / 'app'
 out.mkdir(parents=True, exist_ok=True)
 
 html = src.read_text(encoding='utf-8')
-version = str(json.loads(project.read_text(encoding='utf-8')).get('version', ''))
+meta_version = int(json.loads(project.read_text(encoding='utf-8')).get('version', 0) or 0)
+markers = [int(x) for x in re.findall(r'PSL_V(\d+)', html)]
+version = str(max([meta_version] + markers))
 html = html.replace('__PSL_APP_VERSION__', version)
 
 if 'PSL_DESKTOP_BUILD' not in html:
