@@ -164,9 +164,9 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
 </section>
 <section id="settings" class="hide">
   <div class="page-top"><div><span class="eyebrow">SYSTEM / CONTROL</span><h1>SETTINGS<span style="color:var(--neon)">.</span></h1></div><span class="edition">CONFIG / 01</span></div>
-  <p class="deck">Konfigurasi beta untuk server dan batas usia.</p>
+  <p class="deck">Status jaringan otomatis dan pengaturan usia.</p>
   <div class="show-label"><b>NETWORK</b><small>SERVER LINK</small></div>
-  <div class="panel"><label for="server">BACKEND HTTPS ENDPOINT</label><input id="server" class="field" type="url" placeholder="https://your-server.onrender.com"><button class="btn secondary" id="saveServer">↗ CONNECT SERVER</button><div class="status" id="serverState"></div><p>Alamat server dapat diisi setelah deployment. Tampilan dan preview kamera tetap bisa dibuka secara lokal.</p></div>
+  <div class="panel"><input id="server" type="hidden"><div class="eyebrow">AUTO-CONNECT / ACTIVE</div><div class="status" id="serverState">Memeriksa koneksi server NADMO...</div><button class="btn secondary" id="saveServer">↻ CEK KONEKSI</button><p>Server diatur otomatis oleh NADMO. Tidak ada alamat yang harus diisi pengguna.</p></div>
   <div class="show-label"><b>ACCESS & AGE</b><small>18+ POLICY</small></div>
   <div class="setting-line"><label for="adult">Saya berusia 18 tahun ke atas</label><input id="adult" type="checkbox"></div>
   <p>Beta menggunakan konfirmasi mandiri. Peluncuran publik memerlukan verifikasi usia dan moderasi.</p>
@@ -185,7 +185,8 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
 (function(){
  'use strict';
  const $=id=>document.getElementById(id), screens=['home','explore','studio','watch','tv','radio','settings'];
- let server=localStorage.getItem('nadmo.server')||'', socket=null, localStream=null, currentRoom='', selfId='', host=false, peers=new Map(), peer=null;
+ const DEFAULT_BACKEND='https://nadmo-live-beta-20261009.ardarawk.workers.dev';
+ let server=DEFAULT_BACKEND, socket=null, localStream=null, currentRoom='', selfId='', host=false, peers=new Map(), peer=null;
  $('server').value=server; $('adult').checked=localStorage.getItem('nadmo.adult')==='yes';
  function show(name){for(const n of screens)$(n).classList.toggle('hide',n!==name);document.querySelectorAll('nav [data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));if(name==='explore')loadRooms();}
  document.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>show(el.dataset.tab)));
@@ -198,7 +199,7 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
   if(!server){$('net').textContent='OFFLINE BETA';return}
   try{const c=new AbortController(),t=setTimeout(()=>c.abort(),6000);const r=await fetch(api('/health'),{signal:c.signal});clearTimeout(t);if(!r.ok)throw Error();$('net').textContent='SERVER ONLINE';notice('Backend terhubung.')}catch(e){$('net').textContent='BELUM TERHUBUNG';notice('Server belum merespons. Kamera lokal tetap bisa dipakai.')}
  }
- $('saveServer').onclick=()=>{let x=$('server').value.trim().replace(/\/+$/,'');if(x&&!validURL(x)){notice('Harus alamat HTTPS yang valid.');return}server=x;localStorage.setItem('nadmo.server',x);if(socket)socket.close();health();};
+ $('saveServer').onclick=()=>health();
  $('mode').onchange=()=>$('passwordBox').classList.toggle('hide',$('mode').value!=='password');
  async function preview(){
   try{if(!navigator.mediaDevices?.getUserMedia)throw Error('Browser belum mendukung kamera');if(localStream)localStream.getTracks().forEach(t=>t.stop());localStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720}},audio:{echoCancellation:true}});$('camera').srcObject=localStream;notice('Kamera dan mikrofon siap.','camState');}
@@ -207,7 +208,7 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
  $('preview').onclick=preview;
  $('stopCamera').onclick=()=>{if(localStream)localStream.getTracks().forEach(t=>t.stop());localStream=null;$('camera').srcObject=null;notice('Kamera dimatikan.','camState')};
  async function loadRooms(){
-  if(!server){$('rooms').textContent='Hubungkan backend di Settings untuk melihat room publik.';return}
+  if(!server){$('rooms').textContent='Server sedang tidak tersedia, coba lagi nanti.';return}
   try{let r=await fetch(api('/api/rooms'));if(!r.ok)throw Error();let data=await r.json();$('rooms').replaceChildren();if(!data.rooms.length){$('rooms').textContent='Belum ada kreator live. Jadilah yang pertama.';return}
    for(let x of data.rooms){const node=document.createElement('div');node.className='room';const info=document.createElement('div');const strong=document.createElement('b');strong.textContent=x.title;const detail=document.createElement('small');detail.textContent=x.category+' • '+x.viewers+' viewers';info.append(strong,detail);const button=document.createElement('button');button.className='btn secondary';button.textContent='Tonton';button.onclick=()=>join(x.id,x.title,false);node.append(info,button);$('rooms').append(node)}
   }catch(e){$('rooms').textContent='Tidak bisa memuat daftar live. Periksa server di Settings.'}
@@ -215,7 +216,7 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
  $('refresh').onclick=loadRooms;
  function wsurl(){return server.replace(/^https:/,'wss:').replace(/\/$/,'')+'/ws'}
  function transmit(obj){if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify(obj))}
- function connect(fn){if(!server){notice('Backend belum aktif. Konfigurasikan di Settings.','liveState');return}if(socket)socket.close();socket=new WebSocket(wsurl());socket.onopen=fn;socket.onerror=()=>notice('Gagal menghubungi server streaming.','liveState');socket.onclose=()=>{if(currentRoom)notice('Koneksi siaran terputus.','watchState');$('net').textContent='TERPUTUS'};socket.onmessage=async e=>{try{await incoming(JSON.parse(e.data))}catch(err){console.error(err)}}}
+ function connect(fn){if(!server){notice('Server NADMO sedang tidak tersedia.','liveState');return}if(socket)socket.close();socket=new WebSocket(wsurl());socket.onopen=fn;socket.onerror=()=>notice('Gagal menghubungi server streaming.','liveState');socket.onclose=()=>{if(currentRoom)notice('Koneksi siaran terputus.','watchState');$('net').textContent='TERPUTUS'};socket.onmessage=async e=>{try{await incoming(JSON.parse(e.data))}catch(err){console.error(err)}}}
  function rtc(){return new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]})}
  function signal(to,data){transmit({type:'signal',to,data})}
  async function attachViewer(id){if(!localStream)return;const pc=rtc();peers.set(id,pc);localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));pc.onicecandidate=e=>{if(e.candidate)signal(id,{candidate:e.candidate})};const offer=await pc.createOffer();await pc.setLocalDescription(offer);signal(id,{description:pc.localDescription})}
@@ -233,7 +234,7 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
   if(m.type==='error'){alert(m.message||'Kesalahan server');notice(m.message||'Kesalahan server','liveState')}
  }
  $('createRoom').onclick=async()=>{
-  if(!adult())return;if(!server){notice('Belum ada server. Kamu tetap bisa tes kamera di atas.','liveState');return}
+  if(!adult())return;if(!server){notice('Server NADMO sedang tidak tersedia, coba lagi nanti.','liveState');return}
   if(!localStream)await preview();if(!localStream)return;
   const title=$('title').value.trim()||'NADMO LIVE',mode=$('mode').value,password=$('password').value;
   if(mode==='password'&&(password.length<4||password.length>32)){notice('Kode private room harus 4–32 karakter.','liveState');return}
