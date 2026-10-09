@@ -496,8 +496,24 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
  $('send').onclick=()=>{let msg=$('message').value.trim();if(!msg)return;transmit({type:'chat',text:msg});$('message').value=''};
  $('message').addEventListener('keydown',e=>{if(e.key==='Enter')$('send').click()});
  function leave(){
-  manuallyLeaving=true;stopRetry();transmit({type:'leave'});
-  if(socket){socket.onclose=null;socket.close();socket=null}
+  manuallyLeaving=true;stopRetry();
+  if(socket){
+    const conn=socket;
+    conn.onclose=null;
+    if(conn.readyState===WebSocket.OPEN){
+      let timer;
+      const handle=e=>{
+        try{
+          if(JSON.parse(e.data).type!=='left')return;
+          clearTimeout(timer);conn.removeEventListener('message',handle);conn.close(1000,'leave acknowledged');
+        }catch(error){}
+      };
+      conn.addEventListener('message',handle);
+      timer=setTimeout(()=>{conn.removeEventListener('message',handle);if(conn.readyState===WebSocket.OPEN)conn.close(1000,'leave timeout')},2500);
+      transmit({type:'leave'});
+    }else conn.close();
+    socket=null;
+  }
   for(const pc of peers.values())pc.close();peers.clear();pendingIce.clear();
   if(peer){peer.close();peer=null}
   if(afkTimer)clearInterval(afkTimer);afkTimer=null;afkTrack=null;afkMode=false;
