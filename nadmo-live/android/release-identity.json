@@ -1,0 +1,11 @@
+{
+  "app": "NADMO LIVE",
+  "package_id": "id.nadmo.live",
+  "signing_identity": "owner-generated-2026-10-09",
+  "certificate_sha256": "19896c08fbaf4437f6ea2514312168508e0e2c4cb6b65c0f09647887106c0787",
+  "certificate_subject": "CN=NADMO LIVE, OU=Android, O=NADMO Studio, L=Bali, C=ID",
+  "first_signed_version_code": 5,
+  "first_signed_version_name": "0.5.0-beta",
+  "first_verified_workflow_run": 37903393284,
+  "policy": "Never rotate/recreate keystore for updates. Preserve same package ID and signing certificate; increment versionCode on subsequent APKs."
+}
