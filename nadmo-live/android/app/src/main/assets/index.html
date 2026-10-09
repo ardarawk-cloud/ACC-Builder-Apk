@@ -344,6 +344,33 @@ body.live-immersive #watch .sheet-close:focus-visible{
  outline:2px solid #e3fd72;outline-offset:3px;
 }
 
+
+/* NADMO profile external-links + post draft surface. External URLs are not platform-locked. */
+.nadmo-profile{margin:12px 0 27px}
+.profile-hero{display:flex;align-items:center;gap:12px;padding:17px 12px;border:1px solid #3b513d;border-radius:14px;background:#131b14}
+.profile-avatar{flex:0 0 54px;height:54px;display:grid;place-items:center;background:#233325;border:1px solid #b9d35a;border-radius:50%;font:bold 26px Impact,Arial,sans-serif;color:#e3fd72}
+.profile-hero>div:nth-child(2){display:flex;flex-direction:column;min-width:0;flex:1;gap:5px}
+.profile-hero b{font-size:17px;overflow:hidden;text-overflow:ellipsis}
+.profile-hero small{font-size:12px;color:#c2d3be}
+.profile-hero button{font-size:11px;padding:10px;min-height:38px}
+.profile-bio{padding:0 5px;white-space:pre-wrap;overflow-wrap:anywhere}
+.profile-links,.profile-edit-links,.profile-post-feed{display:flex;flex-direction:column;gap:9px;padding:8px 0}
+.profile-business-link{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:10px;border:1px solid #4a6844;background:#18271a;color:#e3fd72;text-decoration:none;min-width:0}
+.profile-business-link span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.profile-business-link:focus-visible,.post-external-link:focus-visible{outline:2px solid #e3fd72}
+.profile-note{font-size:11px;line-height:1.6;color:#9fac99;margin:8px 0 15px}
+.profile-edit-row{display:flex;flex-direction:column;gap:9px;margin:8px 0}
+.profile-textarea{width:100%;resize:vertical;min-height:85px;padding:10px 12px}
+.profile-edit-links>div{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#1b261d;padding:9px 11px;border-radius:9px}
+.profile-edit-links>div span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.profile-edit-links button,.profile-post-feed button{border:1px solid #798871;border-radius:9px;background:#1f2e22;padding:7px;color:#ecf5e7;flex-shrink:0}
+.profile-post-card{background:#151d17;border:1px solid #405442;border-radius:12px;padding:14px;min-width:0}
+.profile-post-card .post-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.profile-post-card .post-top small{color:#a8b3a4}
+.profile-post-content{margin:12px 0;white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.65;color:#e9ede5}
+.post-external-link{color:#e3fd72;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+.profile-composer button{margin-top:9px}
+
 </style></head>
 <body>
 <div class="app">
@@ -518,8 +545,43 @@ body.live-immersive #watch .sheet-close:focus-visible{
   <p class="deck">Ini masih fondasi kanal SIGNAL. Sistem pemberitahuan terverifikasi, arsip offline, relai cadangan dan persetujuan editor belum dibangun.</p>
 </section>
 <section id="settings" class="hide">
-  <div class="page-top"><div><span class="eyebrow">CREATOR / SETTINGS</span><h1>MY NADMO<span style="color:var(--neon)">.</span></h1></div><span class="edition">BETA ACCOUNT</span></div>
-  <p class="deck">Profil kreator, dukungan, keuangan, dan koneksi. Akses tanpa akun saat ini hanya untuk uji internal.</p><div class="notice">Saweran: belum aktif · Tiket room: belum aktif · Penarikan: belum aktif. Tidak ada uang yang diproses dalam beta ini.</div>
+  <div class="page-top"><div><span class="eyebrow">ME / PERSONAL SPACE</span><h1>MY NADMO<span style="color:var(--neon)">.</span></h1></div><span class="edition">PROFILE BETA</span></div>
+    <div id="betaSocialProfile" class="nadmo-profile">
+    <div class="show-label"><b>PROFIL & LINK BISNIS</b><small>PRATINJAU LOKAL · BELUM DIPUBLIKASIKAN</small></div>
+    <div class="profile-hero">
+      <div class="profile-avatar" aria-hidden="true">N/</div>
+      <div><b id="profileDisplayName">Profil NADMO</b><small id="profileDisplayHandle">@username</small></div>
+      <button type="button" class="btn secondary" id="editProfileBtn">EDIT</button>
+    </div>
+    <p id="profileDisplayBio" class="profile-bio">Tampilkan siapa kamu, bisnis dan karya yang kamu punya.</p>
+    <div id="profileBusinessLinks" class="profile-links"></div>
+    <div class="profile-note">Link luar dibuka langsung, tanpa dialihkan ke halaman penghalang NADMO. Saat ini profil dan postingan contoh ini hanya tersimpan di perangkat ini; akun publik lintas perangkat belum aktif.</div>
+    <div id="profileEditBox" class="panel hide">
+      <label for="profileName">NAMA TAMPILAN</label>
+      <input class="field" id="profileName" maxlength="60" placeholder="Nama kreator / bisnis">
+      <label for="profileHandle">USERNAME</label>
+      <input class="field" id="profileHandle" maxlength="24" placeholder="contoh: ardamoron">
+      <label for="profileBio">BIO</label>
+      <textarea class="field profile-textarea" id="profileBio" rows="3" maxlength="300" placeholder="Bisnis, karya, dan aktivitasmu"></textarea>
+      <div class="show-label"><b>LINK PIHAK KETIGA</b><small>MAKS. 12 LINK</small></div>
+      <div class="profile-edit-row"><input class="field" id="profileLinkLabel" maxlength="40" placeholder="Nama link: Website, WhatsApp, Booking">
+      <input class="field" id="profileLinkUrl" type="url" inputmode="url" maxlength="500" placeholder="https://..."></div>
+      <div class="actions"><button class="btn secondary" type="button" id="profileAddLink">+ LINK</button><button class="btn" type="button" id="profileSave">SIMPAN PROFIL</button></div>
+      <div id="profileEditLinks" class="profile-edit-links"></div>
+      <div class="status" id="profileEditStatus" role="status"></div>
+    </div>
+    <div class="show-label"><b>POSTINGAN</b><small>LINK LANGSUNG AKTIF · PRATINJAU LOKAL</small></div>
+    <div class="panel profile-composer">
+      <label for="profilePostText">TULIS POSTINGAN</label>
+      <textarea class="field profile-textarea" id="profilePostText" rows="4" maxlength="2000" placeholder="Promosikan bisnis, jadwal DJ, website, produk atau acara. Tempel link https://... — langsung bisa diketuk."></textarea>
+      <button type="button" class="btn secondary" id="profilePostSave">SIMPAN DRAF POSTINGAN</button>
+      <p class="profile-note">Belum terbit untuk pengguna lain. Perlu sistem login dan penyimpanan akun sebelum tombol PUBLIKASIKAN bisa diaktifkan.</p>
+      <div id="profilePostStatus" class="status" role="status"></div>
+    </div>
+    <div id="profilePostFeed" class="profile-post-feed"></div>
+  </div>
+
+  <div class="show-label"><b>PENGATURAN SISTEM</b><small>BETA / TEKNIS</small></div><div class="notice">Saweran: belum aktif · Tiket room: belum aktif · Penarikan: belum aktif. Tidak ada uang yang diproses dalam beta ini.</div>
   <div class="show-label"><b>NETWORK</b><small>SERVER LINK</small></div>
   <div class="panel"><input id="server" type="hidden"><div class="eyebrow">AUTO-CONNECT / ACTIVE</div><div class="status" id="serverState">Memeriksa koneksi server NADMO...</div><button class="btn secondary" id="saveServer">↻ CEK KONEKSI</button><p>Server diatur otomatis oleh NADMO. Tidak ada alamat yang harus diisi pengguna.</p></div>
   <div class="show-label"><b>ACCESS & AGE</b><small>18+ POLICY</small></div>
@@ -555,6 +617,152 @@ body.live-immersive #watch .sheet-close:focus-visible{
  const DEFAULT_BACKEND='https://nadmo-live-beta-20261009.ardarawk.workers.dev';
  let server=DEFAULT_BACKEND, socket=null, localStream=null, currentRoom='', selfId='', host=false, peers=new Map(), peer=null;
  let cachedRooms=[], selectedFilter='all', savedIds=new Set(JSON.parse(localStorage.getItem('nadmo.beta.saved')||'[]')), afkTrack=null, afkTimer=null, afkMode=false, pendingIce=new Map(), resumeToken='', roomPassword='', reconnectTimer=null, reconnectDeadline=0, reconnectCount=0, manuallyLeaving=false, activeAccessMode='public', recoveringForeground=false, lastForegroundRecovery=0, lastBackgroundAt=0, mirrorPreview=localStorage.getItem('nadmo.mirror.preview')!=='off', mirrorBroadcast=false;
+
+ // Profile and social link editor: local-only beta until authenticated account storage exists.
+ // No user-controlled URL is ever injected into HTML; all content uses textContent + DOM nodes.
+ const PROFILE_KEY='nadmo.beta.profile.draft.v1';
+ const POST_KEY='nadmo.beta.post.drafts.v1';
+ function readDraft(key,fallback){
+  try{return JSON.parse(localStorage.getItem(key))||fallback}
+  catch(error){return fallback}
+ }
+ function validExternalLink(raw){
+  if(typeof raw!=='string'||raw.length>500)return null;
+  try{
+   const url=new URL(raw.trim());
+   if(url.protocol!=='https:'||!url.hostname.includes('.')||url.username||url.password||url.hostname==='localhost')
+    return null;
+   if(/^(?:127\.|10\.|192\.168\.|169\.254\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(url.hostname))
+    return null;
+   return url.href;
+  }catch(error){return null}
+ }
+ function directLink(url,label,className){
+  const safe=validExternalLink(url);if(!safe)return null;
+  const a=document.createElement('a');a.href=safe;a.className=className||'post-external-link';
+  // Same-tab links are intercepted by the existing Android WebView external-intent
+  // routing and open directly in the external browser. No NADMO redirect/interstitial.
+  a.rel='nofollow ugc noreferrer';a.textContent=label||safe;
+  return a;
+ }
+ function linkifyCaption(element,value){
+  const regex=/https:\/\/[^\s<>"']+/gi;
+  let previous=0,match;
+  while((match=regex.exec(value))!==null){
+   if(match.index>previous)element.appendChild(document.createTextNode(value.slice(previous,match.index)));
+   const raw=match[0],url=raw.replace(/[.,!?;:)\]]+$/,'');
+   const link=directLink(url,url,'post-external-link');
+   if(link)element.appendChild(link);
+   else element.appendChild(document.createTextNode(url));
+   element.appendChild(document.createTextNode(raw.slice(url.length)));
+   previous=regex.lastIndex;
+  }
+  if(previous<value.length)element.appendChild(document.createTextNode(value.slice(previous)));
+ }
+ const safeProfile=readDraft(PROFILE_KEY,{name:'',handle:'',bio:'',links:[]});
+ const draftProfile={
+  name:typeof safeProfile.name==='string'?safeProfile.name.slice(0,60):'',
+  handle:typeof safeProfile.handle==='string'?safeProfile.handle.slice(0,24):'',
+  bio:typeof safeProfile.bio==='string'?safeProfile.bio.slice(0,300):'',
+  links:Array.isArray(safeProfile.links)?safeProfile.links.filter(l=>l&&validExternalLink(l.url)&&typeof l.label==='string')
+       .slice(0,12).map(l=>({label:l.label.slice(0,40),url:validExternalLink(l.url)})):[]
+ };
+ let draftPosts=readDraft(POST_KEY,[]);
+ draftPosts=Array.isArray(draftPosts)?draftPosts.filter(x=>x&&typeof x.text==='string')
+  .slice(0,30).map(p=>({id:typeof p.id==='string'?p.id:'',text:p.text.slice(0,2000),at:Number(p.at)||0})):[];
+ function saveProfileDraft(){
+  try{localStorage.setItem(PROFILE_KEY,JSON.stringify(draftProfile));return true}
+  catch(error){$('profileEditStatus').textContent='Penyimpanan perangkat penuh / tidak tersedia';return false}
+ }
+ function renderProfileLinks(){
+  $('profileBusinessLinks').replaceChildren();
+  $('profileEditLinks').replaceChildren();
+  for(const [index,item] of draftProfile.links.entries()){
+   const link=directLink(item.url,item.label+' ↗','profile-business-link');
+   if(link)$('profileBusinessLinks').appendChild(link);
+   const line=document.createElement('div');
+   const details=document.createElement('span');
+   details.textContent=item.label+' · '+item.url;
+   const remove=document.createElement('button');
+   remove.type='button';remove.textContent='✕';remove.title='Hapus link';remove.setAttribute('aria-label','Hapus '+item.label);
+   remove.onclick=()=>{draftProfile.links.splice(index,1);saveProfileDraft();renderProfileLinks()};
+   line.append(details,remove);$('profileEditLinks').appendChild(line);
+  }
+  if(!draftProfile.links.length){
+   const n=document.createElement('p');n.className='profile-note';n.textContent='Belum ada link bisnis. Tambahkan website, booking, toko, WhatsApp, atau media sosial.';$('profileBusinessLinks').appendChild(n);
+  }
+ }
+ function renderProfileDraft(){
+  $('profileDisplayName').textContent=draftProfile.name||'Profil NADMO';
+  $('profileDisplayHandle').textContent=draftProfile.handle?'@'+draftProfile.handle:'@username';
+  $('profileDisplayBio').textContent=draftProfile.bio||'Bisnis, musik, karya, dan komunitasmu bisa muncul di sini.';
+  $('profileName').value=draftProfile.name;$('profileHandle').value=draftProfile.handle;$('profileBio').value=draftProfile.bio;
+  renderProfileLinks();
+ }
+ $('editProfileBtn').onclick=()=>{
+  $('profileEditBox').classList.toggle('hide');
+  $('editProfileBtn').textContent=$('profileEditBox').classList.contains('hide')?'EDIT':'✕';
+ };
+ $('profileAddLink').onclick=()=>{
+  const label=$('profileLinkLabel').value.trim().slice(0,40);
+  const url=validExternalLink($('profileLinkUrl').value);
+  if(!label||!url){$('profileEditStatus').textContent='Isi judul dan URL HTTPS yang valid (contoh https://wa.me/... atau https://website.com).';return}
+  if(draftProfile.links.length>=12){$('profileEditStatus').textContent='Maksimal 12 link di profil.';return}
+  if(draftProfile.links.some(x=>x.url===url)){$('profileEditStatus').textContent='Link ini sudah terdaftar.';return}
+  draftProfile.links.push({label,url});
+  saveProfileDraft();renderProfileLinks();
+  $('profileLinkLabel').value='';$('profileLinkUrl').value='';
+  $('profileEditStatus').textContent='Link disimpan dan bisa dibuka langsung dari profil pratinjau.';
+ };
+ $('profileSave').onclick=()=>{
+  const handle=$('profileHandle').value.trim().toLowerCase().replace(/^@/,'');
+  if(handle&&!/^[a-z0-9_]{3,24}$/.test(handle)){$('profileEditStatus').textContent='Username 3–24 karakter: huruf kecil, angka, atau garis bawah.';return}
+  draftProfile.name=$('profileName').value.trim().slice(0,60);
+  draftProfile.handle=handle;
+  draftProfile.bio=$('profileBio').value.trim().slice(0,300);
+  if(saveProfileDraft()){
+   renderProfileDraft();
+   $('profileEditStatus').textContent='Profil disimpan pada perangkat ini. Belum dipublikasi sebagai akun NADMO.';
+   $('profileEditBox').classList.add('hide');$('editProfileBtn').textContent='EDIT';
+  }
+ };
+ function renderDraftPosts(){
+  $('profilePostFeed').replaceChildren();
+  for(const entry of draftPosts){
+   const card=document.createElement('article');card.className='profile-post-card';
+   const top=document.createElement('div');top.className='post-top';
+   const label=document.createElement('b');label.textContent=draftProfile.name||'Profil NADMO';
+   const details=document.createElement('small');details.textContent='DRAF · '+(entry.at?new Date(entry.at).toLocaleDateString('id-ID'):'LOKAL');
+   top.append(label,details);
+   const text=document.createElement('div');text.className='profile-post-content';
+   linkifyCaption(text,entry.text);
+   const del=document.createElement('button');del.type='button';del.textContent='HAPUS DRAF';
+   del.onclick=()=>{draftPosts=draftPosts.filter(x=>x.id!==entry.id);storePosts();renderDraftPosts()};
+   card.append(top,text,del);$('profilePostFeed').appendChild(card);
+  }
+  if(!draftPosts.length){
+   const blank=document.createElement('div');blank.className='profile-note';blank.textContent='Belum ada postingan draf. Link dalam caption akan bisa diketuk seperti link biasa.';$('profilePostFeed').appendChild(blank);
+  }
+ }
+ function storePosts(){
+  try{localStorage.setItem(POST_KEY,JSON.stringify(draftPosts));return true}
+  catch(error){$('profilePostStatus').textContent='Penyimpanan perangkat penuh / tidak tersedia';return false}
+ }
+ $('profilePostSave').onclick=()=>{
+  const text=$('profilePostText').value.trim();
+  if(!text||text.length>2000){$('profilePostStatus').textContent='Postingan harus berisi 1 sampai 2.000 karakter.';return}
+  if(draftPosts.length>=30){$('profilePostStatus').textContent='Maksimal 30 draf di perangkat ini.';return}
+  const entry={id:crypto.randomUUID(),text,at:Date.now()};
+  draftPosts.unshift(entry);
+  if(storePosts()){
+   $('profilePostText').value='';
+   $('profilePostStatus').textContent='Draf disimpan. Link dalam postingan bisa langsung dibuka; belum dipublikasi.';
+   renderDraftPosts();
+  }else draftPosts.shift();
+ };
+ renderProfileDraft();
+ renderDraftPosts();
+
  $('server').value=server; $('adult').checked=localStorage.getItem('nadmo.adult')==='yes';
  function show(name){document.body.classList.toggle('live-immersive',name==='watch');document.body.classList.toggle('watch-viewer',name==='watch'&&!host);document.body.classList.toggle('watch-host',name==='watch'&&host);for(const n of screens)$(n).classList.toggle('hide',n!==name);document.querySelectorAll('nav [data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));if(name==='explore')loadRooms();if(name==='following'){loadRooms();renderSaved();}if(name==='signal')health();window.scrollTo(0,0);}
  document.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>show(el.dataset.tab)));
