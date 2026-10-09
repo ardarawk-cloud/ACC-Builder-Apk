@@ -1,0 +1,28 @@
+name: NADMO LIVE NIGHTWIRE visual QC
+on:
+  workflow_dispatch:
+  push:
+    branches: ['feat/nadmo-live-android-beta-20261009']
+    paths:
+      - 'nadmo-live/android/app/src/main/assets/index.html'
+      - '.github/workflows/nadmo-live-visual-qc.yml'
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture mobile-size preview
+        run: |
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)
+          if [ -z "$CHROME" ]; then echo "No headless Chrome available"; exit 1; fi
+          "$CHROME" --headless --no-sandbox --disable-dev-shm-usage --disable-gpu --hide-scrollbars \
+            --force-device-scale-factor=1 --window-size=430,1000 --virtual-time-budget=1800 \
+            --screenshot="$GITHUB_WORKSPACE/nadmo-nightwire-home.png" \
+            "file://$GITHUB_WORKSPACE/nadmo-live/android/app/src/main/assets/index.html"
+          test -s nadmo-nightwire-home.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nadmo-nightwire-design-preview
+          path: nadmo-nightwire-home.png
+          if-no-files-found: error
