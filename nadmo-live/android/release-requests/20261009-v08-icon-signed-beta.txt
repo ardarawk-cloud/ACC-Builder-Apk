@@ -1,0 +1,9 @@
+NADMO LIVE — PRIVATE BETA signed update v0.8.0
+Date: 2026-10-09
+Branch: feat/nadmo-live-android-beta-20261009
+Package: id.nadmo.live
+Version: versionCode 8 / versionName 0.8.0-beta
+Release identity: preserve release-identity.json SHA-256 signing fingerprint; reject any mismatch.
+Requested: build consistently signed v0.8 APK with the official N/ adaptive icon included in source.
+No key recreation, no debug production links, no release to Play Store, no merging other NADMO projects.
+Operator acceptance: certificate verified, APK artifact generated, runtime server still private beta, no promise of KYC/payments.
