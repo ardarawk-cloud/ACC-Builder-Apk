@@ -1,0 +1,8 @@
+NADMO LIVE / Signed Android beta v0.9.0
+Version code: 9
+Package: id.nadmo.live
+Change: Enable image-only Android WebView chooser for authenticated profile photo upload.
+Keep original protected release signing certificate; never rotate or generate a new key.
+Source: nadmo-live/android
+Web client and account avatar API: ACC-OS-X feat/nadmo-live-beta-worker-20261009.
+Only publish an upgradeable signed APK if signing certificate verification passes.
