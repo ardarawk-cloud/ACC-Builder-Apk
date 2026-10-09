@@ -136,12 +136,12 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
   <label class="eyebrow" for="searchLive">FIND YOUR FREQUENCY</label>
   <input class="field" id="searchLive" placeholder="Cari judul siaran atau genre..." maxlength="70" autocomplete="off">
   <div class="filterstrip" id="filters">
-    <button data-filter="all" class="active">ALL</button><button data-filter="Social">SOCIAL</button><button data-filter="DJ & Music">DJ / MUSIC</button><button data-filter="Podcast">PODCAST</button><button data-filter="Nightlife">NIGHTLIFE</button>
+    <button data-filter="all" class="active">ALL</button><button data-filter="Social">SOCIAL</button><button data-filter="DJ & Music">DJ / MUSIC</button><button data-filter="Podcast">PODCAST</button><button data-filter="Nightlife">NIGHTLIFE</button><button data-filter="Gaming">GAMING</button>
   </div>
   <div class="show-label"><b>LIVE NOW</b><small id="liveCount">0 ROOMS</small></div>
   <div id="rooms" class="no-signal"><strong>SEARCHING</strong><small>CONNECTING TO BROADCAST NETWORK</small></div>
   <div class="actions"><button class="btn secondary" id="refresh">↻ REFRESH LIVE</button><button class="btn" data-tab="studio">● BROADCAST</button></div>
-  <div class="show-label"><b>INVITATION ACCESS</b><small>LOCKED ROOM</small></div>
+  <div class="notice">GAMING LIVE: pilih kategori Gaming untuk siaran kamera dan obrolan. Capture layar game/OBS dan suara internal game belum tersedia di beta ini.</div><div class="show-label"><b>INVITATION ACCESS</b><small>LOCKED ROOM</small></div>
   <p class="deck">Punya kode room dari host? Masuk langsung. Room tertutup tidak muncul di pencarian publik.</p>
   <div class="row"><input class="field" id="privateId" maxlength="32" placeholder="Masukkan ID room privat"><button class="btn secondary" id="privateJoin">JOIN</button></div>
 </section>
@@ -160,7 +160,7 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
   <div class="show-label"><b>BROADCAST SETUP</b><small>02 / SETTINGS</small></div>
   <div class="panel">
     <label for="title">BROADCAST TITLE</label><input class="field" id="title" maxlength="60" placeholder="Midnight conversation #001">
-    <label for="category">CHANNEL TYPE</label><select id="category" class="field"><option>Social</option><option>DJ & Music</option><option>Podcast</option><option>Nightlife</option></select>
+    <label for="category">CHANNEL TYPE</label><select id="category" class="field"><option>Social</option><option>DJ & Music</option><option>Podcast</option><option>Nightlife</option><option>Gaming</option></select>
     <label for="mode">ACCESS CONTROL</label><select id="mode" class="field"><option value="public">OPEN / Public 18+</option><option value="password">PRIVATE / Passcode invite</option></select>
     <div id="passwordBox" class="hide"><label for="password">INVITATION CODE (4–32 CHARACTERS)</label><input id="password" type="password" class="field" minlength="4" maxlength="32" placeholder="Create a room passcode"></div>
     <button class="btn" id="createRoom" style="width:100%">● TRANSMIT LIVE</button>
@@ -189,15 +189,15 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
 </section>
 <section id="signal" class="hide">
   <div class="page-top"><div><span class="eyebrow">INDEPENDENT / PUBLIC INFORMATION</span><h1>SIGNAL<span style="color:var(--neon)">.</span></h1></div><span class="edition">COMMUNITY</span></div>
-  <p class="deck">Kanal informasi komunitas untuk masa normal dan darurat. Informasi penting harus diverifikasi sebelum diberi label resmi.</p>
+  <p class="deck">Ruang komunikasi komunitas dan informasi publik yang terverifikasi. Kritik, perbedaan pendapat, dan laporan masyarakat tidak otomatis dianggap pelanggaran; ancaman, intimidasi, dan doxing tetap dilarang.</p>
   <div class="signal-stage" style="height:260px"><div class="stage-head"><span>PUBLIC SERVICE / SIGNAL-01</span><span class="liveflag">MONITORING</span></div>
     <div class="stage-core"><div class="circle" style="width:112px;height:112px"><strong style="font-size:44px">!</strong></div><p>NO VERIFIED ALERTS PUBLISHED</p></div>
-    <div class="stage-foot"><small>UNVERIFIED CLAIMS ARE NOT PUBLIC ALERTS</small><div class="bars"><i></i><i></i><i></i><i></i></div></div></div>
+    <div class="stage-foot"><small>CHECK SOURCES BEFORE SHARING</small><div class="bars"><i></i><i></i><i></i><i></i></div></div></div>
   <div class="show-label"><b>NETWORK STATUS</b><small>LIVE SYSTEM</small></div>
   <div class="setting-line"><span>Broadcast server</span><strong id="signalStatus">CHECKING</strong></div>
   <button class="btn secondary" id="signalRefresh">↻ CHECK CONNECTION</button>
   <div class="show-label"><b>WHEN THE NETWORK IS DOWN</b><small>PREPAREDNESS</small></div>
-  <div class="notice">Simpan kontak darurat dan sumber informasi resmi sebelum terjadi gangguan. Jika NADMO tidak dapat diakses, gunakan kanal alternatif seperti radio lokal dan komunikasi langsung. Jangan menyebarkan kabar yang belum diverifikasi.</div>
+  <div class="notice">Simpan kontak darurat dan beberapa sumber independen serta resmi sebelum terjadi gangguan. Jika internet tidak tersedia, NADMO tidak bisa mengirim live; gunakan radio lokal atau jalur komunikasi lain. Jangan sebarkan informasi tanpa bukti.</div>
   <p class="deck">Ini masih fondasi kanal SIGNAL. Sistem pemberitahuan terverifikasi, arsip offline, relai cadangan dan persetujuan editor belum dibangun.</p>
 </section>
 <section id="settings" class="hide">
