@@ -18,8 +18,10 @@ import android.widget.FrameLayout;
 import androidx.webkit.WebViewAssetLoader;
 
 public final class MainActivity extends Activity {
-  private static final String APP_URL="https://appassets.androidplatform.net/assets/index.html";
+  private static final String FALLBACK_URL="https://appassets.androidplatform.net/assets/index.html";
   private static final String APP_HOST="appassets.androidplatform.net";
+  private static final String LIVE_HOST="nadmo-live-beta-20261009.ardarawk.workers.dev";
+  private static final String ONLINE_URL="https://"+LIVE_HOST+"/app/";
   private static final int ASK_MEDIA=42;
   private WebView web;
   private FrameLayout root;
@@ -30,7 +32,7 @@ public final class MainActivity extends Activity {
   private boolean trusted(Uri uri) {
     return uri!=null
       && "https".equalsIgnoreCase(uri.getScheme())
-      && APP_HOST.equalsIgnoreCase(uri.getHost());
+      && (APP_HOST.equalsIgnoreCase(uri.getHost()) || LIVE_HOST.equalsIgnoreCase(uri.getHost()));
   }
   @Override public void onCreate(Bundle state){
     super.onCreate(state);
@@ -53,6 +55,16 @@ public final class MainActivity extends Activity {
     web.setWebViewClient(new WebViewClient(){
       @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest req){
         return loader.shouldInterceptRequest(req.getUrl());
+      }
+      @Override public void onReceivedError(WebView view,WebResourceRequest req,android.webkit.WebResourceError error){
+        if(req.isForMainFrame() && LIVE_HOST.equalsIgnoreCase(req.getUrl().getHost())){
+          view.post(()->{if(!view.getUrl().equals(FALLBACK_URL))view.loadUrl(FALLBACK_URL);});
+        }
+      }
+      @Override public void onReceivedHttpError(WebView view,WebResourceRequest req,android.webkit.WebResourceResponse response){
+        if(req.isForMainFrame() && LIVE_HOST.equalsIgnoreCase(req.getUrl().getHost()) && response.getStatusCode()>=500){
+          view.post(()->{if(!view.getUrl().equals(FALLBACK_URL))view.loadUrl(FALLBACK_URL);});
+        }
       }
       @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest req){
         Uri uri=req.getUrl();
@@ -96,7 +108,7 @@ public final class MainActivity extends Activity {
     });
     root.addView(web,new FrameLayout.LayoutParams(-1,-1));
     setContentView(root);
-    web.loadUrl(APP_URL);
+    web.loadUrl(ONLINE_URL);
   }
   private void grantMedia(){
     PermissionRequest req=pending;pending=null;
