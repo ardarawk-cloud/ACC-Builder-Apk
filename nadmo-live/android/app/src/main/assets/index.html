@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="id">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NADMO LIVE — Beta</title>
+<style>
+:root{color-scheme:dark;--bg:#080b15;--panel:#11182a;--edge:#29324b;--light:#eaf0fc;--muted:#93a0bc;--purple:#9575ff;--cyan:#55e4dc;--red:#ff6484}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--light);font:14px system-ui,-apple-system,sans-serif;min-height:100%;overscroll-behavior:none}
+button,input,select{font:inherit}button{cursor:pointer;color:inherit}.app{max-width:650px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 18px 110px}
+header{display:flex;align-items:center;justify-content:space-between;margin:6px 0 22px}.brand{letter-spacing:1.1px;font-weight:800;font-size:21px}.brand span{color:var(--purple)}.small{font-size:11px;color:var(--muted)}
+.pill{border:1px solid var(--edge);border-radius:999px;padding:8px 12px;color:var(--muted);font-size:12px}.pill b{color:var(--cyan)}
+h1{font-size:28px;line-height:1.16;margin:8px 0}h2{font-size:18px;margin:0 0 11px}p{line-height:1.65;color:var(--muted)}
+.hero{background:radial-gradient(circle at 80% 0%,#44317c,transparent 55%),linear-gradient(135deg,#1b1a35,#121f30);border:1px solid #373453;border-radius:22px;padding:23px 20px;margin-bottom:18px}.hero h1{max-width:250px}.hero p{max-width:280px;margin-bottom:20px}
+.btn{background:#6750dd;color:white;border:0;padding:12px 16px;border-radius:13px;font-weight:700}.btn.secondary{background:#222b43;border:1px solid var(--edge)}.btn.ghost{background:transparent;border:1px solid var(--edge);color:var(--muted)}.btn:disabled{opacity:.4;cursor:not-allowed}.actions{display:flex;gap:9px;flex-wrap:wrap}
+.section{margin:22px 0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tile{min-height:102px;border:1px solid var(--edge);background:#121827;border-radius:17px;padding:15px;text-align:left}.tile .glyph{font-size:26px;display:block;margin-bottom:11px}.tile strong{display:block;font-size:14px}.tile span:last-child{color:var(--muted);font-size:11px}
+.notice{border:1px solid #474061;background:#201b33;color:#c5bbec;border-radius:14px;padding:12px 14px;line-height:1.55;font-size:12px}
+.panel{background:var(--panel);border:1px solid var(--edge);border-radius:18px;padding:16px;margin:12px 0}.panel label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}.field{display:block;width:100%;background:#090f1d;border:1px solid #34405b;color:white;border-radius:12px;padding:12px 13px;margin:0 0 14px;outline:none}.field:focus{border-color:var(--purple)}
+video{display:block;width:100%;max-height:52vh;min-height:180px;object-fit:cover;border-radius:17px;background:#070914;transform:none}.local{transform:scaleX(-1)}
+.status{color:var(--cyan);font-size:12px;margin:8px 0}.room{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#121827;border:1px solid var(--edge);padding:13px;border-radius:14px;margin:8px 0}.room b{display:block}.room small{color:var(--muted)}
+nav{position:fixed;bottom:0;left:0;right:0;background:#0e1322f4;border-top:1px solid var(--edge);padding:9px max(12px,env(safe-area-inset-left)) calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:space-around;z-index:10;backdrop-filter:blur(18px)}
+nav button{background:transparent;border:0;min-width:65px;display:flex;align-items:center;flex-direction:column;gap:5px;color:var(--muted);font-size:11px}nav button i{font-size:21px;font-style:normal}nav button.active{color:#b7a3ff}
+.hide{display:none!important}.chat{height:170px;overflow:auto;border:1px solid var(--edge);background:#080c18;border-radius:12px;padding:10px;font-size:12px;margin:10px 0}.chat div{margin-bottom:6px;color:#cbd3e4;word-break:break-word}.chat b{color:var(--cyan)}
+.row{display:flex;align-items:center;gap:9px}.row>.field{flex:1;min-width:0;margin:0}.bottom-space{height:16px}
+</style></head>
+<body><div class="app">
+<header><div class="brand">NADMO <span>LIVE</span></div><div class="pill">● <b id="net">OFFLINE BETA</b></div></header>
+<section id="home">
+<div class="hero"><div class="small" style="color:#c2b7ee">INDEPENDENT LIVE COMMUNITY • 18+</div><h1>Go live.<br>Be yourself.</h1><p>Social live, DJ sessions, radio, dan acara eksklusif — dibuat untuk kreator independen.</p><div class="actions"><button class="btn" data-tab="studio">Mulai siaran</button><button class="btn secondary" data-tab="explore">Jelajahi room</button></div></div>
+<div class="section"><h2>Pilih pengalamanmu</h2><div class="grid"><button class="tile" data-tab="explore"><span class="glyph">◉</span><strong>Social Live</strong><span>Temukan kreator</span></button><button class="tile" data-tab="studio"><span class="glyph">♫</span><strong>DJ & Music</strong><span>Live sessions</span></button><button class="tile" data-tab="tv"><span class="glyph">▣</span><strong>NADMO TV</strong><span>Channel & events</span></button><button class="tile" data-tab="radio"><span class="glyph">◌</span><strong>Radio</strong><span>Talk & audio</span></button></div></div>
+<div class="notice">VERSI UJI COBA — Tampilan dan pratinjau kamera bisa dibuka tanpa server. Live publik, saweran, dan tiket berbayar baru aktif setelah backend serta penyedia pembayaran terhubung.</div>
+</section>
+<section id="explore" class="hide"><h1>Live sekarang</h1><p>Temukan siaran publik yang sedang berlangsung.</p><div id="rooms"><div class="panel">Belum ada room yang tersedia.</div></div><button class="btn secondary" id="refresh">Muat ulang</button></section>
+<section id="studio" class="hide"><h1>Creator Studio</h1><p>Periksa kamera dan mikrofon, lalu buat room saat server beta tersambung.</p>
+<div class="panel"><video id="camera" class="local" playsinline autoplay muted></video><div class="status" id="camState">Kamera belum aktif</div><div class="actions"><button class="btn secondary" id="preview">Nyalakan kamera</button><button class="btn ghost" id="stopCamera">Matikan</button></div></div>
+<div class="panel"><label>Judul siaran</label><input class="field" id="title" maxlength="60" placeholder="Ngobrol malam bersama NADMO"><label>Kategori</label><select id="category" class="field"><option>Social</option><option>DJ & Music</option><option>Podcast</option><option>Nightlife</option></select><label>Akses room</label><select id="mode" class="field"><option value="public">Public — semua penonton dewasa</option><option value="password">Locked — kode undangan</option></select><div id="passwordBox" class="hide"><label>Kode room (4–32 karakter)</label><input id="password" type="password" class="field" minlength="4" maxlength="32" placeholder="Masukkan kode privat"></div><button class="btn" id="createRoom">GO LIVE</button><div class="status" id="liveState"></div></div>
+</section>
+<section id="watch" class="hide"><h1 id="watchTitle">Live</h1><div class="panel"><video id="remote" playsinline autoplay controls></video><div id="watchState" class="status">Menyiapkan pemutar...</div><button class="btn ghost" id="leave">Keluar room</button></div><div class="panel"><h2>Live Chat</h2><div class="chat" id="chat"></div><div class="row"><input class="field" id="message" placeholder="Ketik pesan..." maxlength="250"><button class="btn secondary" id="send">Kirim</button></div></div></section>
+<section id="tv" class="hide"><h1>NADMO TV</h1><div class="panel"><h2>Channel sedang disiapkan</h2><p>TV Live, jadwal program, dan siaran OBS akan hadir setelah pengujian jalur video.</p></div></section>
+<section id="radio" class="hide"><h1>NADMO RADIO</h1><div class="panel"><h2>Radio Beta</h2><p>Audio live dan mode mendengarkan di latar belakang sedang disiapkan.</p></div></section>
+<section id="settings" class="hide"><h1>Pengaturan Beta</h1><div class="panel"><label>Alamat backend HTTPS NADMO</label><input id="server" class="field" type="url" placeholder="https://alamat-server.onrender.com"><button class="btn" id="saveServer">Simpan & sambungkan</button><div class="status" id="serverState"></div><p>Server belum terpasang? Biarkan kosong. Antarmuka dan pratinjau kamera tetap berfungsi tanpa server.</p></div><div class="panel"><label class="row" style="color:var(--light)"><input id="adult" type="checkbox"> Saya berusia 18 tahun ke atas</label><p>Beta memakai konfirmasi mandiri. Rilis publik memerlukan sistem verifikasi usia dan moderasi yang memadai.</p></div><div class="notice">Saweran, room tiket, dan pencairan belum tersedia. Jangan melakukan pembayaran ke siapa pun yang mengaku menerima tiket NADMO LIVE beta.</div></section>
+</div><nav>
+<button data-tab="home" class="active"><i>⌂</i>Home</button><button data-tab="explore"><i>◉</i>Explore</button><button data-tab="studio"><i>⊕</i>Go Live</button><button data-tab="tv"><i>▣</i>TV</button><button data-tab="settings"><i>⚙</i>Settings</button>
+</nav>
+<script>
+(function(){
+ 'use strict';
+ const $=id=>document.getElementById(id), screens=['home','explore','studio','watch','tv','radio','settings'];
+ let server=localStorage.getItem('nadmo.server')||'', socket=null, localStream=null, currentRoom='', selfId='', host=false, peers=new Map(), peer=null;
+ $('server').value=server; $('adult').checked=localStorage.getItem('nadmo.adult')==='yes';
+ function show(name){for(const n of screens)$(n).classList.toggle('hide',n!==name);document.querySelectorAll('nav [data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));if(name==='explore')loadRooms();}
+ document.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>show(el.dataset.tab)));
+ $('adult').addEventListener('change',()=>localStorage.setItem('nadmo.adult',$('adult').checked?'yes':'no'));
+ function adult(){if(!$('adult').checked){alert('Konfirmasi usia 18+ dahulu di Settings.');show('settings');return false}return true}
+ function notice(s,id='serverState'){$(id).textContent=s}
+ const api=p=>server.replace(/\/$/,'')+p;
+ function validURL(x){try{const u=new URL(x);return u.protocol==='https:' && !u.username && !u.password && !u.hash}catch(e){return false}}
+ async function health(){
+  if(!server){$('net').textContent='OFFLINE BETA';return}
+  try{const c=new AbortController(),t=setTimeout(()=>c.abort(),6000);const r=await fetch(api('/health'),{signal:c.signal});clearTimeout(t);if(!r.ok)throw Error();$('net').textContent='SERVER ONLINE';notice('Backend terhubung.')}catch(e){$('net').textContent='BELUM TERHUBUNG';notice('Server belum merespons. Kamera lokal tetap bisa dipakai.')}
+ }
+ $('saveServer').onclick=()=>{let x=$('server').value.trim().replace(/\/+$/,'');if(x&&!validURL(x)){notice('Harus alamat HTTPS yang valid.');return}server=x;localStorage.setItem('nadmo.server',x);if(socket)socket.close();health();};
+ $('mode').onchange=()=>$('passwordBox').classList.toggle('hide',$('mode').value!=='password');
+ async function preview(){
+  try{if(!navigator.mediaDevices?.getUserMedia)throw Error('Browser belum mendukung kamera');if(localStream)localStream.getTracks().forEach(t=>t.stop());localStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720}},audio:{echoCancellation:true}});$('camera').srcObject=localStream;notice('Kamera dan mikrofon siap.','camState');}
+  catch(e){notice('Gagal membuka kamera: '+e.message,'camState')}
+ }
+ $('preview').onclick=preview;
+ $('stopCamera').onclick=()=>{if(localStream)localStream.getTracks().forEach(t=>t.stop());localStream=null;$('camera').srcObject=null;notice('Kamera dimatikan.','camState')};
+ async function loadRooms(){
+  if(!server){$('rooms').textContent='Hubungkan backend di Settings untuk melihat room publik.';return}
+  try{let r=await fetch(api('/api/rooms'));if(!r.ok)throw Error();let data=await r.json();$('rooms').replaceChildren();if(!data.rooms.length){$('rooms').textContent='Belum ada kreator live. Jadilah yang pertama.';return}
+   for(let x of data.rooms){const node=document.createElement('div');node.className='room';const info=document.createElement('div');const strong=document.createElement('b');strong.textContent=x.title;const detail=document.createElement('small');detail.textContent=x.category+' • '+x.viewers+' viewers';info.append(strong,detail);const button=document.createElement('button');button.className='btn secondary';button.textContent='Tonton';button.onclick=()=>join(x.id,x.title,false);node.append(info,button);$('rooms').append(node)}
+  }catch(e){$('rooms').textContent='Tidak bisa memuat daftar live. Periksa server di Settings.'}
+ }
+ $('refresh').onclick=loadRooms;
+ function wsurl(){return server.replace(/^https:/,'wss:').replace(/\/$/,'')+'/ws'}
+ function transmit(obj){if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify(obj))}
+ function connect(fn){if(!server){notice('Backend belum aktif. Konfigurasikan di Settings.','liveState');return}if(socket)socket.close();socket=new WebSocket(wsurl());socket.onopen=fn;socket.onerror=()=>notice('Gagal menghubungi server streaming.','liveState');socket.onclose=()=>{if(currentRoom)notice('Koneksi siaran terputus.','watchState');$('net').textContent='TERPUTUS'};socket.onmessage=async e=>{try{await incoming(JSON.parse(e.data))}catch(err){console.error(err)}}}
+ function rtc(){return new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]})}
+ function signal(to,data){transmit({type:'signal',to,data})}
+ async function attachViewer(id){if(!localStream)return;const pc=rtc();peers.set(id,pc);localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));pc.onicecandidate=e=>{if(e.candidate)signal(id,{candidate:e.candidate})};const offer=await pc.createOffer();await pc.setLocalDescription(offer);signal(id,{description:pc.localDescription})}
+ async function incoming(m){
+  if(m.type==='created'){currentRoom=m.id;selfId=m.selfId;host=true;notice('SIARAN AKTIF • Bagikan kode room '+m.id,'liveState');$('watchTitle').textContent=$('title').value.trim()||'NADMO LIVE';$('watchState').textContent='Anda sedang siaran. Bagikan kode: '+m.id;$('remote').srcObject=localStream;show('watch');}
+  if(m.type==='joined'){currentRoom=m.id;selfId=m.selfId;host=false;$('watchTitle').textContent=m.title;$('watchState').textContent='Menghubungkan video...';show('watch')}
+  if(m.type==='viewer-joined'&&host){await attachViewer(m.id)}
+  if(m.type==='viewer-left'&&host){peers.get(m.id)?.close();peers.delete(m.id)}
+  if(m.type==='signal'){let pc;if(host)pc=peers.get(m.from);else{if(!peer){peer=rtc();peer.ontrack=e=>{$('remote').srcObject=e.streams[0];$('watchState').textContent='Video tersambung'};peer.onicecandidate=e=>{if(e.candidate)signal(m.from,{candidate:e.candidate})}}pc=peer}
+   if(!pc)return;
+   if(m.data.description){await pc.setRemoteDescription(m.data.description);if(m.data.description.type==='offer'){const answer=await pc.createAnswer();await pc.setLocalDescription(answer);signal(m.from,{description:pc.localDescription})}}
+   if(m.data.candidate){try{await pc.addIceCandidate(m.data.candidate)}catch(e){console.warn(e)}}
+  }
+  if(m.type==='chat'){let div=document.createElement('div'),b=document.createElement('b');b.textContent=(m.name||'Viewer')+': ';div.append(b,document.createTextNode(m.text));$('chat').append(div);$('chat').scrollTop=$('chat').scrollHeight}
+  if(m.type==='error'){alert(m.message||'Kesalahan server');notice(m.message||'Kesalahan server','liveState')}
+ }
+ $('createRoom').onclick=async()=>{
+  if(!adult())return;if(!server){notice('Belum ada server. Kamu tetap bisa tes kamera di atas.','liveState');return}
+  if(!localStream)await preview();if(!localStream)return;
+  const title=$('title').value.trim()||'NADMO LIVE',mode=$('mode').value,password=$('password').value;
+  if(mode==='password'&&(password.length<4||password.length>32)){notice('Kode private room harus 4–32 karakter.','liveState');return}
+  connect(()=>transmit({type:'create',title,category:$('category').value,mode,password}));
+ };
+ function join(id,title,locked){if(!adult())return;let password='';if(locked){password=prompt('Kode akses room:')||'';if(!password)return}
+ connect(()=>transmit({type:'join',id,password}));$('watchTitle').textContent=title}
+ $('send').onclick=()=>{let msg=$('message').value.trim();if(!msg)return;transmit({type:'chat',text:msg});$('message').value=''};
+ $('message').addEventListener('keydown',e=>{if(e.key==='Enter')$('send').click()});
+ function leave(){transmit({type:'leave'});if(socket){socket.close();socket=null}for(const pc of peers.values())pc.close();peers.clear();if(peer){peer.close();peer=null}currentRoom='';selfId='';host=false; $('remote').srcObject=null;$('chat').replaceChildren();$('stopCamera').click();show('home')}
+ $('leave').onclick=leave;window.addEventListener('pagehide',()=>{if(localStream)localStream.getTracks().forEach(t=>t.stop());});
+ health();show('home');
+})();
+</script></body></html>
