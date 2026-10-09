@@ -177,6 +177,7 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
 <section id="watch" class="hide">
   <div class="page-top"><div><span class="eyebrow">CURRENT TRANSMISSION</span><h1 id="watchTitle">LIVE NOW</h1></div><span class="edition">ON AIR</span></div>
   <div class="panel"><div class="viewfinder"><video id="remote" playsinline autoplay controls></video></div><div id="watchState" class="status">CONNECTING SIGNAL...</div>
+  <button class="btn secondary" id="refreshVideo" type="button">↻ PULIHKAN VIDEO</button>
   <div class="actions" id="hostControls" hidden><button class="btn secondary" id="afkToggle">▤ AFK SCENE</button><button class="btn ghost" id="shareRoom">↗ SHARE ROOM</button></div>
   <div class="panel" id="hostAccessPanel" hidden>
     <div class="show-label"><b>AKSES SIARAN</b><small id="hostAccessLabel">PUBLIC / GRATIS</small></div>
@@ -274,7 +275,7 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
  const $=id=>document.getElementById(id), screens=['home','explore','following','studio','watch','tv','radio','signal','settings'];
  const DEFAULT_BACKEND='https://nadmo-live-beta-20261009.ardarawk.workers.dev';
  let server=DEFAULT_BACKEND, socket=null, localStream=null, currentRoom='', selfId='', host=false, peers=new Map(), peer=null;
- let cachedRooms=[], selectedFilter='all', savedIds=new Set(JSON.parse(localStorage.getItem('nadmo.beta.saved')||'[]')), afkTrack=null, afkTimer=null, afkMode=false, pendingIce=new Map(), resumeToken='', roomPassword='', reconnectTimer=null, reconnectDeadline=0, reconnectCount=0, manuallyLeaving=false, activeAccessMode='public';
+ let cachedRooms=[], selectedFilter='all', savedIds=new Set(JSON.parse(localStorage.getItem('nadmo.beta.saved')||'[]')), afkTrack=null, afkTimer=null, afkMode=false, pendingIce=new Map(), resumeToken='', roomPassword='', reconnectTimer=null, reconnectDeadline=0, reconnectCount=0, manuallyLeaving=false, activeAccessMode='public', recoveringForeground=false, lastForegroundRecovery=0, lastBackgroundAt=0;
  $('server').value=server; $('adult').checked=localStorage.getItem('nadmo.adult')==='yes';
  function show(name){for(const n of screens)$(n).classList.toggle('hide',n!==name);document.querySelectorAll('nav [data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));if(name==='explore')loadRooms();if(name==='following'){loadRooms();renderSaved();}if(name==='signal')health();window.scrollTo(0,0);}
  document.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>show(el.dataset.tab)));
@@ -437,9 +438,95 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
   catch(e){window.prompt('Salin link room',url)}
  };
  $('restartRoom').onclick=()=>{leave();show('studio');notice('Mulai siaran baru dari Studio. ID room lama tidak dipulihkan.','liveState')};
+ async function recoverHostCapture(){
+  if(!host||!currentRoom||afkMode)return;
+  const previous=localStream;
+  // WebView/Android may leave a live-but-paused camera after app backgrounding.
+  // A fresh getUserMedia request reopens the camera without changing the room.
+  let fresh;
+  try{
+    fresh=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'user',width:{ideal:720}},
+      audio:{echoCancellation:true}
+    });
+  }catch(error){
+    $('watchState').textContent='Kamera dijeda Android. Ketuk ENABLE CAMERA jika tidak pulih: '+error.message;
+    throw error;
+  }
+  if(!host||!currentRoom){
+    fresh.getTracks().forEach(t=>t.stop());return;
+  }
+  localStream=fresh;
+  $('camera').srcObject=fresh;
+  $('remote').muted=true;$('remote').srcObject=fresh;
+  const ids=[...peers.keys()];
+  for(const pc of peers.values())pc.close();
+  peers.clear();pendingIce.clear();
+  if(previous&&previous!==fresh)previous.getTracks().forEach(t=>t.stop());
+  for(const id of ids){
+    try{await attachViewer(id)}catch(error){console.warn('Viewer media refresh',error)}
+  }
+  $('watchState').textContent='Kamera dan mikrofon dipulihkan. Room tetap aktif.';
+ }
+ function backgroundState(){
+  lastBackgroundAt=Date.now();
+  if(!currentRoom)return;
+  if(host&&socket?.readyState===WebSocket.OPEN)transmit({type:'host-visibility',status:'background'});
+  $('watchState').textContent=host?
+    'Aplikasi di background. Android bisa menjeda kamera. Buka kembali untuk memulihkan video.':
+    'Aplikasi di background. Video akan dicek kembali saat kamu membuka aplikasi.';
+ }
+ async function restoreForeground(){
+  if(!currentRoom||manuallyLeaving||recoveringForeground||document.visibilityState==='hidden')return;
+  const now=Date.now();
+  if(now-lastForegroundRecovery<5000&&lastBackgroundAt<=lastForegroundRecovery)return;
+  lastForegroundRecovery=now;recoveringForeground=true;
+  try{
+   if(!socket||socket.readyState!==WebSocket.OPEN){
+     $('watchState').textContent='Jaringan sedang dipulihkan setelah kembali ke aplikasi...';
+     retryConnection();
+     return;
+   }
+   if(host){
+     transmit({type:'host-visibility',status:'active'});
+     if(!afkMode)await recoverHostCapture();
+     else {
+       // AFK canvas can pause drawing while the WebView is backgrounded.
+       const ids=[...peers.keys()];
+       for(const id of ids)await attachViewer(id);
+       $('watchState').textContent='AFK Scene kembali aktif. Room tetap berjalan.';
+     }
+   }else{
+     $('watchState').textContent='Menyambungkan ulang video setelah kembali ke aplikasi...';
+     const player=$('remote');
+     if(player?.paused)player.play().catch(()=>{});
+     transmit({type:'refresh-media'});
+   }
+  }catch(error){
+   console.warn('Foreground media restore',error);
+   if(host)$('watchState').textContent='Kamera belum dapat dipulihkan. Tetap di aplikasi dan aktifkan kamera kembali.';
+   else $('watchState').textContent='Belum tersambung kembali. Coba keluar lalu masuk ke room.';
+  }finally{recoveringForeground=false}
+ }
+ document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden')backgroundState();
+  else restoreForeground();
+ });
+ $('refreshVideo').onclick=()=>{lastForegroundRecovery=0;restoreForeground()};
+ window.addEventListener('focus',restoreForeground);
+ window.addEventListener('pageshow',event=>{if(event.persisted)restoreForeground()});
   function rtc(){const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.cloudflare.com:3478'},{urls:'stun:stun.l.google.com:19302'}]});pc.oniceconnectionstatechange=()=>{if(pc.iceConnectionState==='failed')notice('Video belum tersambung. Koneksi ini mungkin membutuhkan relay TURN; uji jaringan lain atau tunggu peningkatan SFU.','watchState')};return pc}
  function signal(to,data){transmit({type:'signal',to,data})}
- async function attachViewer(id){if(!localStream)return;const pc=rtc();peers.set(id,pc);localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));pc.onicecandidate=e=>{if(e.candidate)signal(id,{candidate:e.candidate})};const offer=await pc.createOffer();await pc.setLocalDescription(offer);signal(id,{description:pc.localDescription})}
+ async function attachViewer(id){
+  if(!localStream||!currentRoom||!host)return;
+  const old=peers.get(id);
+  if(old){old.close();peers.delete(id);pendingIce.delete(id)}
+  const pc=rtc();peers.set(id,pc);
+  localStream.getTracks().filter(t=>t.readyState==='live').forEach(t=>pc.addTrack(t,localStream));
+  pc.onicecandidate=e=>{if(e.candidate&&peers.get(id)===pc)signal(id,{candidate:e.candidate})};
+  const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+  if(peers.get(id)===pc)signal(id,{description:pc.localDescription,reset:true});
+}
  async function incoming(m){
   if(m.type==='created'){stopRetry();currentRoom=m.id;selfId=m.selfId;host=true;$('viewerTipPanel').hidden=true;activeAccessMode='public';$('hostAccessPanel').hidden=false;$('hostAccessLabel').textContent='PUBLIC / GRATIS';$('restorePublic').classList.add('hide');resumeToken=m.resumeToken||'';roomPassword='';$('net').textContent='SERVER ONLINE';$('hostControls').hidden=false;$('afkHint').hidden=false;$('restartRoom').classList.add('hide');notice('SIARAN AKTIF • Bagikan kode room '+m.id,'liveState');$('watchTitle').textContent=$('title').value.trim()||'NADMO LIVE';$('watchState').textContent='Anda sedang siaran. Bagikan kode: '+m.id;$('remote').muted=true;$('remote').srcObject=localStream;show('watch');}
   if(m.type==='joined'){stopRetry();currentRoom=m.id;selfId=m.selfId;host=false;$('viewerTipPanel').hidden=false;$('hostAccessPanel').hidden=true;resumeToken='';$('net').textContent='SERVER ONLINE';if(peer){peer.close();peer=null}pendingIce.clear();$('remote').muted=false;$('hostControls').hidden=true;$('afkHint').hidden=true;$('restartRoom').classList.add('hide');$('watchTitle').textContent=m.title;$('watchState').textContent='Menghubungkan video...';show('watch')}
@@ -449,6 +536,9 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
     $('restartRoom').classList.add('hide');
     const activeViewers=Array.isArray(m.viewers)?m.viewers:[];
     $('watchState').textContent='Room berhasil dipulihkan. Menyambungkan ulang '+activeViewers.length+' penonton.';
+    if(!afkMode){
+      try{await recoverHostCapture()}catch(error){console.warn('Camera resume after reconnect',error)}
+    }
     for(const viewerId of activeViewers)await attachViewer(viewerId);
    }
   if(m.type==='host-reconnecting'){
@@ -471,8 +561,20 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
    flash(m.mode==='public'?'Siaran kembali publik':'Siaran sekarang privat, penonton publik dikeluarkan');
   }
   if(m.type==='viewer-joined'&&host){await attachViewer(m.id)}
+  if(m.type==='media-refresh-request'&&host&&peers.has(m.id)){
+    if(localStream?.getVideoTracks().some(t=>t.readyState==='ended'||t.muted)&&!afkMode){
+      await recoverHostCapture();
+    } else await attachViewer(m.id);
+  }
+  if(m.type==='host-visibility'&&!host&&m.status==='background'){
+    $('watchState').textContent='Host pindah ke background. Android mungkin menjeda video; menunggu siaran kembali.';
+  }
   if(m.type==='viewer-left'&&host){peers.get(m.id)?.close();peers.delete(m.id)}
-  if(m.type==='signal'){let pc;if(host)pc=peers.get(m.from);else{if(!peer){peer=rtc();peer.ontrack=e=>{$('remote').srcObject=e.streams[0];$('watchState').textContent='Video tersambung'};peer.onicecandidate=e=>{if(e.candidate)signal(m.from,{candidate:e.candidate})}}pc=peer}
+  if(m.type==='signal'){
+   if(!host&&m.data?.description?.type==='offer'&&m.data.reset&&peer){
+     peer.close();peer=null;pendingIce.delete(m.from);$('remote').srcObject=null;
+   }
+   let pc;if(host)pc=peers.get(m.from);else{if(!peer){peer=rtc();peer.ontrack=e=>{$('remote').srcObject=e.streams[0];$('watchState').textContent='Video tersambung'};peer.onicecandidate=e=>{if(e.candidate)signal(m.from,{candidate:e.candidate})}}pc=peer}
    if(!pc)return;
    if(m.data.description){
     await pc.setRemoteDescription(m.data.description);
@@ -517,13 +619,15 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
   for(const pc of peers.values())pc.close();peers.clear();pendingIce.clear();
   if(peer){peer.close();peer=null}
   if(afkTimer)clearInterval(afkTimer);afkTimer=null;afkTrack=null;afkMode=false;
-  currentRoom='';selfId='';host=false;resumeToken='';roomPassword='';
+  currentRoom='';selfId='';host=false;resumeToken='';roomPassword='';recoveringForeground=false;lastForegroundRecovery=0;lastBackgroundAt=0;
   $('remote').srcObject=null;$('remote').muted=false;$('chat').replaceChildren();
   $('hostControls').hidden=true;$('hostAccessPanel').hidden=true;$('viewerTipPanel').hidden=true;$('privateControls').classList.add('hide');$('afkHint').hidden=true;$('restartRoom').classList.add('hide');activeAccessMode='public';
   $('afkToggle').textContent='▤ AFK SCENE';
   $('stopCamera').click();show('explore');manuallyLeaving=false;
 }
- $('leave').onclick=leave;window.addEventListener('pagehide',()=>{if(localStream)localStream.getTracks().forEach(t=>t.stop());});
+ $('leave').onclick=leave;
+ // Do not stop camera/microphone on pagehide: Android WebView can suspend/resume.
+ // An explicit Leave button stops media; foreground recovery reacquires camera if needed.
  health();show('explore');
  const incomingRoom=new URLSearchParams(location.search).get('room');
  if(incomingRoom&&/^[a-f0-9]{12,32}$/i.test(incomingRoom))setTimeout(()=>join(incomingRoom,'Invitation room',new URLSearchParams(location.search).get('private')==='1'),450);
