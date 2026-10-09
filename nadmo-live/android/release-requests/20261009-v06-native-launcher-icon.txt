@@ -1,0 +1,7 @@
+NADMO LIVE v0.6.0-beta | signed in-place upgrade request | 2026-10-09
+Requested by NADMO owner: original Android APK home-screen icon still old.
+Native adaptive icon N/ with lime #E3FD72 on deep green-black #0D1510, square and round launcher support, Android 13 monochrome mask.
+Build from feat/nadmo-live-android-beta-20261009, target id.nadmo.live, versionCode 6 (greater than v0.5.0-beta's versionCode 5).
+MUST be signed using existing owner-controlled permanent key. Certificate SHA256 pinned to release-identity.json = 19896c08fbaf4437f6ea2514312168508e0e2c4cb6b65c0f09647887106c0787.
+DO NOT regenerate keystore, change package id or claim installable update if signed build fails. Confirm artifact and checksum.
+Remote WebView continues hosted URL, no data reset should be necessary on upgrade.
