@@ -18,6 +18,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: ''
       - name: Android SDK
         run: |
           echo "Android SDK: ${ANDROID_HOME}"
