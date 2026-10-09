@@ -327,6 +327,23 @@ body.live-immersive #watch #watchTitle{font-size:15px;line-height:1.25;font-fami
 body.live-immersive #watch #watchState{display:none!important}
 body.live-immersive #watch #watchState.connection-warning{display:block!important;background:#241c10de;border:1px solid #aa8540;color:#ffe5a1}
 
+/* Familiar actions use one icon, without a second visible explanation.
+   Accessibility names remain for screen readers and long-press hints. */
+body.live-immersive #watch .sheet-close{
+ display:grid;place-items:center;float:right;
+ width:38px;height:38px;min-width:38px;padding:0;
+ border:1px solid #71826c;border-radius:50%;
+ background:#18241b;color:#f0f9e9;
+ font:800 22px/1 Arial,sans-serif;
+}
+body.live-immersive #watch .live-settings-grid .settings-icon-button{
+ min-height:52px;font:800 29px/1 Arial,sans-serif;
+}
+body.live-immersive #watch .live-settings-grid .settings-icon-button:focus-visible,
+body.live-immersive #watch .sheet-close:focus-visible{
+ outline:2px solid #e3fd72;outline-offset:3px;
+}
+
 </style></head>
 <body>
 <div class="app">
@@ -403,11 +420,11 @@ body.live-immersive #watch #watchState.connection-warning{display:block!importan
   </aside>
   <div class="page-top"><div><span class="onair-label">● LIVE</span><h1 id="watchTitle">NADMO LIVE</h1></div></div>
   <div class="panel live-stage"><div class="viewfinder"><video id="remote" playsinline autoplay controls></video></div><div id="watchState" class="status">CONNECTING SIGNAL...</div>
-  <button class="btn secondary" id="refreshVideo" type="button">↻ PULIHKAN VIDEO</button>
-  <div class="actions" id="hostControls" hidden><button class="btn secondary" id="afkToggle">▤ KAMERA OFF</button><button class="btn secondary" id="accessQuick">◈ PRIVAT</button><button class="btn ghost" id="shareRoom">↗ BAGIKAN</button></div>
+  <button class="btn secondary" id="refreshVideo" type="button" aria-label="Pulihkan video" title="Pulihkan video">↻</button>
+  <div class="actions" id="hostControls" hidden><button class="btn secondary" id="afkToggle">▤ KAMERA OFF</button><button class="btn secondary" id="accessQuick">◈ PRIVAT</button><button class="btn ghost" id="shareRoom" aria-label="Bagikan room" title="Bagikan room">↗</button></div>
   <div id="viewerTools" hidden><button class="btn secondary" id="tipQuick">Rp SAWER</button></div>
   <div class="panel" id="hostAccessPanel" hidden>
-    <button type="button" class="sheet-close" id="closeAccessSheet">✕ TUTUP</button>
+    <button type="button" class="sheet-close" id="closeAccessSheet" title="Tutup pengaturan akses" aria-label="Tutup pengaturan akses">✕</button>
     <div class="show-label"><b>AKSES SIARAN</b><small id="hostAccessLabel">PUBLIC / GRATIS</small></div>
     <button class="btn secondary" id="openPrivateControls" style="width:100%">ATUR SESI PRIVAT</button>
     <div id="privateControls" class="hide">
@@ -426,7 +443,7 @@ body.live-immersive #watch #watchState.connection-warning{display:block!importan
   </div>
   <p class="deck" id="afkHint" hidden>KAMERA OFF hanya menyembunyikan gambar, mikrofon masih aktif. Ini BUKAN Radio 24/7. Untuk musik otomatis saat HP ditinggal, NADMO sedang menyiapkan sistem Radio AutoDJ di server.</p>
   <div class="panel" id="viewerTipPanel" hidden>
-    <button type="button" class="sheet-close" id="closeTipSheet">✕ TUTUP</button>
+    <button type="button" class="sheet-close" id="closeTipSheet" title="Tutup saweran" aria-label="Tutup saweran">✕</button>
     <div class="show-label"><b>SAWERAN RUPIAH</b><small>PREVIEW / BELUM AKTIF</small></div>
     <p>Kirim dukungan sesuai kemampuanmu. Tidak ada koin, berlian atau hadiah virtual.</p>
     <div class="filterstrip" id="tipPresets">
@@ -442,11 +459,11 @@ body.live-immersive #watch #watchState.connection-warning{display:block!importan
   <div class="actions live-exit-actions"><button class="btn ghost" id="leave" title="Akhiri / keluar siaran" aria-label="Keluar dari siaran">✕</button><button class="btn secondary hide" id="restartRoom">RESTART BROADCAST</button></div></div>
   <div id="liveSheetBackdrop" class="live-sheet-backdrop hide"></div>
   <div id="liveSettingsPanel" class="panel live-settings-panel" role="dialog" aria-label="Pengaturan siaran" aria-modal="true">
-    <button type="button" class="sheet-close" id="closeSettingsSheet">✕ TUTUP</button>
+    <button type="button" class="sheet-close" id="closeSettingsSheet" title="Tutup pengaturan live" aria-label="Tutup pengaturan live">✕</button>
     <div class="show-label"><b>⚙ PENGATURAN LIVE</b><small>QUICK CONTROLS</small></div>
     <div class="live-settings-grid">
-      <button type="button" id="settingsRecover">↻ Pulihkan Video</button>
-      <button type="button" id="settingsShare">↗ Bagikan Room</button>
+      <button type="button" class="settings-icon-button" id="settingsRecover" aria-label="Pulihkan video" title="Pulihkan video">↻</button>
+      <button type="button" class="settings-icon-button" id="settingsShare" aria-label="Bagikan room" title="Bagikan room">↗</button>
       <button type="button" id="settingsCamera">▤ Kamera Off</button>
       <button type="button" id="settingsPrivate">◈ Public / Privat</button>
     </div>
