@@ -9,6 +9,28 @@ android {
     versionCode 5
     versionName '0.5.0-beta'
   }
+  signingConfigs {
+    release {
+      def store = System.getenv('NADMO_LIVE_RELEASE_STORE_FILE')
+      def storePass = System.getenv('NADMO_LIVE_RELEASE_STORE_PASSWORD')
+      def alias = System.getenv('NADMO_LIVE_RELEASE_KEY_ALIAS')
+      def keyPass = System.getenv('NADMO_LIVE_RELEASE_KEY_PASSWORD')
+      if (store && storePass && alias && keyPass) {
+        storeFile file(store)
+        storePassword storePass
+        keyAlias alias
+        keyPassword keyPass
+      }
+    }
+  }
+  buildTypes {
+    release {
+      // Never publish a release APK without persistent, privately stored signing credentials.
+      signingConfig signingConfigs.release
+      minifyEnabled false
+      shrinkResources false
+    }
+  }
   compileOptions {
     sourceCompatibility JavaVersion.VERSION_17
     targetCompatibility JavaVersion.VERSION_17
