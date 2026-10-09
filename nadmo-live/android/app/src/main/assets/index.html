@@ -100,7 +100,7 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
 @media(prefers-reduced-motion:reduce){.stage-core .circle:before{animation:none}}
 
 /* v0.5 live-first research implementation */
-.flash{position:fixed;top:calc(18px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:30;background:#e3fd72;color:#141915;border:1px solid #a7b968;max-width:min(92vw,460px);width:max-content;padding:12px 18px;text-align:center;font:800 12px/1.35 Arial,sans-serif;box-shadow:0 8px 20px #0009}
+#hostAccessPanel[hidden],#viewerTipPanel[hidden]{display:none!important}#hostAccessPanel{margin-top:14px}.flash{position:fixed;top:calc(18px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:30;background:#e3fd72;color:#141915;border:1px solid #a7b968;max-width:min(92vw,460px);width:max-content;padding:12px 18px;text-align:center;font:800 12px/1.35 Arial,sans-serif;box-shadow:0 8px 20px #0009}
 
 #explore .page-top{padding-top:12px;margin-top:4px}
 #explore>.deck{display:none}
@@ -168,8 +168,8 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
   <div class="panel">
     <label for="title">BROADCAST TITLE</label><input class="field" id="title" maxlength="60" placeholder="Midnight conversation #001">
     <label for="category">CHANNEL TYPE</label><select id="category" class="field"><option>Social</option><option>DJ & Music</option><option>Podcast</option><option>Nightlife</option><option>Gaming</option></select>
-    <label for="mode">ACCESS CONTROL</label><select id="mode" class="field"><option value="public">OPEN / Public 18+</option><option value="password">PRIVATE / Passcode invite</option></select>
-    <div id="passwordBox" class="hide"><label for="password">INVITATION CODE (4–32 CHARACTERS)</label><input id="password" type="password" class="field" minlength="4" maxlength="32" placeholder="Create a room passcode"></div>
+    <div class="setting-line"><span>AKSES AWAL</span><strong>PUBLIC / GRATIS</strong></div>
+    <p>Semua siaran dimulai publik. Kamu bisa mengubah akses saat live tanpa harus mengakhiri room.</p>
     <button class="btn" id="createRoom" style="width:100%">● TRANSMIT LIVE</button>
     <div class="status" id="liveState"></div>
   </div>
@@ -178,7 +178,37 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
   <div class="page-top"><div><span class="eyebrow">CURRENT TRANSMISSION</span><h1 id="watchTitle">LIVE NOW</h1></div><span class="edition">ON AIR</span></div>
   <div class="panel"><div class="viewfinder"><video id="remote" playsinline autoplay controls></video></div><div id="watchState" class="status">CONNECTING SIGNAL...</div>
   <div class="actions" id="hostControls" hidden><button class="btn secondary" id="afkToggle">▤ AFK SCENE</button><button class="btn ghost" id="shareRoom">↗ SHARE ROOM</button></div>
+  <div class="panel" id="hostAccessPanel" hidden>
+    <div class="show-label"><b>AKSES SIARAN</b><small id="hostAccessLabel">PUBLIC / GRATIS</small></div>
+    <button class="btn secondary" id="openPrivateControls" style="width:100%">ATUR SESI PRIVAT</button>
+    <div id="privateControls" class="hide">
+      <p class="deck">Tarif ini hanya rencana paket. Beta belum memproses pembayaran atau memberikan akses otomatis berdasarkan waktu.</p>
+      <label for="privatePrice">TARIF SESI / RUPIAH (BEBAS)</label>
+      <div class="filterstrip" id="privatePresets"><button type="button" data-rupiah="5000">Rp5.000</button><button type="button" data-rupiah="10000">Rp10.000</button><button type="button" data-rupiah="20000">Rp20.000</button><button type="button" data-rupiah="50000">Rp50.000</button></div>
+      <input class="field" id="privatePrice" type="number" inputmode="numeric" min="1000" max="10000000" step="1000" value="5000" aria-label="Tarif privat custom dalam rupiah">
+      <label for="privateMinutes">DURASI PAKET</label>
+      <select class="field" id="privateMinutes"><option value="10">10 MENIT</option><option value="30">30 MENIT</option><option value="60">1 JAM</option></select>
+      <label for="privateCode">KODE UNDANGAN PRIVAT</label>
+      <input class="field" id="privateCode" type="password" minlength="4" maxlength="32" autocomplete="new-password" placeholder="Buat kode akses 4–32 karakter">
+      <button class="btn" id="applyPrivate" style="width:100%">AKTIFKAN PRIVATE / KODE AKSES</button>
+      <button class="btn ghost hide" id="restorePublic" style="width:100%">KEMBALI KE PUBLIC / GRATIS</button>
+      <p class="deck" id="privateStatus">Penonton yang sedang menonton akan dikeluarkan ketika akses privat diaktifkan. Jangan meminta pembayaran sebelum sistem transaksi resmi tersedia.</p>
+    </div>
+  </div>
   <p class="deck" id="afkHint" hidden>AFK = tampilan standby sementara mikrofon tetap aktif. Tidak otomatis memutar Spotify atau musik berhak cipta. Tetap buka aplikasi saat siaran.</p>
+  <div class="panel" id="viewerTipPanel" hidden>
+    <div class="show-label"><b>SAWERAN RUPIAH</b><small>PREVIEW / BELUM AKTIF</small></div>
+    <p>Kirim dukungan sesuai kemampuanmu. Tidak ada koin, berlian atau hadiah virtual.</p>
+    <div class="filterstrip" id="tipPresets">
+      <button data-tip="5000">Rp5.000</button><button data-tip="10000" class="active">Rp10.000</button>
+      <button data-tip="20000">Rp20.000</button><button data-tip="50000">Rp50.000</button>
+    </div>
+    <label for="tipCustom">NOMINAL CUSTOM (RUPIAH)</label>
+    <input class="field" type="number" inputmode="numeric" id="tipCustom" min="1000" max="10000000" step="1000" value="10000">
+    <div class="setting-line"><span>Usulan bagian kreator (93%)*</span><strong id="tipEstimate">Rp9.300</strong></div>
+    <p class="deck">*Sebelum biaya gateway, pajak, dan biaya lain yang wajib diperlihatkan. Pembayaran belum aktif — tidak ada dana yang diproses.</p>
+    <button class="btn ghost" type="button" disabled style="width:100%">SAWERAN TERSEDIA SETELAH GATEWAY AKTIF</button>
+  </div>
   <div class="actions"><button class="btn ghost" id="leave">← LEAVE ROOM</button><button class="btn secondary hide" id="restartRoom">RESTART BROADCAST</button></div></div>
   <div class="panel"><div class="show-label"><b>BACKCHANNEL</b><small>LIVE CHAT</small></div><div class="chat" id="chat"></div><div class="row"><input class="field" id="message" placeholder="Say something..." maxlength="250"><button class="btn secondary" id="send">SEND</button></div></div>
 </section>
@@ -244,7 +274,7 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
  const $=id=>document.getElementById(id), screens=['home','explore','following','studio','watch','tv','radio','signal','settings'];
  const DEFAULT_BACKEND='https://nadmo-live-beta-20261009.ardarawk.workers.dev';
  let server=DEFAULT_BACKEND, socket=null, localStream=null, currentRoom='', selfId='', host=false, peers=new Map(), peer=null;
- let cachedRooms=[], selectedFilter='all', savedIds=new Set(JSON.parse(localStorage.getItem('nadmo.beta.saved')||'[]')), afkTrack=null, afkTimer=null, afkMode=false, pendingIce=new Map(), resumeToken='', roomPassword='', reconnectTimer=null, reconnectDeadline=0, reconnectCount=0, manuallyLeaving=false;
+ let cachedRooms=[], selectedFilter='all', savedIds=new Set(JSON.parse(localStorage.getItem('nadmo.beta.saved')||'[]')), afkTrack=null, afkTimer=null, afkMode=false, pendingIce=new Map(), resumeToken='', roomPassword='', reconnectTimer=null, reconnectDeadline=0, reconnectCount=0, manuallyLeaving=false, activeAccessMode='public';
  $('server').value=server; $('adult').checked=localStorage.getItem('nadmo.adult')==='yes';
  function show(name){for(const n of screens)$(n).classList.toggle('hide',n!==name);document.querySelectorAll('nav [data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));if(name==='explore')loadRooms();if(name==='following'){loadRooms();renderSaved();}if(name==='signal')health();window.scrollTo(0,0);}
  document.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>show(el.dataset.tab)));
@@ -273,7 +303,30 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
  $('feeType').addEventListener('change',updateFairFee);
  $('feeAmount').addEventListener('input',updateFairFee);
  updateFairFee();
- $('mode').onchange=()=>$('passwordBox').classList.toggle('hide',$('mode').value!=='password');
+ $('openPrivateControls').onclick=()=>$('privateControls').classList.toggle('hide');
+ document.querySelectorAll('#privatePresets [data-rupiah]').forEach(button=>button.onclick=()=>{$('privatePrice').value=button.dataset.rupiah;document.querySelectorAll('#privatePresets button').forEach(b=>b.classList.toggle('active',b===button))});
+ $('privatePrice').addEventListener('input',()=>{const amount=Number($('privatePrice').value);document.querySelectorAll('#privatePresets button').forEach(b=>b.classList.toggle('active',Number(b.dataset.rupiah)===amount))});
+ function setAccess(mode){
+  if(!host||!currentRoom){$('privateStatus').textContent='Hanya streamer yang sedang LIVE bisa mengubah mode.';return}
+  if(!socket||socket.readyState!==WebSocket.OPEN){$('privateStatus').textContent='Koneksi live terputus. Tunggu reconnect.';return}
+  if(mode==='public'){transmit({type:'set-access',mode:'public'});return}
+  const amount=Number($('privatePrice').value),minutes=Number($('privateMinutes').value),password=$('privateCode').value;
+  if(!Number.isSafeInteger(amount)||amount<1000||amount>10000000){$('privateStatus').textContent='Isi nominal custom Rp1.000–Rp10.000.000 tanpa desimal.';return}
+  if(![10,30,60].includes(minutes)){$('privateStatus').textContent='Durasi belum tersedia.';return}
+  if(password.length<4||password.length>32){$('privateStatus').textContent='Kode akses wajib 4–32 karakter.';return}
+  transmit({type:'set-access',mode:'password',amount,minutes,password});
+  $('privateStatus').textContent='Memproses perubahan akses siaran...';
+ }
+ $('applyPrivate').onclick=()=>setAccess('password');
+ $('restorePublic').onclick=()=>setAccess('public');
+ function updateTipPreview(){
+  const amount=Number($('tipCustom').value);
+  document.querySelectorAll('#tipPresets button').forEach(b=>b.classList.toggle('active',Number(b.dataset.tip)===amount));
+  const valid=Number.isSafeInteger(amount)&&amount>=1000&&amount<=10000000;
+  $('tipEstimate').textContent=valid?new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(amount-Math.round(amount*.07)):'Nominal Rp1.000–Rp10.000.000';
+ }
+ document.querySelectorAll('#tipPresets button').forEach(b=>b.onclick=()=>{$('tipCustom').value=b.dataset.tip;updateTipPreview()});
+ $('tipCustom').addEventListener('input',updateTipPreview);updateTipPreview();
  async function preview(){
   try{if(!navigator.mediaDevices?.getUserMedia)throw Error('Browser belum mendukung kamera');if(localStream)localStream.getTracks().forEach(t=>t.stop());localStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720}},audio:{echoCancellation:true}});$('camera').srcObject=localStream;notice('Kamera dan mikrofon siap.','camState');}
   catch(e){notice('Gagal membuka kamera: '+e.message,'camState')}
@@ -379,7 +432,7 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
  $('afkToggle').onclick=toggleAfk;
  $('shareRoom').onclick=async()=>{
   if(!currentRoom)return;
-  const url=DEFAULT_BACKEND+'/app/?room='+encodeURIComponent(currentRoom)+($('mode').value==='password'?'&private=1':'');
+  const url=DEFAULT_BACKEND+'/app/?room='+encodeURIComponent(currentRoom)+(activeAccessMode==='password'?'&private=1':'');
   try{await navigator.clipboard.writeText(url);$('watchState').textContent='Link undangan disalin. Kirim passcode secara terpisah jika room terkunci.'}
   catch(e){window.prompt('Salin link room',url)}
  };
@@ -388,8 +441,8 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
  function signal(to,data){transmit({type:'signal',to,data})}
  async function attachViewer(id){if(!localStream)return;const pc=rtc();peers.set(id,pc);localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));pc.onicecandidate=e=>{if(e.candidate)signal(id,{candidate:e.candidate})};const offer=await pc.createOffer();await pc.setLocalDescription(offer);signal(id,{description:pc.localDescription})}
  async function incoming(m){
-  if(m.type==='created'){stopRetry();currentRoom=m.id;selfId=m.selfId;host=true;resumeToken=m.resumeToken||'';roomPassword='';$('net').textContent='SERVER ONLINE';$('hostControls').hidden=false;$('afkHint').hidden=false;$('restartRoom').classList.add('hide');notice('SIARAN AKTIF • Bagikan kode room '+m.id,'liveState');$('watchTitle').textContent=$('title').value.trim()||'NADMO LIVE';$('watchState').textContent='Anda sedang siaran. Bagikan kode: '+m.id;$('remote').muted=true;$('remote').srcObject=localStream;show('watch');}
-  if(m.type==='joined'){stopRetry();currentRoom=m.id;selfId=m.selfId;host=false;resumeToken='';$('net').textContent='SERVER ONLINE';if(peer){peer.close();peer=null}pendingIce.clear();$('remote').muted=false;$('hostControls').hidden=true;$('afkHint').hidden=true;$('restartRoom').classList.add('hide');$('watchTitle').textContent=m.title;$('watchState').textContent='Menghubungkan video...';show('watch')}
+  if(m.type==='created'){stopRetry();currentRoom=m.id;selfId=m.selfId;host=true;$('viewerTipPanel').hidden=true;activeAccessMode='public';$('hostAccessPanel').hidden=false;$('hostAccessLabel').textContent='PUBLIC / GRATIS';$('restorePublic').classList.add('hide');resumeToken=m.resumeToken||'';roomPassword='';$('net').textContent='SERVER ONLINE';$('hostControls').hidden=false;$('afkHint').hidden=false;$('restartRoom').classList.add('hide');notice('SIARAN AKTIF • Bagikan kode room '+m.id,'liveState');$('watchTitle').textContent=$('title').value.trim()||'NADMO LIVE';$('watchState').textContent='Anda sedang siaran. Bagikan kode: '+m.id;$('remote').muted=true;$('remote').srcObject=localStream;show('watch');}
+  if(m.type==='joined'){stopRetry();currentRoom=m.id;selfId=m.selfId;host=false;$('viewerTipPanel').hidden=false;$('hostAccessPanel').hidden=true;resumeToken='';$('net').textContent='SERVER ONLINE';if(peer){peer.close();peer=null}pendingIce.clear();$('remote').muted=false;$('hostControls').hidden=true;$('afkHint').hidden=true;$('restartRoom').classList.add('hide');$('watchTitle').textContent=m.title;$('watchState').textContent='Menghubungkan video...';show('watch')}
   if(m.type==='resumed'){
     stopRetry();currentRoom=m.id;selfId=m.selfId;host=true;$('net').textContent='SERVER ONLINE';
     for(const pc of peers.values())pc.close();peers.clear();pendingIce.clear();
@@ -409,6 +462,14 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
    const why=m.reason||'Siaran berakhir.';
    leave();flash(why);return;
   }
+  if(m.type==='access-revoked'){const why=m.reason||'Room sekarang privat.';leave();flash(why);return}
+  if(m.type==='access-updated'){
+   activeAccessMode=m.mode;
+   $('hostAccessLabel').textContent=m.mode==='public'?'PUBLIC / GRATIS':'PRIVATE / KODE UNDANGAN';
+   $('restorePublic').classList.toggle('hide',m.mode==='public');
+   $('privateStatus').textContent=m.mode==='public'?'Siaran kembali publik dan gratis.':'Room privat aktif. '+m.displaced+' penonton publik dilepas. Tarif Rp'+new Intl.NumberFormat('id-ID').format(m.offer?.amount||0)+' / '+(m.offer?.minutes||0)+' menit hanya LABEL. Pembayaran belum aktif.';
+   flash(m.mode==='public'?'Siaran kembali publik':'Siaran sekarang privat, penonton publik dikeluarkan');
+  }
   if(m.type==='viewer-joined'&&host){await attachViewer(m.id)}
   if(m.type==='viewer-left'&&host){peers.get(m.id)?.close();peers.delete(m.id)}
   if(m.type==='signal'){let pc;if(host)pc=peers.get(m.from);else{if(!peer){peer=rtc();peer.ontrack=e=>{$('remote').srcObject=e.streams[0];$('watchState').textContent='Video tersambung'};peer.onicecandidate=e=>{if(e.candidate)signal(m.from,{candidate:e.candidate})}}pc=peer}
@@ -427,9 +488,8 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
  $('createRoom').onclick=async()=>{
   if(!adult())return;if(!server){notice('Server NADMO sedang tidak tersedia, coba lagi nanti.','liveState');return}
   if(!localStream)await preview();if(!localStream)return;
-  const title=$('title').value.trim()||'NADMO LIVE',mode=$('mode').value,password=$('password').value;
-  if(mode==='password'&&(password.length<4||password.length>32)){notice('Kode private room harus 4–32 karakter.','liveState');return}
-  connect(()=>transmit({type:'create',title,category:$('category').value,mode,password}));
+  const title=$('title').value.trim()||'NADMO LIVE';
+  connect(()=>transmit({type:'create',title,category:$('category').value,mode:'public'}));
  };
  function join(id,title,locked){if(!adult())return;let password='';if(locked){password=prompt('Kode akses room:')||'';if(!password)return}roomPassword=password;stopRetry();
  connect(()=>transmit({type:'join',id,password}));$('watchTitle').textContent=title}
@@ -443,7 +503,7 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
   if(afkTimer)clearInterval(afkTimer);afkTimer=null;afkTrack=null;afkMode=false;
   currentRoom='';selfId='';host=false;resumeToken='';roomPassword='';
   $('remote').srcObject=null;$('remote').muted=false;$('chat').replaceChildren();
-  $('hostControls').hidden=true;$('afkHint').hidden=true;$('restartRoom').classList.add('hide');
+  $('hostControls').hidden=true;$('hostAccessPanel').hidden=true;$('viewerTipPanel').hidden=true;$('privateControls').classList.add('hide');$('afkHint').hidden=true;$('restartRoom').classList.add('hide');activeAccessMode='public';
   $('afkToggle').textContent='▤ AFK SCENE';
   $('stopCamera').click();show('explore');manuallyLeaving=false;
 }
