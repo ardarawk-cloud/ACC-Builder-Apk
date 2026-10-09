@@ -1,0 +1,20 @@
+name: NADMO Finance Preflight
+on:
+  push:
+    branches: ["feat/nadmo-finance-v1"]
+    paths:
+      - ".github/workflows/nadmo-finance-preflight.yml"
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Cloudflare secret availability
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CF_TOKEN" ]; then echo "HAS_CLOUDFLARE_API_TOKEN=true"; else echo "HAS_CLOUDFLARE_API_TOKEN=false"; fi
+          if [ -n "$CF_ACCOUNT" ]; then echo "HAS_CLOUDFLARE_ACCOUNT_ID=true"; else echo "HAS_CLOUDFLARE_ACCOUNT_ID=false"; fi
+          if [ -n "$CF_TOKEN" ] && [ -n "$CF_ACCOUNT" ]; then
+            npx wrangler whoami
+          fi
