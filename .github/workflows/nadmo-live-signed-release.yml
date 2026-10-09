@@ -1,6 +1,11 @@
 name: NADMO LIVE Consistently Signed APK
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - 'feat/nadmo-live-android-beta-20261009'
+    paths:
+      - 'nadmo-live/android/release-requests/**'
 permissions:
   contents: read
 jobs:
