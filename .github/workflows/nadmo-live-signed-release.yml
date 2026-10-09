@@ -54,16 +54,29 @@ jobs:
           set -euo pipefail
           APK="nadmo-live/android/app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
+          SIGNING_REPORT=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK")
+          printf '%s\n' "$SIGNING_REPORT"
+          printf '%s\n' "$SIGNING_REPORT" | grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true'
+          EXPECTED=$(jq -r '.certificate_sha256' nadmo-live/android/release-identity.json)
+          ACTUAL=$(printf '%s\n' "$SIGNING_REPORT" | sed -n 's/.*Signer #1 certificate SHA-256 digest: //p' | head -1)
+          if [ -z "$EXPECTED" ] || [ "$ACTUAL" != "$EXPECTED" ];then
+            echo "::error::NADMO LIVE release certificate changed. Expected $EXPECTED, got $ACTUAL. Refusing unsafe update."
+            exit 1
+          fi
           INFO=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -1)
           echo "$INFO"
-          echo "$INFO" | grep -q "name='id.nadmo.live'"
+          PACKAGE=$(jq -r '.package_id' nadmo-live/android/release-identity.json)
+          echo "$INFO" | grep -Fq "name='$PACKAGE'"
           if unzip -l "$APK" | grep -q "nadmo-release.jks";then echo "Keystore leak detected"; exit 1; fi
           mv "$APK" "nadmo-live/android/app/build/outputs/apk/release/NADMO-LIVE-signed-beta.apk"
+          (cd nadmo-live/android/app/build/outputs/apk/release && sha256sum NADMO-LIVE-signed-beta.apk > SHA256SUMS.txt)
+          echo "Locked signing certificate verified. Package $PACKAGE."
       - uses: actions/upload-artifact@v4
         with:
           name: nadmo-live-signed-apk
-          path: nadmo-live/android/app/build/outputs/apk/release/NADMO-LIVE-signed-beta.apk
+          path: |
+            nadmo-live/android/app/build/outputs/apk/release/NADMO-LIVE-signed-beta.apk
+            nadmo-live/android/app/build/outputs/apk/release/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
       - name: Wipe signing material
