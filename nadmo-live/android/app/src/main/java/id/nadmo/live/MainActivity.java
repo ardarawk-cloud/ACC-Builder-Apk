@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.webkit.PermissionRequest;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
@@ -23,9 +24,11 @@ public final class MainActivity extends Activity {
   private static final String LIVE_HOST="nadmo-live-beta-20261009.ardarawk.workers.dev";
   private static final String ONLINE_URL="https://"+LIVE_HOST+"/app/";
   private static final int ASK_MEDIA=42;
+  private static final int PICK_AVATAR=43;
   private WebView web;
   private FrameLayout root;
   private PermissionRequest pending;
+  private ValueCallback<Uri[]> pendingPhoto;
   private View fullView;
   private WebChromeClient.CustomViewCallback fullCallback;
 
@@ -76,6 +79,20 @@ public final class MainActivity extends Activity {
       }
     });
     web.setWebChromeClient(new WebChromeClient(){
+      @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){
+        if(!trusted(Uri.parse(view.getUrl()))){callback.onReceiveValue(null);return true;}
+        if(pendingPhoto!=null){pendingPhoto.onReceiveValue(null);pendingPhoto=null;}
+        pendingPhoto=callback;
+        // User-driven gallery picker only. No blanket access to device storage.
+        final Intent choose=new Intent(Intent.ACTION_GET_CONTENT);
+        choose.addCategory(Intent.CATEGORY_OPENABLE);
+        choose.setType("image/*");
+        try{startActivityForResult(Intent.createChooser(choose,"Pilih foto profil"),PICK_AVATAR);}
+        catch(Exception error){
+          pendingPhoto.onReceiveValue(null);pendingPhoto=null;
+        }
+        return true;
+      }
       @Override public void onPermissionRequest(PermissionRequest request){
         runOnUiThread(()->{
           if(!trusted(request.getOrigin())){request.deny();return;}
@@ -116,6 +133,15 @@ public final class MainActivity extends Activity {
     if(!trusted(req.getOrigin())){req.deny();return;}
     req.grant(req.getResources());
   }
+  @Override protected void onActivityResult(int request,int result,Intent data){
+    super.onActivityResult(request,result,data);
+    if(request!=PICK_AVATAR)return;
+    final ValueCallback<Uri[]> callback=pendingPhoto;
+    pendingPhoto=null;
+    if(callback==null)return;
+    final Uri uri=result==Activity.RESULT_OK&&data!=null?data.getData():null;
+    callback.onReceiveValue(uri==null?null:new Uri[]{uri});
+  }
   @Override public void onRequestPermissionsResult(int code,String[] names,int[] results){
     super.onRequestPermissionsResult(code,names,results);
     if(code!=ASK_MEDIA)return;
@@ -141,6 +167,7 @@ public final class MainActivity extends Activity {
   }
   @Override protected void onDestroy(){
     if(pending!=null){pending.deny();pending=null;}
+    if(pendingPhoto!=null){pendingPhoto.onReceiveValue(null);pendingPhoto=null;}
     if(web!=null){web.destroy();web=null;}
     super.onDestroy();
   }
