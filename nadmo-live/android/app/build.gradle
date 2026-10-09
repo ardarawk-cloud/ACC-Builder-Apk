@@ -6,8 +6,8 @@ android {
     applicationId 'id.nadmo.live'
     minSdk 26
     targetSdk 35
-    versionCode 3
-    versionName '0.3.0-beta'
+    versionCode 5
+    versionName '0.5.0-beta'
   }
   compileOptions {
     sourceCompatibility JavaVersion.VERSION_17
