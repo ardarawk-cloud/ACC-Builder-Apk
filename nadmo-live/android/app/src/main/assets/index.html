@@ -196,9 +196,7 @@ body.live-immersive #watch .flash{z-index:40}
   <div class="show-label"><b>LIVE NOW</b><small id="liveCount">0 ROOMS</small></div>
   <div id="rooms" class="no-signal"><strong>SEARCHING</strong><small>CONNECTING TO BROADCAST NETWORK</small></div>
   <div class="actions"><button class="btn secondary" id="refresh">↻ REFRESH LIVE</button><button class="btn" data-tab="studio">● BROADCAST</button></div>
-  <div class="notice">GAMING LIVE: pilih kategori Gaming untuk siaran kamera dan obrolan. Capture layar game/OBS dan suara internal game belum tersedia di beta ini.</div><div class="show-label"><b>INVITATION ACCESS</b><small>LOCKED ROOM</small></div>
-  <p class="deck">Punya kode room dari host? Masuk langsung. Room tertutup tidak muncul di pencarian publik.</p>
-  <div class="row"><input class="field" id="privateId" maxlength="32" placeholder="Masukkan ID room privat"><button class="btn secondary" id="privateJoin">JOIN</button></div>
+  <div class="notice">GAMING LIVE: pilih kategori Gaming untuk siaran kamera dan obrolan. Capture layar game/OBS dan suara internal game belum tersedia di beta ini.</div>
 </section>
 <section id="following" class="hide">
   <div class="page-top"><div><span class="eyebrow">SAVED / DEVICE</span><h1>FOLLOWING<span style="color:var(--neon)">.</span></h1></div><span class="edition">BETA</span></div>
@@ -466,7 +464,6 @@ body.live-immersive #watch .flash{z-index:40}
  $('refresh').onclick=loadRooms;
  $('searchLive').addEventListener('input',renderRooms);
  document.querySelectorAll('#filters [data-filter]').forEach(button=>button.addEventListener('click',()=>{selectedFilter=button.dataset.filter;document.querySelectorAll('#filters button').forEach(x=>x.classList.toggle('active',x===button));renderRooms()}));
- $('privateJoin').onclick=()=>{const id=$('privateId').value.trim();if(!/^[a-f0-9]{12,32}$/i.test(id)){alert('ID room tidak valid. Minta kode undangan dari host.');return}join(id,'Private live',true)};
  function wsurl(){return server.replace(/^https:/,'wss:').replace(/\/$/,'')+'/ws'}
  function transmit(obj){if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify(obj))}
  function stopRetry(){
