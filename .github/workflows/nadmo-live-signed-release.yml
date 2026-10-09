@@ -1,0 +1,66 @@
+name: NADMO LIVE Consistently Signed APK
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signed-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+      - name: Install Android SDK 35
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Require permanently protected signing credentials
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.NADMO_LIVE_KEYSTORE_B64 }}
+          STORE_PASS: ${{ secrets.NADMO_LIVE_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.NADMO_LIVE_RELEASE_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.NADMO_LIVE_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$STORE_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ];then
+            echo "::error::Protected NADMO LIVE release signing secrets are not configured. No APK will be published."
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/nadmo-release.jks"
+          test -s "$RUNNER_TEMP/nadmo-release.jks"
+          echo "NADMO_LIVE_RELEASE_STORE_FILE=$RUNNER_TEMP/nadmo-release.jks" >> "$GITHUB_ENV"
+          echo "NADMO_LIVE_RELEASE_STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
+          echo "NADMO_LIVE_RELEASE_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "NADMO_LIVE_RELEASE_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+      - name: Assemble signed release
+        run: gradle -p nadmo-live/android :app:assembleRelease --no-daemon
+      - name: Verify release signature and package
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="nadmo-live/android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
+          INFO=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -1)
+          echo "$INFO"
+          echo "$INFO" | grep -q "name='id.nadmo.live'"
+          if unzip -l "$APK" | grep -q "nadmo-release.jks";then echo "Keystore leak detected"; exit 1; fi
+          mv "$APK" "nadmo-live/android/app/build/outputs/apk/release/NADMO-LIVE-signed-beta.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nadmo-live-signed-apk
+          path: nadmo-live/android/app/build/outputs/apk/release/NADMO-LIVE-signed-beta.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Wipe signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/nadmo-release.jks"
