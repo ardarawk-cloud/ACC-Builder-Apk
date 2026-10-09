@@ -178,7 +178,7 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
   <div class="page-top"><div><span class="eyebrow">CURRENT TRANSMISSION</span><h1 id="watchTitle">LIVE NOW</h1></div><span class="edition">ON AIR</span></div>
   <div class="panel"><div class="viewfinder"><video id="remote" playsinline autoplay controls></video></div><div id="watchState" class="status">CONNECTING SIGNAL...</div>
   <button class="btn secondary" id="refreshVideo" type="button">↻ PULIHKAN VIDEO</button>
-  <div class="actions" id="hostControls" hidden><button class="btn secondary" id="afkToggle">▤ AFK SCENE</button><button class="btn ghost" id="shareRoom">↗ SHARE ROOM</button></div>
+  <div class="actions" id="hostControls" hidden><button class="btn secondary" id="afkToggle">▤ KAMERA OFF</button><button class="btn ghost" id="shareRoom">↗ SHARE ROOM</button></div>
   <div class="panel" id="hostAccessPanel" hidden>
     <div class="show-label"><b>AKSES SIARAN</b><small id="hostAccessLabel">PUBLIC / GRATIS</small></div>
     <button class="btn secondary" id="openPrivateControls" style="width:100%">ATUR SESI PRIVAT</button>
@@ -196,7 +196,7 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
       <p class="deck" id="privateStatus">Penonton yang sedang menonton akan dikeluarkan ketika akses privat diaktifkan. Jangan meminta pembayaran sebelum sistem transaksi resmi tersedia.</p>
     </div>
   </div>
-  <p class="deck" id="afkHint" hidden>AFK = tampilan standby sementara mikrofon tetap aktif. Tidak otomatis memutar Spotify atau musik berhak cipta. Tetap buka aplikasi saat siaran.</p>
+  <p class="deck" id="afkHint" hidden>KAMERA OFF hanya menyembunyikan gambar, mikrofon masih aktif. Ini BUKAN Radio 24/7. Untuk musik otomatis saat HP ditinggal, NADMO sedang menyiapkan sistem Radio AutoDJ di server.</p>
   <div class="panel" id="viewerTipPanel" hidden>
     <div class="show-label"><b>SAWERAN RUPIAH</b><small>PREVIEW / BELUM AKTIF</small></div>
     <p>Kirim dukungan sesuai kemampuanmu. Tidak ada koin, berlian atau hadiah virtual.</p>
@@ -222,8 +222,8 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
 <section id="radio" class="hide">
   <div class="page-top"><div><span class="eyebrow">FREQUENCY / 04</span><h1>RADIO ONE<span style="color:var(--neon)">.</span></h1></div><span class="edition">AUDIO</span></div>
   <p class="deck">Talk, sound, dan obrolan malam. Stay on frequency.</p>
-  <div class="signal-stage" style="height:310px"><div class="stage-head"><span>FM / NADMO 001</span><span class="liveflag">STANDBY</span></div><div class="stage-core"><div class="circle"><strong style="font-size:62px">≋</strong></div><p>AWAITING AUDIO SOURCE</p></div><div class="stage-foot"><small>RADIO ENGINE / COMING SOON</small><div class="bars"><i></i><i></i><i></i><i></i></div></div></div>
-  <div class="notice">Audio background dan acara radio belum tersambung. Ini halaman preview.</div>
+  <div class="signal-stage" style="height:310px"><div class="stage-head"><span>FM / NADMO 001</span><span class="liveflag">STANDBY</span></div><div class="stage-core"><div class="circle"><strong style="font-size:62px">≋</strong></div><p>AWAITING AUDIO SOURCE</p></div><div class="stage-foot"><small>AUTODJ SERVER / BELUM AKTIF</small><div class="bars"><i></i><i></i><i></i><i></i></div></div></div>
+  <div class="notice">Radio 24/7 akan memakai AutoDJ server: streamer mengunggah musik yang boleh disiarkan, memilih playlist, lalu radio terus mengudara saat HP ditutup. Belum tersedia di beta ini.</div>
 </section>
 <section id="signal" class="hide">
   <div class="page-top"><div><span class="eyebrow">INDEPENDENT / PUBLIC INFORMATION</span><h1>SIGNAL<span style="color:var(--neon)">.</span></h1></div><span class="edition">COMMUNITY</span></div>
@@ -333,7 +333,7 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
   catch(e){notice('Gagal membuka kamera: '+e.message,'camState')}
  }
  $('preview').onclick=preview;
- $('stopCamera').onclick=()=>{if(host&&currentRoom){notice('Sedang LIVE. Pakai AFK untuk menyembunyikan kamera tanpa memutus siaran.','camState');return}if(localStream)localStream.getTracks().forEach(t=>t.stop());localStream=null;$('camera').srcObject=null;notice('Kamera dimatikan.','camState')};
+ $('stopCamera').onclick=()=>{if(host&&currentRoom){notice('Sedang LIVE. Gunakan KAMERA OFF untuk menyembunyikan gambar sementara tanpa mengakhiri siaran.','camState');return}if(localStream)localStream.getTracks().forEach(t=>t.stop());localStream=null;$('camera').srcObject=null;notice('Kamera dimatikan.','camState')};
  function emptyMessage(message){const box=document.createElement('div');box.className='no-signal';const h=document.createElement('strong');h.textContent='NO SIGNAL';const d=document.createElement('small');d.textContent=message;box.append(h,d);return box}
  function roomCard(x){const card=document.createElement('div');card.className='room';card.dataset.roomId=x.id;const art=document.createElement('div');art.className='room-art';art.textContent='N/';const main=document.createElement('div');main.className='room-main';const live=document.createElement('div');live.className='eyebrow';live.textContent='● LIVE / '+x.category;const title=document.createElement('b');title.textContent=x.title;const sub=document.createElement('small');sub.textContent=(Number(x.viewers)||0)+' WATCHING • PUBLIC ROOM';const actions=document.createElement('div');actions.className='room-actions';const open=document.createElement('button');open.className='btn';open.textContent='WATCH LIVE ↗';open.onclick=()=>join(x.id,x.title,false);const save=document.createElement('button');save.className='bookmark';save.textContent=savedIds.has(x.id)?'★':'☆';save.setAttribute('aria-label','Simpan siaran');save.onclick=()=>{if(savedIds.has(x.id))savedIds.delete(x.id);else savedIds.add(x.id);localStorage.setItem('nadmo.beta.saved',JSON.stringify([...savedIds]));renderRooms();renderSaved()};actions.append(open,save);main.append(live,title,sub,actions);card.append(art,main);return card}
  function renderRooms(){const q=$('searchLive').value.trim().toLocaleLowerCase('id');const items=cachedRooms.filter(x=>(selectedFilter==='all'||x.category===selectedFilter)&&(x.title+' '+x.category).toLocaleLowerCase('id').includes(q));$('rooms').replaceChildren();$('liveCount').textContent=items.length+' LIVE ROOMS';if(!items.length){$('rooms').append(emptyMessage(cachedRooms.length?'NO MATCHES':'NO PUBLIC LIVE BROADCASTS'));return}items.forEach(x=>$('rooms').append(roomCard(x)))}
@@ -404,13 +404,13 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
   try{
    if(!afkMode){
     const canvas=document.createElement('canvas');canvas.width=720;canvas.height=1280;
-    if(typeof canvas.captureStream!=='function')throw Error('AFK canvas belum didukung browser ini');
+    if(typeof canvas.captureStream!=='function')throw Error('Visual standby kamera belum didukung browser ini');
     const ctx=canvas.getContext('2d');
     const draw=()=>{
      ctx.fillStyle='#0b100d';ctx.fillRect(0,0,720,1280);
      ctx.strokeStyle='#1d261e';for(let y=0;y<1280;y+=24){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(720,y);ctx.stroke()}
      ctx.textAlign='center';ctx.fillStyle='#e3fd72';ctx.font='bold 72px Arial';ctx.fillText('NADMO / LIVE',360,475);
-     ctx.font='bold 112px Arial';ctx.fillText('AFK',360,630);
+     ctx.font='bold 112px Arial';ctx.fillText('CAM OFF',360,630);
      ctx.fillStyle='#b9c6ad';ctx.font='bold 29px Arial';ctx.fillText('CREATOR AWAY',360,710);
      ctx.font='23px Arial';ctx.fillText('MIC MAY STILL BE LIVE',360,772);
      ctx.fillText(new Date().toLocaleTimeString('id-ID'),360,850);
@@ -420,14 +420,14 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
     if(!track)throw Error('Tidak bisa membuat visual standby');
     await swapVideo(track);afkTrack=track;afkTimer=setInterval(draw,1000);afkMode=true;
     $('afkToggle').textContent='◉ RETURN CAMERA';
-    $('watchState').textContent='AFK aktif • Kamera dimatikan, audio mikrofon tetap aktif jika diizinkan.';
+    $('watchState').textContent='Kamera OFF. Mikrofon masih aktif. Ini bukan siaran radio otomatis.';
    }else{
     const media=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720}},audio:false});
     await swapVideo(media.getVideoTracks()[0]);
     if(afkTimer)clearInterval(afkTimer);afkTimer=null;afkTrack=null;afkMode=false;
-    $('afkToggle').textContent='▤ AFK SCENE';$('watchState').textContent='Kamera kembali. Room tetap aktif.';
+    $('afkToggle').textContent='▤ KAMERA OFF';$('watchState').textContent='Kamera kembali. Room tetap aktif.';
    }
-  }catch(e){$('watchState').textContent='Tidak bisa mengganti AFK: '+e.message}
+  }catch(e){$('watchState').textContent='Gagal mengubah kamera: '+e.message}
   finally{$('afkToggle').disabled=false}
  }
  $('afkToggle').onclick=toggleAfk;
@@ -494,7 +494,7 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
        // AFK canvas can pause drawing while the WebView is backgrounded.
        const ids=[...peers.keys()];
        for(const id of ids)await attachViewer(id);
-       $('watchState').textContent='AFK Scene kembali aktif. Room tetap berjalan.';
+       $('watchState').textContent='Mode kamera OFF kembali aktif. Room tetap berjalan.';
      }
    }else{
      $('watchState').textContent='Menyambungkan ulang video setelah kembali ke aplikasi...';
@@ -622,7 +622,7 @@ html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:1
   currentRoom='';selfId='';host=false;resumeToken='';roomPassword='';recoveringForeground=false;lastForegroundRecovery=0;lastBackgroundAt=0;
   $('remote').srcObject=null;$('remote').muted=false;$('chat').replaceChildren();
   $('hostControls').hidden=true;$('hostAccessPanel').hidden=true;$('viewerTipPanel').hidden=true;$('privateControls').classList.add('hide');$('afkHint').hidden=true;$('restartRoom').classList.add('hide');activeAccessMode='public';
-  $('afkToggle').textContent='▤ AFK SCENE';
+  $('afkToggle').textContent='▤ KAMERA OFF';
   $('stopCamera').click();show('explore');manuallyLeaving=false;
 }
  $('leave').onclick=leave;
