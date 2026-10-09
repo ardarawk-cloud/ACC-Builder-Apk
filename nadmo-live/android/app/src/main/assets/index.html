@@ -100,9 +100,16 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
 @media(prefers-reduced-motion:reduce){.stage-core .circle:before{animation:none}}
 
 /* v0.5 live-first research implementation */
+.flash{position:fixed;top:calc(18px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:30;background:#e3fd72;color:#141915;border:1px solid #a7b968;max-width:min(92vw,460px);width:max-content;padding:12px 18px;text-align:center;font:800 12px/1.35 Arial,sans-serif;box-shadow:0 8px 20px #0009}
+
+#explore .page-top{padding-top:12px;margin-top:4px}
+#explore>.deck{display:none}
+#explore .show-label{margin:13px 0 10px;padding-top:10px}
+
+.fee-table{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:10px 0 14px}.fee-row{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #313a2f;color:var(--ink);font-size:12px}.fee-row:last-child{border:0;color:var(--neon)}.fee-row b{color:var(--paper);white-space:nowrap}.fee-row:last-child b{color:var(--neon)}
 .filterstrip{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding:0 0 14px}.filterstrip::-webkit-scrollbar{display:none}
 .filterstrip button{flex:none;background:#151a14;border:1px solid #454d40;color:#afb7a8;padding:9px 12px;font:800 10px Arial,sans-serif;letter-spacing:.45px}.filterstrip button.active{background:var(--neon);color:#10140c;border-color:var(--neon)}
-.room{position:relative;gap:12px;align-items:flex-start}.room .room-art{width:70px;height:86px;background:repeating-linear-gradient(115deg,#233122 0px,#233122 8px,#111711 9px,#111711 19px);border:1px solid #43513a;flex:none;display:grid;place-items:center;color:var(--neon);font:900 27px Impact,sans-serif}.room .room-main{flex:1;min-width:0}.room .room-main b{font-size:20px;word-break:break-word}.room .room-main small{display:block;font-size:11px}.room .room-actions{display:flex;align-items:center;gap:7px;margin-top:8px}.room .room-actions .btn{padding:8px 10px;min-height:35px;font-size:11px}.room .bookmark{min-height:35px;width:35px;background:transparent;border:1px solid var(--line);color:var(--neon);font-size:17px}
+html{scroll-padding-bottom:100px}.room .room-actions .btn{scroll-margin-bottom:105px}.room{position:relative;gap:12px;align-items:flex-start}.room .room-art{width:70px;height:86px;background:repeating-linear-gradient(115deg,#233122 0px,#233122 8px,#111711 9px,#111711 19px);border:1px solid #43513a;flex:none;display:grid;place-items:center;color:var(--neon);font:900 27px Impact,sans-serif}.room .room-main{flex:1;min-width:0}.room .room-main b{font-size:20px;word-break:break-word}.room .room-main small{display:block;font-size:11px}.room .room-actions{display:flex;align-items:center;gap:7px;margin-top:8px}.room .room-actions .btn{padding:8px 10px;min-height:35px;font-size:11px}.room .bookmark{min-height:35px;width:35px;background:transparent;border:1px solid var(--line);color:var(--neon);font-size:17px}
 #hostControls[hidden],#afkHint[hidden]{display:none!important}#hostControls{margin:14px 0}#afkHint{margin:8px 0;font-size:11px}
 #signalStatus{font-size:11px;letter-spacing:1px;color:var(--neon)}
 </style></head>
@@ -208,10 +215,22 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
   <div class="show-label"><b>ACCESS & AGE</b><small>18+ POLICY</small></div>
   <div class="setting-line"><label for="adult">Saya berusia 18 tahun ke atas</label><input id="adult" type="checkbox"></div>
   <p>Beta menggunakan konfirmasi mandiri. Peluncuran publik memerlukan verifikasi usia dan moderasi.</p>
-  <div class="show-label"><b>PAYMENTS</b><small>NOT CONNECTED</small></div>
-  <div class="notice">Saweran, tiket berbayar, dan pencairan belum tersedia. Jangan mengirim uang untuk akses beta.</div>
+  <div class="show-label"><b>FAIR CREATOR ECONOMY</b><small>TRANSPARENT / SIMULATION</small></div>
+  <div class="notice">Saweran, tiket dan penarikan belum aktif. Perhitungan ini hanya simulasi usulan komisi NADMO — tidak menerima atau memproses uang.</div>
+  <div class="panel">
+    <label for="feeType">ESTIMASI JENIS PENDAPATAN</label>
+    <select class="field" id="feeType">
+      <option value="tip">SAWERAN • Usulan biaya platform 7%</option>
+      <option value="ticket">TIKET PRIVATE • Usulan biaya platform 10%</option>
+    </select>
+    <label for="feeAmount">SIMULASI DUKUNGAN (RUPIAH)</label>
+    <input class="field" id="feeAmount" inputmode="numeric" type="number" min="1000" max="10000000" step="1000" value="100000" aria-label="Simulasi nominal dukungan">
+    <div id="feeBreakdown" class="fee-table" aria-live="polite"></div>
+    <p>Nilai untuk kreator di atas adalah <b>perkiraan sebelum biaya payment gateway, pajak, pembatalan, dan kewajiban lain</b>. Biaya aktual wajib ditampilkan sebelum transaksi ketika pembayaran resmi tersedia.</p>
+  </div>
 </section>
 </div>
+<div id="flash" class="flash hide" role="status" aria-live="polite"></div>
 <nav aria-label="Main navigation">
   <button data-tab="explore" class="active"><i>◉</i>LIVE</button>
   <button data-tab="following"><i>☆</i>FOLLOW</button>
@@ -225,13 +244,15 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
  const $=id=>document.getElementById(id), screens=['home','explore','following','studio','watch','tv','radio','signal','settings'];
  const DEFAULT_BACKEND='https://nadmo-live-beta-20261009.ardarawk.workers.dev';
  let server=DEFAULT_BACKEND, socket=null, localStream=null, currentRoom='', selfId='', host=false, peers=new Map(), peer=null;
- let cachedRooms=[], selectedFilter='all', savedIds=new Set(JSON.parse(localStorage.getItem('nadmo.beta.saved')||'[]')), afkTrack=null, afkTimer=null, afkMode=false, pendingIce=new Map();
+ let cachedRooms=[], selectedFilter='all', savedIds=new Set(JSON.parse(localStorage.getItem('nadmo.beta.saved')||'[]')), afkTrack=null, afkTimer=null, afkMode=false, pendingIce=new Map(), resumeToken='', roomPassword='', reconnectTimer=null, reconnectDeadline=0, reconnectCount=0, manuallyLeaving=false;
  $('server').value=server; $('adult').checked=localStorage.getItem('nadmo.adult')==='yes';
  function show(name){for(const n of screens)$(n).classList.toggle('hide',n!==name);document.querySelectorAll('nav [data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));if(name==='explore')loadRooms();if(name==='following'){loadRooms();renderSaved();}if(name==='signal')health();window.scrollTo(0,0);}
  document.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>show(el.dataset.tab)));
  $('adult').addEventListener('change',()=>localStorage.setItem('nadmo.adult',$('adult').checked?'yes':'no'));
  function adult(){if(!$('adult').checked){alert('Konfirmasi usia 18+ dahulu di Settings.');show('settings');return false}return true}
  function notice(s,id='serverState'){$(id).textContent=s}
+ let flashTimer=null;
+ function flash(message){const el=$('flash');el.textContent=message;el.classList.remove('hide');if(flashTimer)clearTimeout(flashTimer);flashTimer=setTimeout(()=>el.classList.add('hide'),5500)}
  const api=p=>server.replace(/\/$/,'')+p;
  function validURL(x){try{const u=new URL(x);return u.protocol==='https:' && !u.username && !u.password && !u.hash}catch(e){return false}}
  async function health(){
@@ -239,6 +260,19 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
   try{const c=new AbortController(),t=setTimeout(()=>c.abort(),6000);const r=await fetch(api('/health'),{signal:c.signal});clearTimeout(t);if(!r.ok)throw Error();$('net').textContent='SERVER ONLINE';$('signalStatus').textContent='ONLINE';notice('Backend terhubung.')}catch(e){$('net').textContent='BELUM TERHUBUNG';$('signalStatus').textContent='OFFLINE';notice('Server belum merespons. Kamera lokal tetap bisa dipakai.')}
  }
  $('saveServer').onclick=()=>health();$('signalRefresh').onclick=()=>health();
+
+ const rupiah=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n);
+ function updateFairFee(){
+   const value=Number($('feeAmount').value),mode=$('feeType').value;
+   const output=$('feeBreakdown');output.replaceChildren();
+   if(!Number.isFinite(value)||value<1000||value>10000000){output.textContent='Masukkan nominal simulasi Rp1.000–Rp10.000.000.';return}
+   const amount=Math.round(value),rate=mode==='tip'?0.07:0.10,fee=Math.round(amount*rate);
+   const rows=[['Dukungan penonton',rupiah(amount)],['Usulan biaya NADMO ('+Math.round(rate*100)+'%)','− '+rupiah(fee)],['Perkiraan bagian kreator*',rupiah(amount-fee)]];
+   for(const [name,val] of rows){const row=document.createElement('div');row.className='fee-row';const label=document.createElement('span');label.textContent=name;const number=document.createElement('b');number.textContent=val;row.append(label,number);output.append(row)}
+ }
+ $('feeType').addEventListener('change',updateFairFee);
+ $('feeAmount').addEventListener('input',updateFairFee);
+ updateFairFee();
  $('mode').onchange=()=>$('passwordBox').classList.toggle('hide',$('mode').value!=='password');
  async function preview(){
   try{if(!navigator.mediaDevices?.getUserMedia)throw Error('Browser belum mendukung kamera');if(localStream)localStream.getTracks().forEach(t=>t.stop());localStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720}},audio:{echoCancellation:true}});$('camera').srcObject=localStream;notice('Kamera dan mikrofon siap.','camState');}
@@ -247,7 +281,7 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
  $('preview').onclick=preview;
  $('stopCamera').onclick=()=>{if(host&&currentRoom){notice('Sedang LIVE. Pakai AFK untuk menyembunyikan kamera tanpa memutus siaran.','camState');return}if(localStream)localStream.getTracks().forEach(t=>t.stop());localStream=null;$('camera').srcObject=null;notice('Kamera dimatikan.','camState')};
  function emptyMessage(message){const box=document.createElement('div');box.className='no-signal';const h=document.createElement('strong');h.textContent='NO SIGNAL';const d=document.createElement('small');d.textContent=message;box.append(h,d);return box}
- function roomCard(x){const card=document.createElement('div');card.className='room';const art=document.createElement('div');art.className='room-art';art.textContent='N/';const main=document.createElement('div');main.className='room-main';const live=document.createElement('div');live.className='eyebrow';live.textContent='● LIVE / '+x.category;const title=document.createElement('b');title.textContent=x.title;const sub=document.createElement('small');sub.textContent=(Number(x.viewers)||0)+' WATCHING • PUBLIC ROOM';const actions=document.createElement('div');actions.className='room-actions';const open=document.createElement('button');open.className='btn';open.textContent='WATCH LIVE ↗';open.onclick=()=>join(x.id,x.title,false);const save=document.createElement('button');save.className='bookmark';save.textContent=savedIds.has(x.id)?'★':'☆';save.setAttribute('aria-label','Simpan siaran');save.onclick=()=>{if(savedIds.has(x.id))savedIds.delete(x.id);else savedIds.add(x.id);localStorage.setItem('nadmo.beta.saved',JSON.stringify([...savedIds]));renderRooms();renderSaved()};actions.append(open,save);main.append(live,title,sub,actions);card.append(art,main);return card}
+ function roomCard(x){const card=document.createElement('div');card.className='room';card.dataset.roomId=x.id;const art=document.createElement('div');art.className='room-art';art.textContent='N/';const main=document.createElement('div');main.className='room-main';const live=document.createElement('div');live.className='eyebrow';live.textContent='● LIVE / '+x.category;const title=document.createElement('b');title.textContent=x.title;const sub=document.createElement('small');sub.textContent=(Number(x.viewers)||0)+' WATCHING • PUBLIC ROOM';const actions=document.createElement('div');actions.className='room-actions';const open=document.createElement('button');open.className='btn';open.textContent='WATCH LIVE ↗';open.onclick=()=>join(x.id,x.title,false);const save=document.createElement('button');save.className='bookmark';save.textContent=savedIds.has(x.id)?'★':'☆';save.setAttribute('aria-label','Simpan siaran');save.onclick=()=>{if(savedIds.has(x.id))savedIds.delete(x.id);else savedIds.add(x.id);localStorage.setItem('nadmo.beta.saved',JSON.stringify([...savedIds]));renderRooms();renderSaved()};actions.append(open,save);main.append(live,title,sub,actions);card.append(art,main);return card}
  function renderRooms(){const q=$('searchLive').value.trim().toLocaleLowerCase('id');const items=cachedRooms.filter(x=>(selectedFilter==='all'||x.category===selectedFilter)&&(x.title+' '+x.category).toLocaleLowerCase('id').includes(q));$('rooms').replaceChildren();$('liveCount').textContent=items.length+' LIVE ROOMS';if(!items.length){$('rooms').append(emptyMessage(cachedRooms.length?'NO MATCHES':'NO PUBLIC LIVE BROADCASTS'));return}items.forEach(x=>$('rooms').append(roomCard(x)))}
  function renderSaved(){$('savedRooms').replaceChildren();const items=cachedRooms.filter(x=>savedIds.has(x.id));if(!items.length){$('savedRooms').append(emptyMessage('NO SAVED LIVE SESSIONS ON THIS DEVICE'));return}items.forEach(x=>$('savedRooms').append(roomCard(x)))}
  async function loadRooms(){try{const response=await fetch(api('/api/rooms'),{cache:'no-store',signal:AbortSignal.timeout(7000)});if(!response.ok)throw Error('HTTP '+response.status);const data=await response.json();cachedRooms=Array.isArray(data.rooms)?data.rooms:[];renderRooms();renderSaved()}catch(e){$('rooms').replaceChildren(emptyMessage('NETWORK UNAVAILABLE / RETRY'));$('liveCount').textContent='NETWORK ERROR'}}
@@ -257,8 +291,48 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
  $('privateJoin').onclick=()=>{const id=$('privateId').value.trim();if(!/^[a-f0-9]{12,32}$/i.test(id)){alert('ID room tidak valid. Minta kode undangan dari host.');return}join(id,'Private live',true)};
  function wsurl(){return server.replace(/^https:/,'wss:').replace(/\/$/,'')+'/ws'}
  function transmit(obj){if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify(obj))}
- function connect(fn){if(!server){notice('Server NADMO sedang tidak tersedia.','liveState');return}if(socket)socket.close();socket=new WebSocket(wsurl());socket.onopen=fn;socket.onerror=()=>notice('Gagal menghubungi server streaming.','liveState');socket.onclose=e=>{if(currentRoom){notice('Koneksi terputus (code '+e.code+'). Room perlu dimulai ulang jika gagal tersambung.','watchState');$('restartRoom').classList.remove('hide')} $('net').textContent='TERPUTUS'};socket.onmessage=async e=>{try{await incoming(JSON.parse(e.data))}catch(err){console.error(err)}}}
- async function swapVideo(track){
+ function stopRetry(){
+  if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
+  reconnectDeadline=0;reconnectCount=0;
+ }
+ function retryConnection(){
+  if(!currentRoom||manuallyLeaving)return;
+  if(!reconnectDeadline)reconnectDeadline=Date.now()+85000;
+  if(Date.now()>reconnectDeadline){
+   $('watchState').textContent='Siaran kehilangan koneksi. Pemulihan otomatis 85 detik habis. Silakan mulai room baru.';
+   $('restartRoom').classList.remove('hide');return;
+  }
+  const wait=Math.min(Math.round(1200*Math.pow(1.65,Math.min(reconnectCount,6))),10000);reconnectCount++;
+  $('watchState').textContent='Jaringan terputus. Mencoba menyambung kembali secara otomatis ('+reconnectCount+')...';
+  $('net').textContent='RECONNECTING';
+  if(reconnectTimer)clearTimeout(reconnectTimer);
+  reconnectTimer=setTimeout(()=>{
+   reconnectTimer=null;
+   if(!currentRoom||manuallyLeaving)return;
+   if(host&&!resumeToken){
+    $('watchState').textContent='Kode pemulihan tidak tersedia. Mulai room baru.';
+    $('restartRoom').classList.remove('hide');return;
+   }
+   connect(()=>transmit(host?
+      {type:'resume',id:currentRoom,token:resumeToken}:
+      {type:'join',id:currentRoom,password:roomPassword}));
+  },wait);
+ }
+ function connect(fn){
+  if(!server){notice('Server NADMO sedang tidak tersedia.','liveState');return}
+  if(socket){socket.onclose=null;socket.close()}
+  const conn=new WebSocket(wsurl());socket=conn;
+  conn.onopen=()=>{if(conn===socket)fn()};
+  conn.onerror=()=>{if(conn===socket)notice('Sambungan WebSocket terganggu.','liveState')};
+  conn.onclose=e=>{
+   if(conn!==socket)return;
+   $('net').textContent='TERPUTUS';
+   if(currentRoom&&!manuallyLeaving)retryConnection();
+   else notice('Sambungan gagal. Silakan coba lagi.','liveState');
+  };
+  conn.onmessage=async e=>{if(conn!==socket)return;try{await incoming(JSON.parse(e.data))}catch(error){console.error('NADMO incoming event',error)}};
+ }
+  async function swapVideo(track){
   if(!host||!localStream)throw Error('Host tidak sedang siaran');
   for(const pc of peers.values()){
    const sender=pc.getSenders().find(x=>x.track&&x.track.kind==='video');
@@ -310,12 +384,31 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
   catch(e){window.prompt('Salin link room',url)}
  };
  $('restartRoom').onclick=()=>{leave();show('studio');notice('Mulai siaran baru dari Studio. ID room lama tidak dipulihkan.','liveState')};
-  function rtc(){const pc=new RTCPeerConnection({iceServers:[{urls:'stun.cloudflare.com:3478'},{urls:'stun:stun.l.google.com:19302'}]});pc.oniceconnectionstatechange=()=>{if(pc.iceConnectionState==='failed')notice('Video belum tersambung. Koneksi ini mungkin membutuhkan relay TURN; uji jaringan lain atau tunggu peningkatan SFU.','watchState')};return pc}
+  function rtc(){const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.cloudflare.com:3478'},{urls:'stun:stun.l.google.com:19302'}]});pc.oniceconnectionstatechange=()=>{if(pc.iceConnectionState==='failed')notice('Video belum tersambung. Koneksi ini mungkin membutuhkan relay TURN; uji jaringan lain atau tunggu peningkatan SFU.','watchState')};return pc}
  function signal(to,data){transmit({type:'signal',to,data})}
  async function attachViewer(id){if(!localStream)return;const pc=rtc();peers.set(id,pc);localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));pc.onicecandidate=e=>{if(e.candidate)signal(id,{candidate:e.candidate})};const offer=await pc.createOffer();await pc.setLocalDescription(offer);signal(id,{description:pc.localDescription})}
  async function incoming(m){
-  if(m.type==='created'){currentRoom=m.id;selfId=m.selfId;host=true;$('hostControls').hidden=false;$('afkHint').hidden=false;$('restartRoom').classList.add('hide');notice('SIARAN AKTIF • Bagikan kode room '+m.id,'liveState');$('watchTitle').textContent=$('title').value.trim()||'NADMO LIVE';$('watchState').textContent='Anda sedang siaran. Bagikan kode: '+m.id;$('remote').muted=true;$('remote').srcObject=localStream;show('watch');}
-  if(m.type==='joined'){currentRoom=m.id;selfId=m.selfId;host=false;$('remote').muted=false;$('hostControls').hidden=true;$('afkHint').hidden=true;$('restartRoom').classList.add('hide');$('watchTitle').textContent=m.title;$('watchState').textContent='Menghubungkan video...';show('watch')}
+  if(m.type==='created'){stopRetry();currentRoom=m.id;selfId=m.selfId;host=true;resumeToken=m.resumeToken||'';roomPassword='';$('net').textContent='SERVER ONLINE';$('hostControls').hidden=false;$('afkHint').hidden=false;$('restartRoom').classList.add('hide');notice('SIARAN AKTIF • Bagikan kode room '+m.id,'liveState');$('watchTitle').textContent=$('title').value.trim()||'NADMO LIVE';$('watchState').textContent='Anda sedang siaran. Bagikan kode: '+m.id;$('remote').muted=true;$('remote').srcObject=localStream;show('watch');}
+  if(m.type==='joined'){stopRetry();currentRoom=m.id;selfId=m.selfId;host=false;resumeToken='';$('net').textContent='SERVER ONLINE';if(peer){peer.close();peer=null}pendingIce.clear();$('remote').muted=false;$('hostControls').hidden=true;$('afkHint').hidden=true;$('restartRoom').classList.add('hide');$('watchTitle').textContent=m.title;$('watchState').textContent='Menghubungkan video...';show('watch')}
+  if(m.type==='resumed'){
+    stopRetry();currentRoom=m.id;selfId=m.selfId;host=true;$('net').textContent='SERVER ONLINE';
+    for(const pc of peers.values())pc.close();peers.clear();pendingIce.clear();
+    $('restartRoom').classList.add('hide');
+    const activeViewers=Array.isArray(m.viewers)?m.viewers:[];
+    $('watchState').textContent='Room berhasil dipulihkan. Menyambungkan ulang '+activeViewers.length+' penonton.';
+    for(const viewerId of activeViewers)await attachViewer(viewerId);
+   }
+  if(m.type==='host-reconnecting'){
+   $('watchState').textContent='Host sementara kehilangan jaringan. Menunggu sampai 90 detik tanpa mengakhiri room...';
+  }
+  if(m.type==='host-reconnected'){
+   if(peer){peer.close();peer=null}pendingIce.clear();$('remote').srcObject=null;
+   $('watchState').textContent='Host kembali online. Menyambungkan ulang video...';
+  }
+  if(m.type==='room-ended'){
+   const why=m.reason||'Siaran berakhir.';
+   leave();flash(why);return;
+  }
   if(m.type==='viewer-joined'&&host){await attachViewer(m.id)}
   if(m.type==='viewer-left'&&host){peers.get(m.id)?.close();peers.delete(m.id)}
   if(m.type==='signal'){let pc;if(host)pc=peers.get(m.from);else{if(!peer){peer=rtc();peer.ontrack=e=>{$('remote').srcObject=e.streams[0];$('watchState').textContent='Video tersambung'};peer.onicecandidate=e=>{if(e.candidate)signal(m.from,{candidate:e.candidate})}}pc=peer}
@@ -329,7 +422,7 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
    if(m.data.candidate){if(!pc.remoteDescription){const q=pendingIce.get(m.from)||[];if(q.length<30)q.push(m.data.candidate);pendingIce.set(m.from,q)}else{try{await pc.addIceCandidate(m.data.candidate)}catch(e){console.warn(e)}}}
   }
   if(m.type==='chat'){let div=document.createElement('div'),b=document.createElement('b');b.textContent=(m.name||'Viewer')+': ';div.append(b,document.createTextNode(m.text));$('chat').append(div);$('chat').scrollTop=$('chat').scrollHeight}
-  if(m.type==='error'){notice(m.message||'Kesalahan server','liveState');if(currentRoom)notice(m.message||'Kesalahan server','watchState');else alert(m.message||'Kesalahan server')}
+  if(m.type==='error'){notice(m.message||'Kesalahan server','liveState');if(currentRoom){notice(m.message||'Kesalahan server','watchState');if(host&&/pemulihan|akses tidak valid|telah berakhir|habis/i.test(m.message||'')){stopRetry();$('restartRoom').classList.remove('hide')}}else alert(m.message||'Kesalahan server')}
  }
  $('createRoom').onclick=async()=>{
   if(!adult())return;if(!server){notice('Server NADMO sedang tidak tersedia, coba lagi nanti.','liveState');return}
@@ -338,21 +431,21 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
   if(mode==='password'&&(password.length<4||password.length>32)){notice('Kode private room harus 4–32 karakter.','liveState');return}
   connect(()=>transmit({type:'create',title,category:$('category').value,mode,password}));
  };
- function join(id,title,locked){if(!adult())return;let password='';if(locked){password=prompt('Kode akses room:')||'';if(!password)return}
+ function join(id,title,locked){if(!adult())return;let password='';if(locked){password=prompt('Kode akses room:')||'';if(!password)return}roomPassword=password;stopRetry();
  connect(()=>transmit({type:'join',id,password}));$('watchTitle').textContent=title}
  $('send').onclick=()=>{let msg=$('message').value.trim();if(!msg)return;transmit({type:'chat',text:msg});$('message').value=''};
  $('message').addEventListener('keydown',e=>{if(e.key==='Enter')$('send').click()});
  function leave(){
-  transmit({type:'leave'});
+  manuallyLeaving=true;stopRetry();transmit({type:'leave'});
   if(socket){socket.onclose=null;socket.close();socket=null}
   for(const pc of peers.values())pc.close();peers.clear();pendingIce.clear();
   if(peer){peer.close();peer=null}
   if(afkTimer)clearInterval(afkTimer);afkTimer=null;afkTrack=null;afkMode=false;
-  currentRoom='';selfId='';host=false;
+  currentRoom='';selfId='';host=false;resumeToken='';roomPassword='';
   $('remote').srcObject=null;$('remote').muted=false;$('chat').replaceChildren();
   $('hostControls').hidden=true;$('afkHint').hidden=true;$('restartRoom').classList.add('hide');
   $('afkToggle').textContent='▤ AFK SCENE';
-  $('stopCamera').click();show('explore');
+  $('stopCamera').click();show('explore');manuallyLeaving=false;
 }
  $('leave').onclick=leave;window.addEventListener('pagehide',()=>{if(localStream)localStream.getTracks().forEach(t=>t.stop());});
  health();show('explore');
