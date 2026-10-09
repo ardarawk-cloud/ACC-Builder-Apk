@@ -1,0 +1,25 @@
+name: NADMO LIVE backend beta QA
+on:
+  workflow_dispatch:
+  push:
+    branches: ['feat/nadmo-live-android-beta-20261009']
+    paths:
+      - 'nadmo-live/server/**'
+      - 'nadmo-live/android/app/src/main/assets/**'
+      - '.github/workflows/nadmo-live-server-ci.yml'
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate bundled UI
+        run: node -e "const f=require('fs').readFileSync('nadmo-live/android/app/src/main/assets/index.html','utf8');new Function(f.split('<script>')[1].split('</script>')[0]);"
+      - name: Install backend dependency
+        run: npm install --no-audit --no-fund --prefix nadmo-live/server
+      - name: Check syntax
+        run: node --check nadmo-live/server/index.js
+      - name: Exercise room access and signaling
+        run: node nadmo-live/server/test.js
