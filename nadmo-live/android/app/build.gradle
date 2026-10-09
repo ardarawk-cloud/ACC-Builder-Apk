@@ -1,0 +1,16 @@
+plugins { id 'com.android.application' }
+android {
+  namespace 'id.nadmo.live'
+  compileSdk 35
+  defaultConfig {
+    applicationId 'id.nadmo.live'
+    minSdk 26
+    targetSdk 35
+    versionCode 2
+    versionName '0.2.0-beta'
+  }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}
