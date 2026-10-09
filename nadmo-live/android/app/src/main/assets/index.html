@@ -160,6 +160,112 @@ body.live-immersive #watch .flash{z-index:40}
 .mode-details{font-size:12px;line-height:1.5;background:#172018;border:1px solid #38483a;padding:12px;margin:0 0 12px;color:#d7e2d1}
 @media(max-width:360px){.mode-grid{gap:4px}.mode-grid button{font-size:9px;padding:12px 2px}body.live-immersive #watch #hostControls{right:7px}body.live-immersive #watch .live-chat{right:78px}}
 
+/* Immersive NADMO PC viewing follows mobile-stream orientation, like a video live platform:
+   compact navigation left, portrait-video theater in center, permanent chat on right.
+   Server only transports media: no false gifts, purchases, viewer counts or payments. */
+.desktop-watch-only{display:none}
+@media (min-width:800px){
+  body.live-immersive.watch-viewer #watch{
+    --pc-rail:68px;
+    --pc-chat:clamp(290px,27vw,370px);
+    --pc-gap:12px;
+    --pc-stage-left:calc(var(--pc-rail) + var(--pc-gap));
+    --pc-stage-right:calc(var(--pc-chat) + 2 * var(--pc-gap));
+    background:#070908;
+  }
+  body.live-immersive.watch-viewer #watch .desktop-watch-only{display:flex}
+  body.live-immersive.watch-viewer #watch #pcWatchRail{
+    position:absolute;inset:0 auto 0 0;width:var(--pc-rail);z-index:12;
+    flex-direction:column;align-items:center;gap:18px;padding:18px 8px;
+    background:#0b0e0d;border-right:1px solid #252e26;
+  }
+  #pcWatchRail .pc-logo{font:900 27px Impact,Arial,sans-serif;color:var(--neon);margin:0 0 12px}
+  #pcWatchRail button{width:46px;height:46px;border:1px solid #4d6148;border-radius:50%;background:#172018;color:#e4eddb;font-size:23px}
+  #pcWatchRail span{font:800 9px Arial,sans-serif;color:#96a58e;writing-mode:vertical-rl;letter-spacing:2px}
+  body.live-immersive.watch-viewer #watch .live-stage{
+    top:10px;bottom:10px;left:var(--pc-stage-left);right:var(--pc-stage-right);
+    width:auto;height:auto;transform:none;margin:0;
+    border:1px solid #313b32;border-radius:15px;overflow:hidden;
+    background:#171d19;box-shadow:none;
+  }
+  body.live-immersive.watch-viewer #watch .live-stage>.viewfinder{
+    left:50%;right:auto;top:10px;bottom:92px;height:auto;min-height:0;
+    width:min(calc(100% - 18px),calc((100dvh - 124px) * 9 / 16));
+    max-width:100%;transform:translateX(-50%);
+    background:#0a0e0b;box-shadow:0 0 0 1px #253025,0 8px 35px #0008;
+  }
+  body.live-immersive.watch-viewer #watch #remote{
+    width:100%;height:100%;object-fit:cover;object-position:center center;
+  }
+  body.live-immersive.watch-viewer #watch::after{display:none}
+  body.live-immersive.watch-viewer #watch .page-top{
+    left:calc(var(--pc-stage-left) + 14px);
+    right:calc(var(--pc-stage-right) + 50px);width:auto;max-width:none;
+    padding:23px 0 30px;background:none;
+  }
+  body.live-immersive.watch-viewer #watch #watchTitle{max-width:100%;font-size:21px}
+  body.live-immersive.watch-viewer #watch #watchState{
+    top:84px;left:calc(var(--pc-stage-left) + 14px);
+    max-width:260px;
+  }
+  body.live-immersive.watch-viewer #watch #leave{
+    right:calc(var(--pc-stage-right) + 14px);
+    top:18px;
+  }
+  body.live-immersive.watch-viewer #watch #refreshVideo{
+    top:75px;right:calc(var(--pc-stage-right) + 14px);
+  }
+  body.live-immersive.watch-viewer #watch #viewerTools{display:none!important}
+  body.live-immersive.watch-viewer #watch #desktopSawerBar{
+    position:absolute;z-index:9;left:calc(var(--pc-stage-left) + 16px);
+    right:calc(var(--pc-stage-right) + 16px);bottom:26px;
+    gap:8px;align-items:center;justify-content:flex-start;
+    min-height:57px;padding:6px 10px;border-radius:12px;
+    background:#0f1710ef;border:1px solid #475847;
+    pointer-events:auto;
+  }
+  #desktopSawerBar .pc-gift-label{font:800 11px Arial,sans-serif;color:#dffb72;white-space:nowrap;margin-right:5px}
+  #desktopSawerBar button{
+    background:#29372b;border:1px solid #71806c;border-radius:9px;
+    padding:10px 12px;color:#ecf3e8;font:800 12px Arial,sans-serif;
+  }
+  #desktopSawerBar button:hover{background:#405141}
+  #desktopSawerBar small{font-size:9px;color:#b9c5b1;white-space:nowrap;margin-left:auto}
+  body.live-immersive.watch-viewer #watch .live-chat{
+    top:10px;bottom:10px;left:auto;right:12px;
+    width:var(--pc-chat);height:auto;margin:0;padding:14px 12px;
+    display:flex;flex-direction:column;background:#171c18;
+    border:1px solid #333d34;border-radius:15px;overflow:hidden;
+  }
+  body.live-immersive.watch-viewer #watch .live-chat .show-label{
+    display:flex;align-items:center;justify-content:space-between;
+    flex:0 0 auto;padding:0 4px 11px;border-bottom:1px solid #39443b;
+  }
+  body.live-immersive.watch-viewer #watch .live-chat .show-label b{font-size:15px}
+  body.live-immersive.watch-viewer #watch #chat{
+    height:auto;min-height:0;max-height:none;flex:1 1 auto;
+    padding:13px 3px;overflow-y:auto;mask-image:none;
+  }
+  body.live-immersive.watch-viewer #watch #chat div{
+    background:transparent;padding:4px 2px;width:auto;max-width:none;
+    font-size:13px;line-height:1.5;
+  }
+  body.live-immersive.watch-viewer #watch .live-chat .row{flex:0 0 auto}
+  body.live-immersive.watch-viewer #watch #message{border-radius:20px}
+  body.live-immersive.watch-viewer #watch #viewerTipPanel{
+    bottom:15px;left:calc(var(--pc-stage-left) + (100vw - var(--pc-stage-left) - var(--pc-stage-right)) / 2);
+    right:auto;width:min(530px,calc(100vw - var(--pc-stage-left) - var(--pc-stage-right) - 35px));
+    max-height:min(78dvh,620px);transform:translateX(-50%);
+    border-radius:20px;
+  }
+}
+@media (min-width:800px) and (max-width:1000px){
+  body.live-immersive.watch-viewer #watch{--pc-rail:52px;--pc-chat:290px;--pc-gap:7px}
+  body.live-immersive.watch-viewer #watch #desktopSawerBar{gap:4px;padding:5px}
+  #desktopSawerBar button{padding:8px 7px}
+  #desktopSawerBar small{display:none}
+}
+
 </style></head>
 <body>
 <div class="app">
@@ -229,6 +335,11 @@ body.live-immersive #watch .flash{z-index:40}
   </div>
 </section>
 <section id="watch" class="hide">
+  <aside id="pcWatchRail" class="desktop-watch-only" aria-label="Navigasi menonton PC">
+    <div class="pc-logo">N/</div>
+    <button type="button" id="pcBack" title="Kembali ke daftar LIVE" aria-label="Kembali ke daftar LIVE">←</button>
+    <span>NADMO LIVE</span>
+  </aside>
   <div class="page-top"><div><span class="eyebrow">CURRENT TRANSMISSION</span><h1 id="watchTitle">LIVE NOW</h1></div><span class="edition">ON AIR</span></div>
   <div class="panel live-stage"><div class="viewfinder"><video id="remote" playsinline autoplay controls></video></div><div id="watchState" class="status">CONNECTING SIGNAL...</div>
   <button class="btn secondary" id="refreshVideo" type="button">↻ PULIHKAN VIDEO</button>
@@ -269,6 +380,15 @@ body.live-immersive #watch .flash{z-index:40}
   </div>
   <div class="actions live-exit-actions"><button class="btn ghost" id="leave" title="Akhiri / keluar siaran" aria-label="Keluar dari siaran">✕</button><button class="btn secondary hide" id="restartRoom">RESTART BROADCAST</button></div></div>
   <div id="liveSheetBackdrop" class="live-sheet-backdrop hide"></div>
+  <div id="desktopSawerBar" class="desktop-watch-only" aria-label="Nominal saweran rupiah pratinjau">
+    <span class="pc-gift-label">🎁 SAWER</span>
+    <button type="button" data-pc-sawer="1000">Rp1rb</button>
+    <button type="button" data-pc-sawer="2000">Rp2rb</button>
+    <button type="button" data-pc-sawer="5000">Rp5rb</button>
+    <button type="button" data-pc-sawer="10000">Rp10rb</button>
+    <button type="button" data-pc-sawer="custom">CUSTOM</button>
+    <small>PREVIEW · BELUM AKTIF</small>
+  </div>
   <div class="panel live-chat"><div class="show-label"><b>BACKCHANNEL</b><small>LIVE CHAT</small></div><div class="chat" id="chat"></div><div class="row"><input class="field" id="message" placeholder="Say something..." maxlength="250"><button class="btn secondary" id="send">SEND</button></div></div>
 </section>
 <section id="tv" class="hide">
@@ -335,7 +455,7 @@ body.live-immersive #watch .flash{z-index:40}
  let server=DEFAULT_BACKEND, socket=null, localStream=null, currentRoom='', selfId='', host=false, peers=new Map(), peer=null;
  let cachedRooms=[], selectedFilter='all', savedIds=new Set(JSON.parse(localStorage.getItem('nadmo.beta.saved')||'[]')), afkTrack=null, afkTimer=null, afkMode=false, pendingIce=new Map(), resumeToken='', roomPassword='', reconnectTimer=null, reconnectDeadline=0, reconnectCount=0, manuallyLeaving=false, activeAccessMode='public', recoveringForeground=false, lastForegroundRecovery=0, lastBackgroundAt=0;
  $('server').value=server; $('adult').checked=localStorage.getItem('nadmo.adult')==='yes';
- function show(name){document.body.classList.toggle('live-immersive',name==='watch');for(const n of screens)$(n).classList.toggle('hide',n!==name);document.querySelectorAll('nav [data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));if(name==='explore')loadRooms();if(name==='following'){loadRooms();renderSaved();}if(name==='signal')health();window.scrollTo(0,0);}
+ function show(name){document.body.classList.toggle('live-immersive',name==='watch');document.body.classList.toggle('watch-viewer',name==='watch'&&!host);for(const n of screens)$(n).classList.toggle('hide',n!==name);document.querySelectorAll('nav [data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));if(name==='explore')loadRooms();if(name==='following'){loadRooms();renderSaved();}if(name==='signal')health();window.scrollTo(0,0);}
  document.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>show(el.dataset.tab)));
  $('adult').addEventListener('change',()=>localStorage.setItem('nadmo.adult',$('adult').checked?'yes':'no'));
  function adult(){if(!$('adult').checked){alert('Konfirmasi usia 18+ dahulu di Settings.');show('settings');return false}return true}
@@ -374,6 +494,19 @@ body.live-immersive #watch .flash{z-index:40}
  }
  $('accessQuick').onclick=()=>{if(!host)return;openLiveSheet($('hostAccessPanel'));$('privateControls').classList.remove('hide')};
  $('tipQuick').onclick=()=>{if(host)return;openLiveSheet($('viewerTipPanel'))};
+ $('pcBack').onclick=()=>{$('leave').click()};
+ document.querySelectorAll('#desktopSawerBar [data-pc-sawer]').forEach(button=>{
+  button.onclick=()=>{
+   if(host)return;
+   const amount=button.dataset.pcSawer;
+   if(amount!=='custom'){
+    $('tipCustom').value=amount;
+    $('tipCustom').dispatchEvent(new Event('input',{bubbles:true}));
+   }
+   openLiveSheet($('viewerTipPanel'));
+   if(amount==='custom')$('tipCustom').focus();
+  };
+ });
  $('closeAccessSheet').onclick=closeLiveSheets;
  $('closeTipSheet').onclick=closeLiveSheets;
  $('liveSheetBackdrop').onclick=closeLiveSheets;
