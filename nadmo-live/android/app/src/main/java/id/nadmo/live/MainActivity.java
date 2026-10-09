@@ -52,7 +52,10 @@ public final class MainActivity extends Activity {
     settings.setDomStorageEnabled(true);
     settings.setMediaPlaybackRequiresUserGesture(false);
     settings.setAllowFileAccess(false);
-    settings.setAllowContentAccess(false);
+    // User-selected Android gallery files are content:// URIs. Disabling this blocks
+    // WebView from reading the picked photo, although desktop uploads still work.
+    // Filesystem file:// access remains disabled; the OS grants access only to picked files.
+    settings.setAllowContentAccess(true);
     settings.setJavaScriptCanOpenWindowsAutomatically(false);
     settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
     web.setWebViewClient(new WebViewClient(){
@@ -80,13 +83,15 @@ public final class MainActivity extends Activity {
     });
     web.setWebChromeClient(new WebChromeClient(){
       @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){
-        if(!trusted(Uri.parse(view.getUrl()))){callback.onReceiveValue(null);return true;}
+        final String page=view.getUrl();
+        if(page==null || !trusted(Uri.parse(page))){callback.onReceiveValue(null);return true;}
         if(pendingPhoto!=null){pendingPhoto.onReceiveValue(null);pendingPhoto=null;}
         pendingPhoto=callback;
         // User-driven gallery picker only. No blanket access to device storage.
         final Intent choose=new Intent(Intent.ACTION_GET_CONTENT);
         choose.addCategory(Intent.CATEGORY_OPENABLE);
         choose.setType("image/*");
+        choose.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         try{startActivityForResult(Intent.createChooser(choose,"Pilih foto profil"),PICK_AVATAR);}
         catch(Exception error){
           pendingPhoto.onReceiveValue(null);pendingPhoto=null;
@@ -139,7 +144,18 @@ public final class MainActivity extends Activity {
     final ValueCallback<Uri[]> callback=pendingPhoto;
     pendingPhoto=null;
     if(callback==null)return;
-    final Uri uri=result==Activity.RESULT_OK&&data!=null?data.getData():null;
+    Uri uri=result==Activity.RESULT_OK&&data!=null?data.getData():null;
+    if(uri==null&&result==Activity.RESULT_OK&&data!=null&&data.getClipData()!=null
+      &&data.getClipData().getItemCount()>0){
+      uri=data.getClipData().getItemAt(0).getUri();
+    }
+    // Accept only an OS-selected content-provider image, not arbitrary file paths.
+    if(uri!=null&&"content".equalsIgnoreCase(uri.getScheme())){
+      try{
+        final String type=getContentResolver().getType(uri);
+        if(type==null || !type.startsWith("image/"))uri=null;
+      }catch(Exception ignored){uri=null;}
+    }else uri=null;
     callback.onReceiveValue(uri==null?null:new Uri[]{uri});
   }
   @Override public void onRequestPermissionsResult(int code,String[] names,int[] results){
