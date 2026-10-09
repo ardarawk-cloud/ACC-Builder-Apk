@@ -225,7 +225,7 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
  const $=id=>document.getElementById(id), screens=['home','explore','following','studio','watch','tv','radio','signal','settings'];
  const DEFAULT_BACKEND='https://nadmo-live-beta-20261009.ardarawk.workers.dev';
  let server=DEFAULT_BACKEND, socket=null, localStream=null, currentRoom='', selfId='', host=false, peers=new Map(), peer=null;
- let cachedRooms=[], selectedFilter='all', savedIds=new Set(JSON.parse(localStorage.getItem('nadmo.beta.saved')||'[]')), afkTrack=null, afkTimer=null, afkMode=false;
+ let cachedRooms=[], selectedFilter='all', savedIds=new Set(JSON.parse(localStorage.getItem('nadmo.beta.saved')||'[]')), afkTrack=null, afkTimer=null, afkMode=false, pendingIce=new Map();
  $('server').value=server; $('adult').checked=localStorage.getItem('nadmo.adult')==='yes';
  function show(name){for(const n of screens)$(n).classList.toggle('hide',n!==name);document.querySelectorAll('nav [data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));if(name==='explore')loadRooms();if(name==='following'){loadRooms();renderSaved();}if(name==='signal')health();window.scrollTo(0,0);}
  document.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>show(el.dataset.tab)));
@@ -310,7 +310,7 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
   catch(e){window.prompt('Salin link room',url)}
  };
  $('restartRoom').onclick=()=>{leave();show('studio');notice('Mulai siaran baru dari Studio. ID room lama tidak dipulihkan.','liveState')};
-  function rtc(){return new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]})}
+  function rtc(){const pc=new RTCPeerConnection({iceServers:[{urls:'stun.cloudflare.com:3478'},{urls:'stun:stun.l.google.com:19302'}]});pc.oniceconnectionstatechange=()=>{if(pc.iceConnectionState==='failed')notice('Video belum tersambung. Koneksi ini mungkin membutuhkan relay TURN; uji jaringan lain atau tunggu peningkatan SFU.','watchState')};return pc}
  function signal(to,data){transmit({type:'signal',to,data})}
  async function attachViewer(id){if(!localStream)return;const pc=rtc();peers.set(id,pc);localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));pc.onicecandidate=e=>{if(e.candidate)signal(id,{candidate:e.candidate})};const offer=await pc.createOffer();await pc.setLocalDescription(offer);signal(id,{description:pc.localDescription})}
  async function incoming(m){
@@ -320,8 +320,13 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
   if(m.type==='viewer-left'&&host){peers.get(m.id)?.close();peers.delete(m.id)}
   if(m.type==='signal'){let pc;if(host)pc=peers.get(m.from);else{if(!peer){peer=rtc();peer.ontrack=e=>{$('remote').srcObject=e.streams[0];$('watchState').textContent='Video tersambung'};peer.onicecandidate=e=>{if(e.candidate)signal(m.from,{candidate:e.candidate})}}pc=peer}
    if(!pc)return;
-   if(m.data.description){await pc.setRemoteDescription(m.data.description);if(m.data.description.type==='offer'){const answer=await pc.createAnswer();await pc.setLocalDescription(answer);signal(m.from,{description:pc.localDescription})}}
-   if(m.data.candidate){try{await pc.addIceCandidate(m.data.candidate)}catch(e){console.warn(e)}}
+   if(m.data.description){
+    await pc.setRemoteDescription(m.data.description);
+    const queued=pendingIce.get(m.from)||[];pendingIce.delete(m.from);
+    for(const candidate of queued){try{await pc.addIceCandidate(candidate)}catch(error){console.warn('ICE queued candidate rejected',error)}}
+    if(m.data.description.type==='offer'){const answer=await pc.createAnswer();await pc.setLocalDescription(answer);signal(m.from,{description:pc.localDescription})}
+   }
+   if(m.data.candidate){if(!pc.remoteDescription){const q=pendingIce.get(m.from)||[];if(q.length<30)q.push(m.data.candidate);pendingIce.set(m.from,q)}else{try{await pc.addIceCandidate(m.data.candidate)}catch(e){console.warn(e)}}}
   }
   if(m.type==='chat'){let div=document.createElement('div'),b=document.createElement('b');b.textContent=(m.name||'Viewer')+': ';div.append(b,document.createTextNode(m.text));$('chat').append(div);$('chat').scrollTop=$('chat').scrollHeight}
   if(m.type==='error'){notice(m.message||'Kesalahan server','liveState');if(currentRoom)notice(m.message||'Kesalahan server','watchState');else alert(m.message||'Kesalahan server')}
@@ -340,7 +345,7 @@ nav button.broadcast{margin-top:-9px;color:#bdcab5}
  function leave(){
   transmit({type:'leave'});
   if(socket){socket.onclose=null;socket.close();socket=null}
-  for(const pc of peers.values())pc.close();peers.clear();
+  for(const pc of peers.values())pc.close();peers.clear();pendingIce.clear();
   if(peer){peer.close();peer=null}
   if(afkTimer)clearInterval(afkTimer);afkTimer=null;afkTrack=null;afkMode=false;
   currentRoom='';selfId='';host=false;
