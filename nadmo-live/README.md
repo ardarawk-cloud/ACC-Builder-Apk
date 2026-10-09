@@ -1,13 +1,16 @@
-# NADMO LIVE Android beta (isolated build branch)
+# NADMO LIVE Android — isolated beta v0.8
 
-This branch is an independent APK build experiment and does not change the existing project's main branch.
+Private beta only. This branch `feat/nadmo-live-android-beta-20261009` does not modify any other NADMO application or the default branch.
 
-- Android native shell source in `nadmo-live/android/`.
-- HTTPS destination: `https://live.nadmo.id/`.
-- Android WebView provides restricted camera/microphone capture permissions.
-- This is a **debug build only**, not a release signed for public distribution.
-- The HTTPS backend is not yet deployed: opening the APK will display a retry screen until the web service is available.
-- No payments, tip wallet, or paid ticket room is active; never accept transfers claiming otherwise.
-- Stream beta backend source is prepared separately, and must be deployed to the intended URL before mobile test.
+- Package: `id.nadmo.live`. Android versionCode **8**, versionName **0.8.0-beta**.
+- Source: `nadmo-live/android/`.
+- Hosted web beta: https://nadmo-live-beta-20261009.ardarawk.workers.dev/app/
+- Android shell opens the hosted beta first, with the embedded offline fallback as a retry path. Offline mode does not offer live streaming.
+- Launcher uses the NADMO lime `N/` adaptive icon resources and `NADMO LIVE` app label. Icon changes are visible only in a newly built/installed APK; they are not remotely updatable through the hosted web client.
+- Debug CI: `.github/workflows/nadmo-live-build-beta.yml`, for QA only.
+- Signed update CI: `.github/workflows/nadmo-live-signed-release.yml`. Uses the already pinned SHA-256 release certificate from `nadmo-live/android/release-identity.json`. It will fail if the protected keystore is absent or certificate differs; no unsafe key rotation.
+- Previous debug APKs can have incompatible one-time signatures; once installed on the stable signed certificate, future upgrades must retain the certificate and increment versionCode.
+- Payments, paid room tickets, KYC and public creator onboarding are NOT active. WebRTC STUN-only peer streaming (up to 4 viewers/room) is a test configuration, not production scale.
+- The hosting/backend is updated separately in the `ardarawk-cloud/ACC-OS-X` beta branch.
 
-Use the GitHub Actions artifact `nadmo-live-android-beta-debug` from the NADMO LIVE workflow. Do not merge this branch into main without consciously migrating it into a dedicated NADMO LIVE repository.
+Do not distribute as unrestricted public commercial streaming until server-enforced verified-creator identity, moderation/reporting and multi-network reliability checks pass.
