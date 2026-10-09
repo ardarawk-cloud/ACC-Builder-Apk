@@ -1,0 +1,6 @@
+NADMO LIVE private beta first consistently signed release request.
+Owner has confirmed setting NADMO_LIVE_KEYSTORE_B64, NADMO_LIVE_RELEASE_STORE_PASSWORD, NADMO_LIVE_RELEASE_KEY_PASSWORD, and NADMO_LIVE_RELEASE_KEY_ALIAS on the repository via GitHub CLI.
+Action: build and verify signed APK; do not publish or distribute automatically.
+Package id: id.nadmo.live
+Version: 0.5.0-beta (5)
+Branch: feat/nadmo-live-android-beta-20261009
