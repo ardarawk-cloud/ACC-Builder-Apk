@@ -1,0 +1,7 @@
+NADMO LIVE / Signed Android private beta v0.9.1
+Package: id.nadmo.live
+Version code: 10
+Photo picker fix: allow OS-granted content:// image reads in trusted WebView after user selects an image. Keep file:// access disabled. Read-only gallery URI grant, validate content scheme and image MIME before WebView receives URI. Preserve camera/microphone behavior and GO LIVE signature UI.
+Reuse pinned persistent release signing certificate, do not change package ID.
+Required QC: Gradle build and apksigner SHA-256 certificate lock. Real device gallery Google Photos/OEM gallery verification remains an owner QC step; no false claim of physical Android test.
+Do not promote private beta to unrestricted production.
