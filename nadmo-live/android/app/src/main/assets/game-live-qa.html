@@ -3875,14 +3875,30 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
    retryConnection();
   },2500);
  }
- function connect(fn){
+ function connect(fn,openingAttempt=0){
   if(!server){notice('Server NADMO sedang tidak tersedia.','liveState');return}
   if(socket){socket.onclose=null;socket.close()}
   const conn=new WebSocket(wsurl());socket=conn;
   guardSocket(conn);
-  conn.onopen=()=>{if(conn===socket)fn()};
+  // Before a room is joined there is no currentRoom, so the usual 85s room
+  // reconnect watchdog cannot recover a stuck initial CONNECTING socket.
+  const openTimeout=setTimeout(()=>{
+   if(conn!==socket||conn.readyState!==WebSocket.CONNECTING)return;
+   conn.onclose=null;
+   try{conn.close()}catch(error){}
+   if(openingAttempt<2){
+    $('net').textContent='MENYAMBUNG ULANG';
+    connect(fn,openingAttempt+1);
+   }else{
+    stopSocketGuard();socket=null;$('net').textContent='TERPUTUS';
+    if(currentRoom&&!manuallyLeaving)retryConnection();
+    else flash('Tidak bisa menghubungkan LIVE. Coba lagi.');
+   }
+  },8000);
+  conn.onopen=()=>{clearTimeout(openTimeout);if(conn===socket)fn()};
   conn.onerror=()=>{if(conn===socket)notice('Sambungan WebSocket terganggu.','liveState')};
   conn.onclose=e=>{
+   clearTimeout(openTimeout);
    if(conn!==socket)return;
    stopSocketGuard();
    $('net').textContent='TERPUTUS';
