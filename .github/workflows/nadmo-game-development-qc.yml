@@ -29,6 +29,8 @@ jobs:
         run: node nadmo-live/android/qa/offgrid-local-contract.mjs
       - name: Compile native MediaProjection/Game WebRTC candidate
         run: gradle -p nadmo-live/android :app:assembleDebug --no-daemon --stacktrace
+      - name: Test real Android OkHttp host connection, heartbeat and 90s recovery
+        run: gradle -p nadmo-live/android :app:testDebugUnitTest --tests id.nadmo.live.OkHttpSignalingE2ETest --no-daemon --stacktrace
       - name: Inspect APK identity without publishing
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging nadmo-live/android/app/build/outputs/apk/debug/app-debug.apk | head -1
