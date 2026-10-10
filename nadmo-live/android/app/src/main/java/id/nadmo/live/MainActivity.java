@@ -47,6 +47,9 @@ public final class MainActivity extends Activity {
   private boolean gameFace=false;
   private String gameFaceLayout="";
   private boolean gameReceiverRegistered=false;
+  // GAME runs in a separate foreground process. Do not read its static fields:
+  // those belong to a different VM after launching Mobile Legends.
+  private String gameLiveState="stopped",gameLiveRoom="",gameLiveMessage="";
   private final BroadcastReceiver gameStatusReceiver=new BroadcastReceiver(){
     @Override public void onReceive(Context context,Intent intent){
       if(GameCaptureService.ACTION_STATUS.equals(intent.getAction())){
@@ -110,7 +113,7 @@ public final class MainActivity extends Activity {
           if("start".equals(action))startGame(command);
           else if("stop".equals(action))stopGame();
           else if("launch".equals(action))launchGame();
-          else if("status".equals(action))notifyGameStatus(GameCaptureService.state,GameCaptureService.status,GameCaptureService.activeRoom);
+          else if("status".equals(action))requestGameStatus();
         }catch(Exception ignored){notifyGameStatus("error","Perintah GAME tidak valid.","");}
       });
     });
@@ -216,10 +219,22 @@ public final class MainActivity extends Activity {
     root.addView(web,new FrameLayout.LayoutParams(-1,-1));
     setContentView(root);
     web.loadUrl(ONLINE_URL);
+    requestGameStatus();
+  }
+  private void requestGameStatus(){
+    try{
+      startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_QUERY));
+    }catch(Exception error){
+      notifyGameStatus("error","Layanan GAME LIVE tidak tersedia: "+error.getClass().getSimpleName(),"");
+    }
+  }
+  @Override protected void onResume(){
+    super.onResume();
+    if(web!=null)requestGameStatus();
   }
   private void startGame(JSONObject command){
-    if("live".equals(GameCaptureService.state)||"starting".equals(GameCaptureService.state)||"reconnecting".equals(GameCaptureService.state)){
-      notifyGameStatus(GameCaptureService.state,"GAME LIVE masih berjalan.","");return;
+    if("live".equals(gameLiveState)||"starting".equals(gameLiveState)||"reconnecting".equals(gameLiveState)){
+      notifyGameStatus(gameLiveState,"GAME LIVE masih berjalan.",gameLiveRoom);return;
     }
     gameTitle=command.optString("title","NADMO GAME LIVE");
     gameName=command.optString("game","Gaming");
@@ -259,7 +274,7 @@ public final class MainActivity extends Activity {
     startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_STOP));
   }
   private void launchGame(){
-    if(!"live".equals(GameCaptureService.state)){
+    if(!"live".equals(gameLiveState)){
       notifyGameStatus("error","Mulai GAME LIVE sebelum membuka permainan.","");return;
     }
     String[] packages;
@@ -278,6 +293,9 @@ public final class MainActivity extends Activity {
     Toast.makeText(this,"Buka game melalui layar utama HP. GAME LIVE tetap berjalan.",Toast.LENGTH_LONG).show();
   }
   private void notifyGameStatus(String state,String message,String room){
+    gameLiveState=state==null?"stopped":state;
+    gameLiveMessage=message==null?"":message;
+    gameLiveRoom=room==null?"":room;
     if(web==null)return;
     String payload="{state:"+JSONObject.quote(state==null?"":state)+",message:"+
       JSONObject.quote(message==null?"":message)+",room:"+JSONObject.quote(room==null?"":room)+"}";
