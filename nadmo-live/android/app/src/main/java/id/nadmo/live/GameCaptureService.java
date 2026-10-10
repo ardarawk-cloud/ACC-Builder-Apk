@@ -72,6 +72,8 @@ public final class GameCaptureService extends Service {
   static final String EXTRA_COOKIE="cookie";
   static final String EXTRA_FACE_LAYOUT="facecam";
   private static final String WS_URL="wss://nadmo-live-beta-20261009.ardarawk.workers.dev/ws";
+  // Server checks Origin for CSWSH defense. OkHttp (unlike browser WebSocket) does not set it.
+  private static final String WS_ORIGIN="https://nadmo-live-beta-20261009.ardarawk.workers.dev";
   private static final int NOTIFICATION_ID=7701;
   private static final String CHANNEL="nadmo_game_live";
   private static final String TAG="NadmoGameLive";
@@ -231,7 +233,7 @@ public final class GameCaptureService extends Service {
     try{
       if(client==null)client=new OkHttpClient.Builder().pingInterval(20,TimeUnit.SECONDS)
         .connectTimeout(12,TimeUnit.SECONDS).build();
-      Request.Builder request=new Request.Builder().url(WS_URL);
+      Request.Builder request=new Request.Builder().url(WS_URL).header("Origin",WS_ORIGIN);
       if(!cookie.isEmpty())request.header("Cookie",cookie);
       webSocketOpen=false;
       socket=client.newWebSocket(request.build(),new WebSocketListener(){
@@ -249,9 +251,19 @@ public final class GameCaptureService extends Service {
           if(!stopping&&ws==socket)handleMessage(body);
         });}
         @Override public void onFailure(WebSocket ws,Throwable failure,Response response){
-          main.post(()->{if(!stopping&&ws==socket)lostConnection();});
+          final int httpCode=response==null?0:response.code();
+          final String error=failure==null?"Unknown":failure.getClass().getSimpleName();
+          Log.w(TAG,"Game signaling failure HTTP "+httpCode+" ("+error+")");
+          main.post(()->{
+            if(stopping||ws!=socket)return;
+            if(httpCode==403||httpCode==401){
+              report("error","Server menolak koneksi GAME (HTTP "+httpCode+").",roomId);
+              stopGame("Server menolak sesi GAME LIVE.");
+            }else lostConnection();
+          });
         }
         @Override public void onClosed(WebSocket ws,int code,String reason){
+          Log.w(TAG,"Game signaling closed (code "+code+")");
           main.post(()->{if(!stopping&&ws==socket)lostConnection();});
         }
       });
