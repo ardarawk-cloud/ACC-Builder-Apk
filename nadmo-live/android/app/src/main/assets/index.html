@@ -379,6 +379,9 @@ body.live-immersive #watch .sheet-close:focus-visible{
 .offgrid-panel-top button{border:1px solid #b75a52;border-radius:7px;background:#481a18;color:#ffe5e0;min-width:34px;min-height:34px;font:900 21px Arial}
 .offgrid-panel p{font:12px/1.5 Arial,sans-serif;color:#ffe9e5;margin:10px 0 0}
 .offgrid-panel .offgrid-status{color:#ffbd9b;font-weight:800;border-top:1px solid #a34b45;padding-top:9px}
+.offgrid-launch{width:100%;margin-top:11px;min-height:37px;border:1px solid #ffb4a3;border-radius:7px;background:#652622;color:#ffe5de;font:900 12px Arial,sans-serif}
+.mast .logo{flex:1 1 auto;min-width:0}.mast-right{min-width:0;flex:0 0 auto}.mast .logo-name{white-space:nowrap}
+@media(max-width:420px){.mast .logo-name{font-size:clamp(17px,5.1vw,24px)}.mast .logo-sub{font-size:7px;letter-spacing:1.2px}.mast-right .micro{font-size:9px;letter-spacing:.7px}}
 .nadmo-pt-footer{padding:17px 0 5px;border-top:1px solid #262d28;margin-top:27px;color:#707d73;text-align:center;font:700 10px/1.6 Arial,sans-serif;letter-spacing:.3px}
 </style></head>
 <body>
@@ -616,8 +619,9 @@ body.live-immersive #watch .sheet-close:focus-visible{
 <div id="offgridModal" class="offgrid-modal hide" role="dialog" aria-modal="true" aria-labelledby="offgridTitle" aria-describedby="offgridDescription">
  <div class="offgrid-panel">
   <div class="offgrid-panel-top"><span id="offgridTitle">OFFGRID / SIAGA</span><button type="button" id="offgridClose" aria-label="Tutup OFFGRID">×</button></div>
-  <p id="offgridDescription">Cadangan saat internet blackout. Dirancang untuk pesan jarak dekat antar-HP lewat koneksi lokal, tanpa server.</p>
-  <p class="offgrid-status">BELUM AKTIF — tidak bisa mengirim pesan offline saat ini.</p>
+  <p id="offgridDescription">Chat, grup, dan perangkat sekitar via Bluetooth. Pesan bisa diteruskan antarnode tanpa internet.</p>
+  <p class="offgrid-status">OFFGRID ALPHA TERSEDIA • buka aplikasi OFFGRID yang sudah terpasang.</p>
+  <button type="button" id="offgridLaunch" class="offgrid-launch">BUKA OFFGRID ↗</button>
  </div>
 </div>
 <nav aria-label="Main navigation">
@@ -634,6 +638,7 @@ body.live-immersive #watch .sheet-close:focus-visible{
  const offgridModal=$('offgridModal'),offgridEntry=$('offgridEntry'),offgridClose=$('offgridClose');
  function closeOffgrid(){offgridModal.classList.add('hide');offgridEntry.focus({preventScroll:true})}
  offgridEntry.onclick=()=>{offgridModal.classList.remove('hide');offgridClose.focus({preventScroll:true})};
+ $('offgridLaunch').onclick=()=>{location.href='nadmolive://offgrid'};
  offgridClose.onclick=closeOffgrid;
  offgridModal.addEventListener('click',event=>{if(event.target===offgridModal)closeOffgrid()});
  offgridModal.addEventListener('keydown',event=>{
