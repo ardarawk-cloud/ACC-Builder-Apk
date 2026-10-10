@@ -4,6 +4,9 @@ import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.RemoteInput;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
@@ -65,6 +68,9 @@ import java.util.concurrent.TimeUnit;
 public final class GameCaptureService extends Service {
   static final String ACTION_START="id.nadmo.live.GAME_START";
   static final String ACTION_STOP="id.nadmo.live.GAME_STOP";
+  static final String ACTION_CHAT_REPLY="id.nadmo.live.GAME_CHAT_REPLY";
+  static final String EXTRA_REPLY_TEXT="replyText";
+  static final String EXTRA_REPLY_ROOM="replyRoom";
   static final String ACTION_STATUS="id.nadmo.live.GAME_STATUS";
   static final String EXTRA_PROJECTION="projection";
   static final String EXTRA_RESULT="result";
@@ -77,6 +83,12 @@ public final class GameCaptureService extends Service {
   // Server checks Origin for CSWSH defense. OkHttp (unlike browser WebSocket) does not set it.
   private static final String WS_ORIGIN="https://nadmo-live-beta-20261009.ardarawk.workers.dev";
   private static final int NOTIFICATION_ID=7701;
+  static final int CHAT_NOTIFICATION_ID=7702;
+  private static final String CHAT_CHANNEL="nadmo_game_chat";
+  private static final long CHAT_POPUP_MIN_INTERVAL_MS=1800;
+  private long lastChatPopupAt=0L;
+  private String hostSocketId="";
+  private int chatUnread=0;
   private static final String CHANNEL="nadmo_game_live";
   private static final String TAG="NadmoGameLive";
   private final Handler main=new Handler(Looper.getMainLooper());
@@ -113,6 +125,18 @@ public final class GameCaptureService extends Service {
   @Override public int onStartCommand(Intent intent,int flags,int startId){
     if(intent==null)return START_NOT_STICKY;
     if(ACTION_STOP.equals(intent.getAction())){stopGame("Siaran game diakhiri.");return START_NOT_STICKY;}
+    if(ACTION_CHAT_REPLY.equals(intent.getAction())){
+      if(started&&!stopping&&roomId.equals(intent.getStringExtra(EXTRA_REPLY_ROOM))){
+        String input=intent.getStringExtra(EXTRA_REPLY_TEXT);
+        String text=input==null?"":limit(input,250,"");
+        if(!text.isEmpty()&&webSocketOpen){
+          send(new JSONObjectSafe().put("type","chat").put("text",text).json());
+        }else if(!webSocketOpen){
+          report("reconnecting","Chat belum terkirim karena LIVE sedang reconnect.",roomId);
+        }
+      }
+      return START_NOT_STICKY;
+    }
     if(!ACTION_START.equals(intent.getAction())||started)return START_NOT_STICKY;
     stopping=false;started=true;
     title=limit(intent.getStringExtra(EXTRA_TITLE),60,"NADMO GAME LIVE");
@@ -188,7 +212,12 @@ public final class GameCaptureService extends Service {
   private void createChannel(){
     NotificationChannel channel=new NotificationChannel(CHANNEL,"NADMO GAME LIVE",NotificationManager.IMPORTANCE_LOW);
     channel.setDescription("Siaran layar game berjalan. Ketuk STOP untuk mengakhiri.");
-    getSystemService(NotificationManager.class).createNotificationChannel(channel);
+    NotificationManager manager=getSystemService(NotificationManager.class);
+    manager.createNotificationChannel(channel);
+    NotificationChannel chatChannel=new NotificationChannel(CHAT_CHANNEL,"Chat saat main game",NotificationManager.IMPORTANCE_HIGH);
+    chatChannel.setDescription("Pesan chat LIVE muncul saat bermain, dengan tombol BALAS.");
+    chatChannel.enableVibration(true);
+    manager.createNotificationChannel(chatChannel);
   }
   private Notification notification(String text,boolean ongoing){
     Intent open=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -200,6 +229,44 @@ public final class GameCaptureService extends Service {
       .setContentTitle("NADMO / GAME LIVE").setContentText(text)
       .setContentIntent(go).setOngoing(ongoing).setOnlyAlertOnce(true)
       .addAction(android.R.drawable.ic_menu_close_clear_cancel,"AKHIRI LIVE",cancel).build();
+  }
+  private void onIncomingRoomChat(JSONObject message){
+    if(!started||stopping||roomId.isEmpty())return;
+    String senderId=message.optString("from","");
+    if(!hostSocketId.isEmpty()&&hostSocketId.equals(senderId))return;
+    String name=limit(message.optString("name","Penonton"),35,"Penonton");
+    String body=limit(message.optString("text",""),250,"");
+    if(body.isEmpty())return;
+    chatUnread++;
+    long now=android.os.SystemClock.elapsedRealtime();
+    if(now-lastChatPopupAt<CHAT_POPUP_MIN_INTERVAL_MS)return;
+    lastChatPopupAt=now;
+    if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return;
+    Intent receiver=new Intent(this,GameChatReplyReceiver.class)
+      .setAction(ACTION_CHAT_REPLY)
+      .putExtra(EXTRA_REPLY_ROOM,roomId);
+    int flags=PendingIntent.FLAG_UPDATE_CURRENT;
+    if(Build.VERSION.SDK_INT>=31)flags|=PendingIntent.FLAG_MUTABLE;
+    PendingIntent replyAction=PendingIntent.getBroadcast(this,7702,receiver,flags);
+    RemoteInput input=new RemoteInput.Builder(GameChatReplyReceiver.REPLY_KEY)
+      .setLabel("Balas chat NADMO LIVE").build();
+    Notification.Action action=new Notification.Action.Builder(
+      android.R.drawable.ic_menu_send,"BALAS",replyAction)
+      .addRemoteInput(input).build();
+    Intent back=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    PendingIntent view=PendingIntent.getActivity(this,7703,back,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+    Notification.Builder builder=new Notification.Builder(this,CHAT_CHANNEL)
+      .setSmallIcon(android.R.drawable.sym_action_chat)
+      .setContentTitle(name+" · GAME LIVE")
+      .setContentText(body)
+      .setStyle(new Notification.BigTextStyle().bigText(body))
+      .setCategory(Notification.CATEGORY_MESSAGE)
+      .setPriority(Notification.PRIORITY_HIGH)
+      .setVisibility(Notification.VISIBILITY_PRIVATE)
+      .setAutoCancel(true)
+      .setContentIntent(view)
+      .addAction(action);
+    getSystemService(NotificationManager.class).notify(CHAT_NOTIFICATION_ID,builder.build());
   }
   private void updateNotification(String value){
     getSystemService(NotificationManager.class).notify(NOTIFICATION_ID,notification(value,true));
@@ -324,6 +391,7 @@ public final class GameCaptureService extends Service {
       JSONObject m=new JSONObject(raw);String type=m.optString("type","");
       if("created".equals(type)||"resumed".equals(type)){
         roomId=m.optString("id",roomId);
+        hostSocketId=m.optString("selfId",hostSocketId);
         if("created".equals(type))resumeToken=m.optString("resumeToken","");
         reconnectAttempt=0;offlineSince=0;
         String message="GAME LIVE aktif · "+game+" · mic"+(faceTrack!=null?" · facecam":"");
@@ -333,6 +401,8 @@ public final class GameCaptureService extends Service {
           JSONArray ids=m.optJSONArray("viewers");
           if(ids!=null)for(int i=0;i<ids.length();i++)offerTo(ids.optString(i));
         }
+      }else if("chat".equals(type)){
+        onIncomingRoomChat(m);
       }else if("viewer-joined".equals(type)){
         offerTo(m.optString("id"));
       }else if("viewer-left".equals(type)){
@@ -467,6 +537,8 @@ public final class GameCaptureService extends Service {
     if(egl!=null)egl.release();
     if(client!=null){client.dispatcher().executorService().shutdown();client.connectionPool().evictAll();}
     cookie="";roomId="";resumeToken="";started=false;activeRoom="";faceLayout=null;
+    hostSocketId="";chatUnread=0;
+    try{getSystemService(NotificationManager.class).cancel(CHAT_NOTIFICATION_ID);}catch(Exception ignored){}
     state="stopped";status=reason;
     Intent event=new Intent(ACTION_STATUS).setPackage(getPackageName());
     event.putExtra("state","stopped").putExtra("message",reason).putExtra("room","");
