@@ -2,12 +2,12 @@ name: NADMO LIVE signed beta update
 on:
   push:
     branches: ['feat/nadmo-native-game-live-20261010']
-    paths: ['.github/workflows/nadmo-live-094-qa-signed.yml', 'nadmo-live/android/qa/game-native-media-e2e.cjs']
+    paths: ['.github/workflows/nadmo-live-094-qa-signed.yml', 'nadmo-live/android/qa/game-background-contract.mjs']
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: nadmo-v097-beta-signed
+  group: nadmo-v098-beta-signed
   cancel-in-progress: true
 jobs:
   qa-signed:
@@ -50,6 +50,8 @@ jobs:
           node -e "const fs=require('fs'),vm=require('vm');const html=fs.readFileSync('nadmo-live/android/app/src/main/assets/game-live-qa.html','utf8');const i=html.indexOf('<script>'),j=html.indexOf('</script>',i);if(i<0||j<i||!html.includes('gameLaunchGame'))process.exit(1);new vm.Script(html.slice(i+8,j));console.log('GAME HTML UI SYNTAX PASS')"
       - name: Check real Worker WebSocket Origin handshake
         run: node nadmo-live/android/qa/game-signaling-gate.mjs
+      - name: Validate separate Android media foreground process and stable state IPC
+        run: node nadmo-live/android/qa/game-background-contract.mjs
       - name: Check chat overlay remains voice-first (no text reply)
         shell: bash
         run: |
@@ -78,6 +80,8 @@ jobs:
           npm install --prefix nadmo-live/android/qa --no-save --no-audit --no-fund puppeteer-core@24
           export CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
           node nadmo-live/android/qa/game-native-media-e2e.cjs
+      - name: Verify host-side WebSocket heartbeat and forced-disconnect room recovery
+        run: gradle -p nadmo-live/android :app:testReleaseUnitTest --tests id.nadmo.live.OkHttpSignalingE2ETest --no-daemon
       - name: Assemble signed beta APK with original certificate
         run: gradle -p nadmo-live/android :app:assembleRelease --no-daemon
       - name: Verify fixed identity, version and original signer
@@ -86,15 +90,15 @@ jobs:
           set -euo pipefail
           APK=nadmo-live/android/app/build/outputs/apk/release/app-release.apk
           test -s "$APK"
-          OUT="$RUNNER_TEMP/NADMO-LIVE-v0.9.7-beta.apk"
+          OUT="$RUNNER_TEMP/NADMO-LIVE-v0.9.8-beta.apk"
           cp "$APK" "$OUT"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           SIGN="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           META=$("$AAPT" dump badging "$OUT" | head -1)
           printf '%s\n' "$META"
           printf '%s\n' "$META" | grep -F "name='id.nadmo.live'"
-          printf '%s\n' "$META" | grep -F "versionCode='16'"
-          printf '%s\n' "$META" | grep -F "versionName='0.9.7-beta'"
+          printf '%s\n' "$META" | grep -F "versionCode='17'"
+          printf '%s\n' "$META" | grep -F "versionName='0.9.8-beta'"
           VERIFY=$("$SIGN" verify --verbose --print-certs "$OUT")
           printf '%s\n' "$VERIFY"
           printf '%s\n' "$VERIFY" | grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true'
@@ -105,12 +109,12 @@ jobs:
           if unzip -l "$OUT" | grep -q 'nadmo-release.jks';then echo 'Keystore leakage!';exit 1;fi
           unzip -t "$OUT" | tail -n 2
           mkdir -p "$GITHUB_WORKSPACE/qa-signed"
-          mv "$OUT" "$GITHUB_WORKSPACE/qa-signed/NADMO-LIVE-v0.9.7-beta.apk"
-          (cd qa-signed && sha256sum NADMO-LIVE-v0.9.7-beta.apk > SHA256SUMS.txt)
-          echo 'SIGNED BETA UPDATE VERIFIED — same original certificate, app ID id.nadmo.live, versionCode 16.'
+          mv "$OUT" "$GITHUB_WORKSPACE/qa-signed/NADMO-LIVE-v0.9.8-beta.apk"
+          (cd qa-signed && sha256sum NADMO-LIVE-v0.9.8-beta.apk > SHA256SUMS.txt)
+          echo 'SIGNED BETA UPDATE VERIFIED — same original certificate, app ID id.nadmo.live, versionCode 17.'
       - uses: actions/upload-artifact@v4
         with:
-          name: nadmo-live-v097-beta-signed
+          name: nadmo-live-v098-beta-signed
           path: qa-signed/*
           retention-days: 14
           if-no-files-found: error
