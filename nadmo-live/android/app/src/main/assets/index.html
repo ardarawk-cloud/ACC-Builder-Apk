@@ -383,6 +383,23 @@ body.live-immersive #watch .sheet-close:focus-visible{
 .mast .logo{flex:1 1 auto;min-width:0}.mast-right{min-width:0;flex:0 0 auto}.mast .logo-name{white-space:nowrap}
 @media(max-width:420px){.mast .logo-name{font-size:clamp(17px,5.1vw,24px)}.mast .logo-sub{font-size:7px;letter-spacing:1.2px}.mast-right .micro{font-size:9px;letter-spacing:.7px}}
 .nadmo-pt-footer{padding:17px 0 5px;border-top:1px solid #262d28;margin-top:27px;color:#707d73;text-align:center;font:700 10px/1.6 Arial,sans-serif;letter-spacing:.3px}
+
+/* Mobile polish shared with online beta while this local fallback remains offline-safe. */
+:root{--bg:#080c09;--panel:#101712;--line:#2d3b30;--paper:#edf4e9;--neon:#dfff6d}
+body:not(.live-immersive) .btn{border-radius:12px;transition:filter .18s}
+body:not(.live-immersive) .btn:active{filter:brightness(.85)}
+body:not(.live-immersive) .field{border-radius:12px;background:#121a14;border-color:#334c37}
+body:not(.live-immersive) .page-top{padding-top:15px;margin-top:6px}
+body:not(.live-immersive) .page-top h1{font-size:clamp(32px,8vw,44px)}
+body:not(.live-immersive) .show-label{margin:19px 0 10px;padding-top:11px}
+body:not(.live-immersive) .show-label b{font-size:17px}
+body:not(.live-immersive) #home .signal-stage{height:clamp(235px,37vh,340px);border-radius:18px}
+body:not(.live-immersive) .freq button{border-radius:12px;height:116px;background:#101912}
+nav button.broadcast i{box-shadow:0 2px 17px #dfff6d48;border-radius:5px}
+#studio .mode-grid button{min-height:75px;padding:10px 4px;border-radius:14px;background:#111a14}
+#studio .mode-grid button.active{background:#1c311c;color:#e4ff93}
+#studio>.panel,#studio #gameSetup{border:1px solid #344b35;background:#101912;border-radius:18px;padding:14px;margin:12px 0}
+#studio .viewfinder{border-radius:15px;overflow:hidden}
 </style></head>
 <body>
 <div class="app">
