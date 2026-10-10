@@ -300,7 +300,9 @@ public final class MainActivity extends Activity {
     NotificationManager manager=getSystemService(NotificationManager.class);
     if(manager==null||!manager.areNotificationsEnabled())return false;
     NotificationChannel channel=manager.getNotificationChannel("nadmo_game_chat");
-    return channel==null||channel.getImportance()>=NotificationManager.IMPORTANCE_DEFAULT;
+    // DEFAULT notifications may land silently in the shade, not over the game.
+    // Do not show CHAT READY until its actual heads-up channel is enabled.
+    return channel!=null&&channel.getImportance()>=NotificationManager.IMPORTANCE_HIGH;
   }
   private void openGameChatSettings(){
     try{
