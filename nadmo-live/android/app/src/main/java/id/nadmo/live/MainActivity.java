@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
 import android.media.projection.MediaProjectionManager;
+import android.media.projection.MediaProjectionConfig;
 import android.os.Build;
 import android.provider.Settings;
 import android.webkit.CookieManager;
@@ -243,8 +244,15 @@ public final class MainActivity extends Activity {
     try{
       MediaProjectionManager manager=getSystemService(MediaProjectionManager.class);
       if(manager==null){notifyGameStatus("error","Perekaman layar tidak tersedia di HP ini.","");return;}
-      notifyGameStatus("starting","Android akan meminta izin merekam layar.","");
-      startActivityForResult(manager.createScreenCaptureIntent(),ASK_SCREEN_CAPTURE);
+      // GAME LIVE must continue after the creator opens another app.
+      // Android 14+ defaults to allowing single-app capture: selecting NADMO
+      // would end/blank the projection as soon as Mobile Legends is opened.
+      // Request full-display sharing; Android still shows its consent dialog.
+      notifyGameStatus("starting","Izinkan perekaman seluruh layar untuk GAME LIVE.","");
+      Intent capture=Build.VERSION.SDK_INT>=34
+        ?manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
+        :manager.createScreenCaptureIntent();
+      startActivityForResult(capture,ASK_SCREEN_CAPTURE);
     }catch(Exception e){notifyGameStatus("error","Gagal meminta izin rekam layar.","");}
   }
   private void stopGame(){
