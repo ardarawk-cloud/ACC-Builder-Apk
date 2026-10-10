@@ -63,6 +63,8 @@ public final class MainActivity extends Activity {
   private FrameLayout root;
   private PermissionRequest pending;
   private ValueCallback<Uri[]> pendingPhoto;
+  private boolean pendingGalleryMultiple=false;
+  private boolean pendingVideoAllowed=false;
   private View fullView;
   private WebChromeClient.CustomViewCallback fullCallback;
 
@@ -178,12 +180,19 @@ public final class MainActivity extends Activity {
         if(page==null || !trusted(Uri.parse(page))){callback.onReceiveValue(null);return true;}
         if(pendingPhoto!=null){pendingPhoto.onReceiveValue(null);pendingPhoto=null;}
         pendingPhoto=callback;
-        // User-driven gallery picker only. No blanket access to device storage.
+        // File type follows the actual HTML input: avatar remains image-only;
+        // SOCIAL accepts up to ten selected photos/videos in one OS picker.
+        String accepts=String.join(",",params.getAcceptTypes()).toLowerCase(java.util.Locale.ROOT);
+        pendingVideoAllowed=accepts.contains("video");
+        pendingGalleryMultiple=pendingVideoAllowed&&params.getMode()==FileChooserParams.MODE_OPEN_MULTIPLE;
         final Intent choose=new Intent(Intent.ACTION_GET_CONTENT);
         choose.addCategory(Intent.CATEGORY_OPENABLE);
-        choose.setType("image/*");
+        choose.setType(pendingVideoAllowed?"*/*":"image/*");
+        if(pendingVideoAllowed)choose.putExtra(Intent.EXTRA_MIME_TYPES,
+          new String[]{"image/jpeg","image/png","image/webp","video/mp4","video/webm"});
+        if(pendingGalleryMultiple)choose.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
         choose.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        try{startActivityForResult(Intent.createChooser(choose,"Pilih foto profil"),PICK_AVATAR);}
+        try{startActivityForResult(Intent.createChooser(choose,pendingVideoAllowed?"Pilih foto dan video":"Pilih foto profil"),PICK_AVATAR);}
         catch(Exception error){
           pendingPhoto.onReceiveValue(null);pendingPhoto=null;
         }
@@ -349,19 +358,29 @@ public final class MainActivity extends Activity {
     final ValueCallback<Uri[]> callback=pendingPhoto;
     pendingPhoto=null;
     if(callback==null)return;
-    Uri uri=result==Activity.RESULT_OK&&data!=null?data.getData():null;
-    if(uri==null&&result==Activity.RESULT_OK&&data!=null&&data.getClipData()!=null
-      &&data.getClipData().getItemCount()>0){
-      uri=data.getClipData().getItemAt(0).getUri();
+    final boolean mediaAllowed=pendingVideoAllowed,multiple=pendingGalleryMultiple;
+    pendingVideoAllowed=false;pendingGalleryMultiple=false;
+    final java.util.ArrayList<Uri> selected=new java.util.ArrayList<>();
+    if(result==Activity.RESULT_OK&&data!=null){
+      if(data.getClipData()!=null){
+        int count=Math.min(data.getClipData().getItemCount(),multiple?10:1);
+        for(int i=0;i<count;i++)selected.add(data.getClipData().getItemAt(i).getUri());
+      }else if(data.getData()!=null)selected.add(data.getData());
     }
-    // Accept only an OS-selected content-provider image, not arbitrary file paths.
-    if(uri!=null&&"content".equalsIgnoreCase(uri.getScheme())){
-      try{
-        final String type=getContentResolver().getType(uri);
-        if(type==null || !type.startsWith("image/"))uri=null;
-      }catch(Exception ignored){uri=null;}
-    }else uri=null;
-    callback.onReceiveValue(uri==null?null:new Uri[]{uri});
+    // OS-selected content URI only. Enforce type even if a provider lies about
+    // the MIME chooser filter. No broad storage permission is required.
+    final java.util.ArrayList<Uri> accepted=new java.util.ArrayList<>();
+    for(Uri uri:selected){
+      if(uri==null||!"content".equalsIgnoreCase(uri.getScheme()))continue;
+      String mime=null;
+      try{mime=getContentResolver().getType(uri);}catch(Exception ignored){}
+      if(mime==null)continue;
+      if(mediaAllowed){
+        if(!java.util.Arrays.asList("image/jpeg","image/png","image/webp","video/mp4","video/webm").contains(mime))continue;
+      }else if(!mime.startsWith("image/"))continue;
+      accepted.add(uri);
+    }
+    callback.onReceiveValue(accepted.isEmpty()?null:accepted.toArray(new Uri[0]));
   }
   @Override public void onRequestPermissionsResult(int code,String[] names,int[] results){
     super.onRequestPermissionsResult(code,names,results);
