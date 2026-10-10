@@ -92,6 +92,9 @@ class MainActivity : Activity() {
     private var manualLockUntil = 0L
     private var switching = false
     private var relayScheduled = false
+    // BLE scan callbacks may arrive rapidly. Keep peer state/UI work on the main thread
+    // and avoid rebuilding every Nearby button for each radio advertisement.
+    private var lastPeerRenderAt = 0L
     private var pendingSwitch: PeerInfo? = null
     private val relayAttemptedAt = mutableMapOf<String, Long>()
 
@@ -125,19 +128,27 @@ class MainActivity : Activity() {
             val address = runCatching { result.device.address }.getOrElse { return }
             val fallbackId = address.replace(":", "").takeLast(12)
             if (fallbackId.isBlank()) return
-            peers[address] = PeerInfo(
-                id = fallbackId,
-                address = address,
-                device = result.device,
-                rssi = result.rssi,
-                lastSeen = System.currentTimeMillis()
-            )
-            pruneAndRender()
-            scheduleRelayPump(250)
+            runOnUiThread {
+                if (!running) return@runOnUiThread
+                peers[address] = PeerInfo(
+                    id = fallbackId,
+                    address = address,
+                    device = result.device,
+                    rssi = result.rssi,
+                    lastSeen = System.currentTimeMillis()
+                )
+                pruneAndRender()
+                scheduleRelayPump(250)
+            }
         }
 
         override fun onScanFailed(errorCode: Int) {
-            runOnUiThread { setStatus("Nearby scan failed ($errorCode)") }
+            runOnUiThread {
+                // A failed scan is no longer active. Unblock SCAN so the user can retry.
+                if (!running) return@runOnUiThread
+                stopDiscovery()
+                setStatus("Nearby scan failed ($errorCode). Tap SCAN to retry.")
+            }
         }
     }
 
@@ -800,6 +811,7 @@ class MainActivity : Activity() {
             return
         }
         running = true
+        lastPeerRenderAt = 0L
         peers.clear()
         renderPeers()
 
@@ -851,9 +863,12 @@ class MainActivity : Activity() {
     }
 
     private fun pruneAndRender() {
-        val cutoff = System.currentTimeMillis() - PEER_TIMEOUT_MS
-        peers.entries.removeIf { it.value.lastSeen < cutoff }
-        runOnUiThread { renderPeers() }
+        val now = System.currentTimeMillis()
+        peers.entries.removeIf { it.value.lastSeen < now - PEER_TIMEOUT_MS }
+        if (now - lastPeerRenderAt >= PEER_RENDER_INTERVAL_MS) {
+            lastPeerRenderAt = now
+            renderPeers()
+        }
     }
 
     private fun renderPeers() {
@@ -1089,6 +1104,7 @@ class MainActivity : Activity() {
         private const val TAB_SETTINGS = 3
         private const val REQUEST_BLUETOOTH = 1001
         private const val PEER_TIMEOUT_MS = 20_000L
+        private const val PEER_RENDER_INTERVAL_MS = 750L
         private const val MESH_WIRE = "@OGM1"
         private const val RELAY_PUMP_MS = 2_500L
         private const val RELAY_DWELL_MS = 4_000L
