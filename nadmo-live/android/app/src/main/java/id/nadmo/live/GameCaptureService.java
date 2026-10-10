@@ -315,13 +315,14 @@ public final class GameCaptureService extends Service {
       PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer());
     PeerConnection.RTCConfiguration cfg=new PeerConnection.RTCConfiguration(ice);
     cfg.sdpSemantics=PeerConnection.SdpSemantics.UNIFIED_PLAN;
+    final PeerConnection[] holder=new PeerConnection[1];
     PeerConnection pc=factory.createPeerConnection(cfg,new PeerConnection.Observer(){
       @Override public void onSignalingChange(PeerConnection.SignalingState state){}
       @Override public void onIceConnectionChange(PeerConnection.IceConnectionState state){}
       @Override public void onIceConnectionReceivingChange(boolean receiving){}
       @Override public void onIceGatheringChange(PeerConnection.IceGatheringState state){}
       @Override public void onIceCandidate(IceCandidate candidate){main.post(()->{
-        if(viewers.get(id)!=pc||stopping)return;
+        if(viewers.get(id)!=holder[0]||stopping)return;
         JSONObject c=new JSONObjectSafe().put("candidate",candidate.sdp)
           .put("sdpMid",candidate.sdpMid).put("sdpMLineIndex",candidate.sdpMLineIndex).json();
         signal(id,new JSONObjectSafe().put("candidate",c).json());
@@ -334,6 +335,7 @@ public final class GameCaptureService extends Service {
       @Override public void onAddTrack(RtpReceiver receiver,MediaStream[] streams){}
     });
     if(pc==null){report("error","Tidak bisa menyambungkan penonton WebRTC.",roomId);return;}
+    holder[0]=pc;
     viewers.put(id,pc);
     pc.addTrack(screenTrack,Arrays.asList("NADMO_GAME_SCREEN"));
     pc.addTrack(micTrack,Arrays.asList("NADMO_GAME_SCREEN"));
