@@ -22,8 +22,10 @@ const url='https://nadmo-live-beta-20261009.ardarawk.workers.dev/app/';
   const h=await hc.newPage(),v=await vc.newPage();
   await Promise.all([h.goto(url,{waitUntil:'domcontentloaded',timeout:30000}),v.goto(url,{waitUntil:'domcontentloaded',timeout:30000})]);
   const room=await h.evaluate(async()=>{
-   const ws=new WebSocket(location.origin.replace(/^http/,'ws')+'/ws');
+   // Set up the media track first; installing onopen after an async getUserMedia
+   // can miss the already-open socket and leave the test waiting forever.
    const local=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+   const ws=new WebSocket(location.origin.replace(/^http/,'ws')+'/ws');
    window.__host={ws,local,connections:new Map(),logs:[]};
    const send=m=>ws.send(JSON.stringify(m));
    function sendSignal(to,data){send({type:'signal',to,data})}
@@ -118,5 +120,11 @@ const url='https://nadmo-live-beta-20261009.ardarawk.workers.dev/app/';
   console.log('PASS REAL WebRTC screen-like video decoded AND audio receiver '+JSON.stringify(result));
   await h.evaluate(()=>{window.__host.ws.send(JSON.stringify({type:'leave'}));for(const p of window.__host.connections.values())p.close();window.__host.local.getTracks().forEach(t=>t.stop())});
   await delay(200);
- }finally{await browser.close()}
+ }finally{
+  try{
+   await h.evaluate(()=>{const x=window.__host;if(x){if(x.ws.readyState===WebSocket.OPEN)x.ws.send(JSON.stringify({type:'leave'}));for(const p of x.connections.values())p.close();x.local.getTracks().forEach(t=>t.stop())}});
+  }catch(e){}
+  try{await v.evaluate(()=>{const x=window.__viewer;if(x?.ws?.readyState===WebSocket.OPEN)x.ws.send(JSON.stringify({type:'leave'}));x?.pc?.close()})}catch(e){}
+  await browser.close()
+ }
 })().catch(e=>{console.error('GAME_NATIVE_MEDIA_E2E_FAILED',e);process.exit(1)});
