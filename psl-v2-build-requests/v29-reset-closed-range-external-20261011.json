@@ -1,0 +1,7 @@
+{
+  "request_id":"papa-sauce-lab-v2-v29-reset-closed-range-external",
+  "project_id":"papa-sauce-lab",
+  "version":29,
+  "mode":"stable_signed_update",
+  "reason":"External trigger for v29 reset closed range"
+}
