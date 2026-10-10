@@ -31,7 +31,7 @@ const url='https://nadmo-live-beta-20261009.ardarawk.workers.dev/app/';
     const existing=window.__host.connections.get(to);if(existing)existing.close();
     const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
     window.__host.connections.set(to,pc);
-    for(const track of local.getTracks())pc.addTrack(track,'NADMO_GAME_SCREEN');
+    for(const track of local.getTracks())pc.addTrack(track,local);
     pc.onicecandidate=e=>{if(e.candidate)sendSignal(to,{candidate:e.candidate.toJSON()})};
     const description=await pc.createOffer();
     await pc.setLocalDescription(description);
