@@ -16,6 +16,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebSettings;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 import androidx.webkit.WebViewAssetLoader;
 
 public final class MainActivity extends Activity {
@@ -23,6 +24,7 @@ public final class MainActivity extends Activity {
   private static final String APP_HOST="appassets.androidplatform.net";
   private static final String LIVE_HOST="nadmo-live-beta-20261009.ardarawk.workers.dev";
   private static final String ONLINE_URL="https://"+LIVE_HOST+"/app/";
+  private static final String OFFGRID_APP="com.offgrid.mesh.dev";
   private static final int ASK_MEDIA=42;
   private static final int PICK_AVATAR=43;
   private WebView web;
@@ -36,6 +38,17 @@ public final class MainActivity extends Activity {
     return uri!=null
       && "https".equalsIgnoreCase(uri.getScheme())
       && (APP_HOST.equalsIgnoreCase(uri.getHost()) || LIVE_HOST.equalsIgnoreCase(uri.getHost()));
+  }
+  // Existing OFFGRID Alpha (BLE direct/group/relay) remains in its own native app.
+  // Route only the fixed, user-tapped local URI; do not need Internet or a server.
+  private void openOffgrid(){
+    final Intent launch=getPackageManager().getLaunchIntentForPackage(OFFGRID_APP);
+    if(launch==null){
+      Toast.makeText(this,"OFFGRID belum terpasang. Instal sebelum internet blackout.",Toast.LENGTH_LONG).show();
+      return;
+    }
+    try{startActivity(launch);}
+    catch(Exception ignored){Toast.makeText(this,"Tidak dapat membuka OFFGRID.",Toast.LENGTH_LONG).show();}
   }
   @Override public void onCreate(Bundle state){
     super.onCreate(state);
@@ -74,6 +87,10 @@ public final class MainActivity extends Activity {
       }
       @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest req){
         Uri uri=req.getUrl();
+        if(uri!=null&&"nadmolive".equalsIgnoreCase(uri.getScheme())){
+          if("offgrid".equalsIgnoreCase(uri.getHost()))openOffgrid();
+          return true;
+        }
         if(trusted(uri))return false;
         if("https".equalsIgnoreCase(uri.getScheme())){
           try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}
