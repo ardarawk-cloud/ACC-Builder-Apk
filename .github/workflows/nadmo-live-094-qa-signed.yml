@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: nadmo-v098-beta-signed
+  group: nadmo-v099-beta-signed
   cancel-in-progress: true
 jobs:
   qa-signed:
@@ -90,15 +90,15 @@ jobs:
           set -euo pipefail
           APK=nadmo-live/android/app/build/outputs/apk/release/app-release.apk
           test -s "$APK"
-          OUT="$RUNNER_TEMP/NADMO-LIVE-v0.9.8-beta.apk"
+          OUT="$RUNNER_TEMP/NADMO-LIVE-v0.9.9-beta.apk"
           cp "$APK" "$OUT"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           SIGN="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           META=$("$AAPT" dump badging "$OUT" | head -1)
           printf '%s\n' "$META"
           printf '%s\n' "$META" | grep -F "name='id.nadmo.live'"
-          printf '%s\n' "$META" | grep -F "versionCode='17'"
-          printf '%s\n' "$META" | grep -F "versionName='0.9.8-beta'"
+          printf '%s\n' "$META" | grep -F "versionCode='18'"
+          printf '%s\n' "$META" | grep -F "versionName='0.9.9-beta'"
           VERIFY=$("$SIGN" verify --verbose --print-certs "$OUT")
           printf '%s\n' "$VERIFY"
           printf '%s\n' "$VERIFY" | grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true'
@@ -109,12 +109,12 @@ jobs:
           if unzip -l "$OUT" | grep -q 'nadmo-release.jks';then echo 'Keystore leakage!';exit 1;fi
           unzip -t "$OUT" | tail -n 2
           mkdir -p "$GITHUB_WORKSPACE/qa-signed"
-          mv "$OUT" "$GITHUB_WORKSPACE/qa-signed/NADMO-LIVE-v0.9.8-beta.apk"
-          (cd qa-signed && sha256sum NADMO-LIVE-v0.9.8-beta.apk > SHA256SUMS.txt)
-          echo 'SIGNED BETA UPDATE VERIFIED — same original certificate, app ID id.nadmo.live, versionCode 17.'
+          mv "$OUT" "$GITHUB_WORKSPACE/qa-signed/NADMO-LIVE-v0.9.9-beta.apk"
+          (cd qa-signed && sha256sum NADMO-LIVE-v0.9.9-beta.apk > SHA256SUMS.txt)
+          echo 'SIGNED BETA UPDATE VERIFIED — same original certificate, app ID id.nadmo.live, versionCode 18.'
       - uses: actions/upload-artifact@v4
         with:
-          name: nadmo-live-v098-beta-signed
+          name: nadmo-live-v099-beta-signed
           path: qa-signed/*
           retention-days: 14
           if-no-files-found: error
