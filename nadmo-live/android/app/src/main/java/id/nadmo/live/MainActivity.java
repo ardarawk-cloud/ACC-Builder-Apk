@@ -2,7 +2,7 @@ package id.nadmo.live;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.BroadcastReceiver;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
 import android.media.projection.MediaProjectionManager;
