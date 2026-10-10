@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: nadmo-v099-beta-signed
+  group: nadmo-v0100-beta-signed
   cancel-in-progress: true
 jobs:
   qa-signed:
@@ -82,6 +82,17 @@ jobs:
           node nadmo-live/android/qa/game-native-media-e2e.cjs
       - name: Verify host-side WebSocket heartbeat and forced-disconnect room recovery
         run: gradle -p nadmo-live/android :app:testReleaseUnitTest --tests id.nadmo.live.OkHttpSignalingE2ETest --no-daemon
+      - name: Verify incoming viewer chat reaches Android host signaling
+        run: gradle -p nadmo-live/android :app:testReleaseUnitTest --tests id.nadmo.live.OkHttpSignalingE2ETest.nativeHostReceivesActualViewerChatPacket --no-daemon
+      - name: Verify new cyberdeck and truthful game-audio state are bundled
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTML=nadmo-live/android/app/src/main/assets/game-live-qa.html
+          grep -Fq 'NADMO CYBERDECK v1' "$HTML"
+          grep -Fq 'AUDIO GAME / BELUM TERSEDIA' "$HTML"
+          grep -Fq 'gameChatSettings' "$HTML"
+          grep -Fq 'GAME_VIDEO_MAX_EDGE=960' nadmo-live/android/app/src/main/java/id/nadmo/live/GameCaptureService.java
       - name: Assemble signed beta APK with original certificate
         run: gradle -p nadmo-live/android :app:assembleRelease --no-daemon
       - name: Verify fixed identity, version and original signer
@@ -90,15 +101,15 @@ jobs:
           set -euo pipefail
           APK=nadmo-live/android/app/build/outputs/apk/release/app-release.apk
           test -s "$APK"
-          OUT="$RUNNER_TEMP/NADMO-LIVE-v0.9.9-beta.apk"
+          OUT="$RUNNER_TEMP/NADMO-LIVE-v0.10.0-beta.apk"
           cp "$APK" "$OUT"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           SIGN="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           META=$("$AAPT" dump badging "$OUT" | head -1)
           printf '%s\n' "$META"
           printf '%s\n' "$META" | grep -F "name='id.nadmo.live'"
-          printf '%s\n' "$META" | grep -F "versionCode='18'"
-          printf '%s\n' "$META" | grep -F "versionName='0.9.9-beta'"
+          printf '%s\n' "$META" | grep -F "versionCode='19'"
+          printf '%s\n' "$META" | grep -F "versionName='0.10.0-beta'"
           VERIFY=$("$SIGN" verify --verbose --print-certs "$OUT")
           printf '%s\n' "$VERIFY"
           printf '%s\n' "$VERIFY" | grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true'
@@ -109,12 +120,12 @@ jobs:
           if unzip -l "$OUT" | grep -q 'nadmo-release.jks';then echo 'Keystore leakage!';exit 1;fi
           unzip -t "$OUT" | tail -n 2
           mkdir -p "$GITHUB_WORKSPACE/qa-signed"
-          mv "$OUT" "$GITHUB_WORKSPACE/qa-signed/NADMO-LIVE-v0.9.9-beta.apk"
-          (cd qa-signed && sha256sum NADMO-LIVE-v0.9.9-beta.apk > SHA256SUMS.txt)
-          echo 'SIGNED BETA UPDATE VERIFIED — same original certificate, app ID id.nadmo.live, versionCode 18.'
+          mv "$OUT" "$GITHUB_WORKSPACE/qa-signed/NADMO-LIVE-v0.10.0-beta.apk"
+          (cd qa-signed && sha256sum NADMO-LIVE-v0.10.0-beta.apk > SHA256SUMS.txt)
+          echo 'SIGNED BETA UPDATE VERIFIED — same original certificate, app ID id.nadmo.live, versionCode 19.'
       - uses: actions/upload-artifact@v4
         with:
-          name: nadmo-live-v099-beta-signed
+          name: nadmo-live-v0100-beta-signed
           path: qa-signed/*
           retention-days: 14
           if-no-files-found: error
