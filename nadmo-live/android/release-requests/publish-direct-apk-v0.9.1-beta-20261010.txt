@@ -1,0 +1,1 @@
+Request: publish the currently verified, consistently signed NADMO LIVE v0.9.1-beta (versionCode 10) APK as a direct GitHub Release .apk download, without an Actions ZIP. Keep package id.nadmo.live and the locked owner certificate. Do not replace existing tagged releases or touch other apps.
