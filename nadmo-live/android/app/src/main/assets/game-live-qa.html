@@ -4811,6 +4811,8 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
   if(peer){peer.close();peer=null}
   if(afkTimer)clearInterval(afkTimer);afkTimer=null;afkTrack=null;afkMode=false;
   currentRoom='';selfId='';host=false;resumeToken='';roomPassword='';recoveringForeground=false;lastForegroundRecovery=0;lastBackgroundAt=0;
+  document.body.style.removeProperty('--deck-video-aspect');
+  document.body.style.removeProperty('--game-stage-height-live');
   $('remote').srcObject=null;$('remote').muted=false;$('gameRemoteFace').srcObject=null;$('gameRemoteFace').hidden=true;document.body.classList.remove('watch-game','watch-landscape');$('chat').replaceChildren();$('hostPublicLinks').replaceChildren();hostPublicIdentity={name:'Host',handle:''};setTipRecipient('host','Host');
   $('hostControls').hidden=true;$('hostAccessPanel').hidden=true;$('viewerTipPanel').hidden=true;$('privateControls').classList.add('hide');$('afkHint').hidden=true;$('restartRoom').classList.add('hide');activeAccessMode='public';mirrorBroadcast=false;$('giftQuick').hidden=false;$('endLiveConfirm').classList.add('hide');applyMirroring();
   $('afkToggle').textContent='▤ KAMERA OFF';
@@ -4863,10 +4865,9 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
    const cap=Math.min(310,Math.max(150,window.innerHeight*.38));
    const fitted=Math.max(130,Math.min(natural,cap));
    document.body.style.setProperty('--game-stage-height-live',fitted.toFixed(1)+'px');
-  }else{
-   document.body.style.removeProperty('--deck-video-aspect');
-   document.body.style.removeProperty('--game-stage-height-live');
   }
+  // Keep the last decoded dimensions during transient zero-size/rotation
+  // events; otherwise wide live video flashes back to portrait layout.
  };
  watchVideo.addEventListener('loadedmetadata',syncWatchAspect);
  watchVideo.addEventListener('resize',syncWatchAspect);
