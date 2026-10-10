@@ -3698,9 +3698,25 @@ body:not(.live-immersive) .filterstrip button{border-radius:24px}
   const offer=await pc.createOffer();await pc.setLocalDescription(offer);
   if(peers.get(id)===pc)signal(id,{description:pc.localDescription,reset:true});
  }
+ function checkViewerFrame(roomId,attempt=0){
+  setTimeout(()=>{
+   if(host||currentRoom!==roomId||!socket||socket.readyState!==WebSocket.OPEN)return;
+   const video=$('remote');
+   if(video?.videoWidth>0&&video.readyState>=2)return;
+   const ice=peer?.iceConnectionState||'belum ada ICE';
+   if(attempt<2){
+    $('watchState').textContent='Video belum menerima frame (ICE: '+ice+'). Meminta ulang stream '+(attempt+1)+'/2...';
+    markWatchWarning($('watchState').textContent);
+    transmit({type:'refresh-media'});checkViewerFrame(roomId,attempt+1);
+   }else{
+    $('watchState').textContent='Video tidak diterima (ICE: '+ice+'). Jaringan ini mungkin memerlukan relay TURN.';
+    markWatchWarning($('watchState').textContent);
+   }
+  },attempt===0?9000:12000);
+ }
  async function incoming(m){
   if(m.type==='created'){stageLayout=[];stageGuestsList=[];guestRequests.clear();guestRemoteStreams.clear();readyGuestIds.clear();refreshGuestButtons();renderStageGuests();$('reportLive').hidden=true;$('hostModeration').hidden=false;mutedViewerIds.clear();mirrorBroadcast=false;closeLiveSheets();$('viewerTools').hidden=true;stopRetry();currentRoom=m.id;selfId=m.selfId;host=true;$('viewerTipPanel').hidden=true;activeAccessMode='public';$('hostAccessPanel').hidden=false;$('hostAccessLabel').textContent='PUBLIC / GRATIS';$('restorePublic').classList.add('hide');resumeToken=m.resumeToken||'';roomPassword='';$('net').textContent='SERVER ONLINE';$('hostControls').hidden=false;$('afkHint').hidden=false;$('restartRoom').classList.add('hide');notice('SIARAN AKTIF • Bagikan kode room '+m.id,'liveState');setStreamerName($('watchTitle'),m.hostHandle?'@'+m.hostHandle:(m.hostName||'Host'));updateHostCard(m);$('watchRoomSubtitle').textContent=$('title').value.trim()||'Siaran langsung';$('watchState').textContent='Siaran aktif';clearWatchWarning();$('remote').muted=true;$('remote').srcObject=localStream;show('watch');applyMirroring();$('giftQuick').hidden=true;}
-  if(m.type==='joined'){if(m.facecam)applyGameFaceLayout(m.facecam);stageLayout=normalizeLayout(m.layout);stageGuestsList=Array.isArray(m.guests)?m.guests:[];guestRequests.clear();guestRemoteStreams.clear();readyGuestIds.clear();guestOnStage=false;guestPending=false;refreshGuestButtons();renderStageGuests();$('reportLive').hidden=false;$('hostModeration').hidden=true;closeLiveSheets();$('viewerTools').hidden=false;stopRetry();currentRoom=m.id;selfId=m.selfId;host=false;$('viewerTipPanel').hidden=false;$('hostAccessPanel').hidden=true;resumeToken='';$('net').textContent='SERVER ONLINE';if(peer){peer.close();peer=null}pendingIce.clear();$('remote').muted=false;mirrorBroadcast=m.mirrorBroadcast===true;$('hostControls').hidden=true;$('afkHint').hidden=true;$('restartRoom').classList.add('hide');setStreamerName($('watchTitle'),m.hostHandle?'@'+m.hostHandle:(m.hostName||'Host'));updateHostCard(m);$('watchRoomSubtitle').textContent=m.title||'Siaran langsung';$('watchState').textContent='Menghubungkan video...';clearWatchWarning();show('watch');applyMirroring();$('giftQuick').hidden=false}
+  if(m.type==='joined'){if(m.facecam)applyGameFaceLayout(m.facecam);stageLayout=normalizeLayout(m.layout);stageGuestsList=Array.isArray(m.guests)?m.guests:[];guestRequests.clear();guestRemoteStreams.clear();readyGuestIds.clear();guestOnStage=false;guestPending=false;refreshGuestButtons();renderStageGuests();$('reportLive').hidden=false;$('hostModeration').hidden=true;closeLiveSheets();$('viewerTools').hidden=false;stopRetry();currentRoom=m.id;selfId=m.selfId;host=false;$('viewerTipPanel').hidden=false;$('hostAccessPanel').hidden=true;resumeToken='';$('net').textContent='SERVER ONLINE';if(peer){peer.close();peer=null}pendingIce.clear();$('remote').muted=false;mirrorBroadcast=m.mirrorBroadcast===true;$('hostControls').hidden=true;$('afkHint').hidden=true;$('restartRoom').classList.add('hide');setStreamerName($('watchTitle'),m.hostHandle?'@'+m.hostHandle:(m.hostName||'Host'));updateHostCard(m);$('watchRoomSubtitle').textContent=m.title||'Siaran langsung';$('watchState').textContent='Menghubungkan video...';clearWatchWarning();show('watch');applyMirroring();$('giftQuick').hidden=false;checkViewerFrame(m.id)}
   if(m.type==='resumed'){stageLayout=normalizeLayout(m.layout);refreshGuestButtons();renderStageGuests();
     $('reportLive').hidden=true;$('hostModeration').hidden=false;
     mirrorBroadcast=m.mirrorBroadcast===true;applyMirroring();
@@ -3796,20 +3812,27 @@ body:not(.live-immersive) .filterstrip button{border-radius:24px}
       for(const track of guestStream.getTracks())if(track.readyState==='live')peer.addTrack(track,guestStream);
      }
      peer.ontrack=e=>{
-      const media=e.streams?.[0];if(!media)return;
-      if(media.id==='NADMO_GAME_FACE'){
-       const faceVideo=$('gameRemoteFace');faceVideo.srcObject=media;faceVideo.hidden=false;
-       faceVideo.play().catch(()=>{});document.body.classList.add('watch-game');return;
+      // Microphone, gameplay and facecam may arrive in any order.
+      // Never treat an audio-only track as the stage's main video.
+      const media=e.streams?.[0]||new MediaStream([e.track]);
+      const screen=media.id==='NADMO_GAME_SCREEN',face=media.id==='NADMO_GAME_FACE';
+      if(face){
+       if(e.track.kind==='video'){
+        const faceVideo=$('gameRemoteFace');faceVideo.srcObject=media;faceVideo.hidden=false;
+        faceVideo.play().catch(()=>{});document.body.classList.add('watch-game');
+       }
+       return;
       }
-      if(media.id==='NADMO_GAME_SCREEN'){
+      if(e.track.kind!=='video')return;
+      if(screen){
        $('remote').srcObject=media;document.body.classList.add('watch-game');
-       applyMirroring();$('watchState').textContent='Game tersambung';clearWatchWarning();return;
-      }
-      if(stageGuestsList.some(g=>g.streamId===media.id)||$('remote').srcObject){
+       applyMirroring();$('remote').play().catch(()=>{});
+       $('watchState').textContent='Sinyal layar game diterima. Menunggu frame...';
+      }else if(stageGuestsList.some(g=>g.streamId===media.id)||($('remote').srcObject&&$('remote').srcObject!==media)){
        guestRemoteStreams.set(media.id,media);
       }else{
-       $('remote').srcObject=media;
-       applyMirroring();$('watchState').textContent='Video tersambung';clearWatchWarning();
+       $('remote').srcObject=media;applyMirroring();$('remote').play().catch(()=>{});
+       $('watchState').textContent='Sinyal video diterima. Menunggu frame...';
       }
       renderStageGuests();
      };
