@@ -949,6 +949,119 @@ body:not(.live-immersive) .filterstrip button{border-radius:24px}
 #studio #gameSetup{padding:12px}
 #studio #gameSetup .field{margin-bottom:9px}
 #studio #gameSetup .profile-note{margin:8px 0}
+
+/* NADMO CYBERDECK v1: device-responsive visual language. Static CSS only:
+   no canvas particle loop, fake telemetry or expensive blur animations. */
+:root{--deck-bg:#080e0c;--deck-panel:#101a17;--deck-rim:#365648;--deck-lime:#e3fd72;--deck-cyan:#69dbd2}
+body:not(.live-immersive){background:radial-gradient(ellipse at 78% -18%,#192f2270,transparent 44%),#080e0c}
+body:not(.live-immersive)::before{
+ content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.16;
+ background-image:linear-gradient(#8bdd8f17 1px,transparent 1px),linear-gradient(90deg,#8bdd8f17 1px,transparent 1px);
+ background-size:32px 32px;mask-image:linear-gradient(180deg,#0005,transparent 84%)
+}
+body:not(.live-immersive) .mast{border-bottom:1px solid #52715a;position:relative}
+body:not(.live-immersive) .mast::after{content:"";position:absolute;bottom:-1px;left:0;width:76px;height:2px;background:var(--deck-lime)}
+body:not(.live-immersive) .mast .logo-mark{box-shadow:inset 0 0 14px #d7ff4d16,0 0 18px #d7ff4d16}
+body:not(.live-immersive) .panel,
+body:not(.live-immersive) .profile-hero,
+body:not(.live-immersive) .profile-post-card{
+ position:relative;background:linear-gradient(155deg,#18261b,#0e1712 70%);
+ border:1px solid #415b47;border-radius:12px;padding:15px;box-shadow:0 7px 20px #0004
+}
+body:not(.live-immersive) .panel::before{content:"";position:absolute;top:-1px;left:13px;width:39px;height:2px;background:var(--deck-lime);pointer-events:none}
+body:not(.live-immersive) .field,
+body:not(.live-immersive) .profile-textarea{background:#0b1511;border:1px solid #45614f;border-radius:8px;color:#edf8e7}
+body:not(.live-immersive) .btn{border-radius:7px;transition:border-color .14s,background-color .14s}
+body:not(.live-immersive) .btn.secondary:hover{border-color:#aace67;background:#233123}
+body:not(.live-immersive) .room{background:#0d1813;border:1px solid #344e3e;border-radius:10px;padding:12px;margin:0 0 9px}
+body:not(.live-immersive) .room:first-child{border:1px solid #344e3e!important}
+body:not(.live-immersive) .room .room-art{border-radius:7px}
+body:not(.live-immersive) .mode-grid button{border:1px solid #405a47;background:#111d17;border-radius:9px;min-height:75px}
+body:not(.live-immersive) .mode-grid button.active{border:1px solid var(--deck-lime);background:linear-gradient(135deg,#263726,#15241a);box-shadow:inset 0 0 0 1px #d8fd7133}
+body:not(.live-immersive) #gameSetup{background:linear-gradient(145deg,#18291e,#0b1410 74%);border-color:#5a7860}
+body:not(.live-immersive) #gameOverlayPreview{border:1px solid #5a7659;background-color:#0c1813}
+body:not(.live-immersive) #gameCaptureStatus{background:#101e16;border:1px solid #4d644b;border-left:3px solid var(--deck-lime);border-radius:6px;padding:10px 12px;color:#dbeacb}
+body:not(.live-immersive) .game-live-actions{flex-wrap:wrap}
+body:not(.live-immersive) nav{background:#09120feF;border-top:1px solid #4e694f;box-shadow:0 -8px 22px #0005}
+body:not(.live-immersive) nav button{min-height:48px}
+body:not(.live-immersive) nav button.active{color:var(--deck-lime);text-shadow:0 0 12px #e3fd7250}
+body:not(.live-immersive) nav button.broadcast i{box-shadow:0 0 15px #e3fd7236}
+body:not(.live-immersive) .chat{background:#0b1711;border:1px solid #425844;border-radius:9px}
+@media(max-width:799px){
+ body:not(.live-immersive) .app{max-width:680px;padding-left:clamp(12px,4vw,18px);padding-right:clamp(12px,4vw,18px)}
+ body:not(.live-immersive) .panel{padding:12px}
+ body:not(.live-immersive) .room{gap:9px}
+ body:not(.live-immersive) .btn{min-height:42px}
+ body.live-immersive #watch .page-top{background:linear-gradient(180deg,#050a07f2,transparent);padding-top:calc(env(safe-area-inset-top) + 12px)}
+ body.live-immersive #watch .live-chat #chat div{border-left:2px solid #d4fa70a0;background:#0d1b14bb}
+ body.live-immersive #watch #remote{object-fit:contain}
+ body.live-immersive.watch-game #watch .viewfinder{background:#080e0c}
+ body.live-immersive #watch #message{border-color:#58775c;background:#101d16f2}
+ body.live-immersive #watch #send{border-color:#e3fd72}
+}
+@media(min-width:800px){
+ body:not(.live-immersive) .app{max-width:940px}
+ body:not(.live-immersive) .panel{padding:19px 20px}
+ body.live-immersive.watch-viewer #watch{background:
+   radial-gradient(ellipse at 50% 50%,#15271a 0%,transparent 68%),#070c09}
+ body.live-immersive.watch-viewer #watch .live-stage{
+   border:1px solid #5d815e;border-radius:11px;box-shadow:0 0 0 1px #152d1a,0 20px 40px #0007;
+   background:linear-gradient(145deg,#101b13,#050a07 75%)
+ }
+ body.live-immersive.watch-viewer #watch .live-stage::before{
+   content:"";position:absolute;z-index:1;inset:0;pointer-events:none;opacity:.17;
+   background:linear-gradient(#83e39115 1px,transparent 1px),linear-gradient(90deg,#83e39115 1px,transparent 1px);
+   background-size:30px 30px
+ }
+ body.live-immersive.watch-viewer #watch .live-stage>.viewfinder{
+   border:1px solid #496f53;border-radius:4px;background:#080d0a;
+   box-shadow:0 0 0 1px #c8fb5c20,0 12px 40px #0009
+ }
+ body.live-immersive.watch-viewer #watch #remote{object-fit:contain}
+ body.live-immersive.watch-viewer #watch .live-chat{
+   border:1px solid #4c7258;border-radius:10px;
+   background:linear-gradient(170deg,#14251b,#0a120d 78%);
+   box-shadow:inset 0 2px 0 #e3fd722a,0 14px 32px #0007
+ }
+ body.live-immersive.watch-viewer #watch .live-chat .show-label{border-color:#42694c}
+ body.live-immersive.watch-viewer #watch #chat div{
+   margin:2px 0 7px;padding:7px 9px;border-left:2px solid #75cda259;
+   background:#13221a;border-radius:3px 8px 8px 3px;overflow-wrap:anywhere
+ }
+ body.live-immersive.watch-viewer #watch #desktopSawerBar{
+   border:1px solid #567b58;border-radius:7px;
+   background:linear-gradient(90deg,#15271aeb,#0a130def)
+ }
+ body.live-immersive.watch-viewer #watch #desktopSawerBar button{
+   border-radius:5px;background:#17281c;border-color:#4b6e51
+ }
+ body.live-immersive.watch-viewer #watch #desktopSawerBar button:focus-visible{
+   outline:2px solid var(--deck-lime)
+ }
+ body.live-immersive.watch-viewer #watch #pcWatchRail{
+   background:linear-gradient(180deg,#16271b,#080e0b);
+   border-color:#45634d
+ }
+ body.live-immersive.watch-viewer #watch #pcWatchRail button{
+   border-radius:9px;border-color:#66845d
+ }
+ body.live-immersive.watch-viewer #watch #message{
+   border-color:#59775c;border-radius:8px;background:#0b1810
+ }
+ body.live-immersive.watch-viewer #watch #watchTitle{
+   max-width:100%;letter-spacing:.02em;text-shadow:0 2px 9px #000
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ body:not(.live-immersive) .btn{transition:none}
+}
+
+
+/* Only verified GAME states are shown; mic status follows active service state. */
+.game-deck-health{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.game-deck-health>span{font:800 9px/1.35 Arial,sans-serif;padding:7px 9px;background:#0d1a14;border:1px solid #385541;border-radius:5px;color:#cde3c1;white-space:normal}
+#gameDeckAudio{color:#efcc8c;border-color:#78613b;background:#251d14}
+#gameChatSettings{margin:0 0 9px;padding:9px 11px;min-height:40px;border:1px solid #9aa65c}
 </style></head>
 <body>
 <div class="app">
@@ -1005,7 +1118,15 @@ body:not(.live-immersive) .filterstrip button{border-radius:24px}
   <div class="game-face-frame" id="gameFaceFrame"><video id="gameFaceCam" autoplay muted playsinline></video></div>
  </div>
  <div class="face-actions"><button type="button" class="btn secondary" id="gameFaceToggle">KAMERA ON</button><button type="button" class="btn secondary" id="gameFaceSize">UKURAN</button><button type="button" class="btn ghost" id="gameFaceHide">SEMBUNYIKAN</button></div>
- <p id="gameCaptureStatus" class="profile-note" role="status" aria-live="polite">Pilih game, aktifkan kamera jika perlu, lalu mulai.</p><div class="game-live-actions"><button type="button" class="btn secondary" id="gameLaunchGame" hidden>↗ BUKA GAME</button><button type="button" class="btn ghost" id="gameShareRoom" hidden>BAGIKAN</button><button type="button" class="btn ghost" id="gameStopLive" hidden>■ AKHIRI LIVE</button></div></div>
+ <p id="gameCaptureStatus" class="profile-note" role="status" aria-live="polite">Pilih game, aktifkan kamera jika perlu, lalu mulai.</p>
+ <div class="game-deck-health" aria-label="Status siaran GAME">
+  <span id="gameDeckMic">MIC / MENUNGGU</span>
+  <span id="gameDeckScreen">LAYAR / MENUNGGU</span>
+  <span id="gameDeckAudio" title="Android belum mengirim audio internal game. Mikrofon masih berfungsi.">AUDIO GAME / BELUM TERSEDIA</span>
+  <span id="gameDeckChat">CHAT / PERIKSA IZIN</span>
+ </div>
+ <button type="button" class="btn ghost" id="gameChatSettings" hidden>AKTIFKAN NOTIFIKASI CHAT</button>
+ <div class="game-live-actions"><button type="button" class="btn secondary" id="gameLaunchGame" hidden>↗ BUKA GAME</button><button type="button" class="btn ghost" id="gameShareRoom" hidden>BAGIKAN</button><button type="button" class="btn ghost" id="gameStopLive" hidden>■ AKHIRI LIVE</button></div></div>
 <div id="studioPcSetup" class="panel hide"><b>STUDIO KHUSUS PC</b><p>Sumber siaran dari PC/OBS melalui RTMP belum terhubung. Tidak menggunakan kamera HP sebagai pengganti Studio.</p></div>
   <div class="viewfinder"><video id="camera" class="local" playsinline autoplay muted></video></div>
   <div class="status" id="camState">CAMERA / STANDBY</div>
@@ -1480,6 +1601,11 @@ body:not(.live-immersive) .filterstrip button{border-radius:24px}
   if(d.room)nativeGameRoom=d.room;
   if(nativeGameState==='stopped'||nativeGameState==='error')nativeGameRoom='';
   $('gameCaptureStatus').textContent=d.message||'Pilih game untuk mulai.';
+  const gameActive=['live','reconnecting'].includes(nativeGameState);
+  $('gameDeckMic').textContent='MIC / '+(gameActive?'AKTIF':'MENUNGGU');
+  $('gameDeckScreen').textContent='LAYAR / '+(nativeGameState==='live'?'AKTIF':nativeGameState==='reconnecting'?'MENYAMBUNG ULANG':nativeGameState==='starting'?'MENYIAPKAN':'BERHENTI');
+  $('gameDeckChat').textContent=d.chatNotificationsEnabled===true?'CHAT / NOTIFIKASI AKTIF':'CHAT / NOTIFIKASI PERLU IZIN';
+  $('gameChatSettings').hidden=d.chatNotificationsEnabled===true;
   $('gameLaunchGame').hidden=nativeGameState!=='live';
   $('gameShareRoom').hidden=nativeGameState!=='live'||!nativeGameRoom;
   $('gameStopLive').hidden=!['live','starting','reconnecting'].includes(nativeGameState);
@@ -3113,6 +3239,7 @@ body:not(.live-immersive) .filterstrip button{border-radius:24px}
  };
  $('gameLaunchGame').onclick=()=>gameCommand('launch');
  $('gameStopLive').onclick=()=>{if(confirm('Akhiri GAME LIVE?'))gameCommand('stop')};
+ $('gameChatSettings').onclick=()=>gameCommand('chat-settings');
  $('gameShareRoom').onclick=async()=>{
   if(!nativeGameRoom)return;
   const link=DEFAULT_BACKEND+'/app/?room='+encodeURIComponent(nativeGameRoom);
