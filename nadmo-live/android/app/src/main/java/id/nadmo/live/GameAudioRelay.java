@@ -26,9 +26,13 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 final class GameAudioRelay {
   private static final String TAG="NadmoGameAudio";
-  private static final int SAMPLE_RATE=24000;
+  // Android capture devices reliably support 48 kHz. Downsample before
+  // transport so viewer bandwidth stays at ~384 kbit/s mono PCM.
+  private static final int CAPTURE_RATE=48000;
+  private static final int TRANSPORT_RATE=24000;
   private static final int FRAME_MS=20;
-  private static final int FRAME_SIZE=SAMPLE_RATE*2*FRAME_MS/1000;
+  private static final int CAPTURE_FRAME_BYTES=CAPTURE_RATE*2*FRAME_MS/1000;
+  private static final int TRANSPORT_FRAME_BYTES=TRANSPORT_RATE*2*FRAME_MS/1000;
   private static final long MAX_BUFFERED_BYTES=8192L;
   private final Map<String,DataChannel> channels=new ConcurrentHashMap<>();
   private AudioRecord record;
@@ -46,13 +50,13 @@ final class GameAudioRelay {
           .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
           .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
           .build();
-      int minimum=AudioRecord.getMinBufferSize(SAMPLE_RATE,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT);
+      int minimum=AudioRecord.getMinBufferSize(CAPTURE_RATE,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT);
       if(minimum<=0)throw new IllegalStateException("Unsupported audio format");
-      AudioFormat format=new AudioFormat.Builder().setSampleRate(SAMPLE_RATE)
+      AudioFormat format=new AudioFormat.Builder().setSampleRate(CAPTURE_RATE)
         .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
         .setEncoding(AudioFormat.ENCODING_PCM_16BIT).build();
       record=new AudioRecord.Builder().setAudioFormat(format)
-        .setBufferSizeInBytes(Math.max(minimum,FRAME_SIZE*10))
+        .setBufferSizeInBytes(Math.max(minimum,CAPTURE_FRAME_BYTES*10))
         .setAudioPlaybackCaptureConfig(rule).build();
       if(record.getState()!=AudioRecord.STATE_INITIALIZED)throw new IllegalStateException("AudioRecord not ready");
       record.startRecording();
@@ -83,22 +87,28 @@ final class GameAudioRelay {
   long lastPacketAt(){return lastPacketAt;}
 
   private void readLoop(){
-    byte[] frame=new byte[FRAME_SIZE];
+    byte[] frame=new byte[CAPTURE_FRAME_BYTES];
+    byte[] packet=new byte[TRANSPORT_FRAME_BYTES];
     try{
       while(running){
         int pos=0;
-        while(pos<FRAME_SIZE&&running){
+        while(pos<CAPTURE_FRAME_BYTES&&running){
           AudioRecord r=record;
           if(r==null)return;
-          int n=r.read(frame,pos,FRAME_SIZE-pos);
+          int n=r.read(frame,pos,CAPTURE_FRAME_BYTES-pos);
           if(n<=0){if(n<0)Log.w(TAG,"Playback audio record read failed "+n);running=false;break;}
           pos+=n;
         }
-        if(!running||pos!=FRAME_SIZE)break;
+        if(!running||pos!=CAPTURE_FRAME_BYTES)break;
         boolean audible=false;
-        for(int i=0;i<FRAME_SIZE;i+=2){
-          int sample=(short)((frame[i]&255)|(frame[i+1]<<8));
-          if(sample>220||sample<-220){audible=true;break;}
+        // 48 -> 24 kHz averaging adjacent samples, preserving signed PCM.
+        for(int i=0;i<TRANSPORT_FRAME_BYTES/2;i++){
+          int k=i*4;
+          int sample1=(short)((frame[k]&255)|((frame[k+1]&255)<<8));
+          int sample2=(short)((frame[k+2]&255)|((frame[k+3]&255)<<8));
+          int mono=(sample1+sample2)/2;
+          packet[i*2]=(byte)(mono&255);packet[i*2+1]=(byte)((mono>>>8)&255);
+          if(mono>220||mono<-220)audible=true;
         }
         if(audible)capturedSamples=true;
         // Send the actual decoded playback samples. Do not fabricate sound
@@ -107,7 +117,7 @@ final class GameAudioRelay {
         for(DataChannel channel:channels.values()){
           try{
             if(channel.state()!=DataChannel.State.OPEN||channel.bufferedAmount()>MAX_BUFFERED_BYTES)continue;
-            byte[] pcm=frame.clone(); // each DataChannel receives an immutable frame
+            byte[] pcm=packet.clone(); // each DataChannel receives an immutable 24kHz frame
             if(channel.send(new DataChannel.Buffer(ByteBuffer.wrap(pcm),true)))sent=true;
           }catch(Exception ex){Log.w(TAG,"GAME audio peer send error",ex);}
         }
