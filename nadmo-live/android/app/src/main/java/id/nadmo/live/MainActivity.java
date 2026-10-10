@@ -2,6 +2,17 @@ package id.nadmo.live;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.BroadcastReceiver;
+import android.content.Context;
+import android.content.IntentFilter;
+import android.media.projection.MediaProjectionManager;
+import android.os.Build;
+import android.provider.Settings;
+import android.webkit.CookieManager;
+import org.json.JSONObject;
+import java.util.Arrays;
+import java.util.HashSet;
+import androidx.webkit.WebViewCompat;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -27,6 +38,18 @@ public final class MainActivity extends Activity {
   private static final String OFFGRID_APP="com.offgrid.mesh.dev";
   private static final int ASK_MEDIA=42;
   private static final int PICK_AVATAR=43;
+  private static final int ASK_GAME_PERMISSION=44;
+  private static final int ASK_SCREEN_CAPTURE=45;
+  private String gameTitle="",gameName="";
+  private boolean gameFace=false;
+  private boolean gameReceiverRegistered=false;
+  private final BroadcastReceiver gameStatusReceiver=new BroadcastReceiver(){
+    @Override public void onReceive(Context context,Intent intent){
+      if(GameCaptureService.ACTION_STATUS.equals(intent.getAction())){
+        notifyGameStatus(intent.getStringExtra("state"),intent.getStringExtra("message"),intent.getStringExtra("room"));
+      }
+    }
+  };
   private WebView web;
   private FrameLayout root;
   private PermissionRequest pending;
@@ -71,6 +94,26 @@ public final class MainActivity extends Activity {
     settings.setAllowContentAccess(true);
     settings.setJavaScriptCanOpenWindowsAutomatically(false);
     settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+    // AndroidX injects bridge messages only for the two audited first-party origins.
+    // No addJavascriptInterface: that legacy API would be visible to every iframe.
+    WebViewCompat.addWebMessageListener(web,"NadmoGame",new HashSet<>(Arrays.asList(
+      "https://"+LIVE_HOST,"https://"+APP_HOST)),(view,message,origin,isMainFrame,reply)->{
+      if(!isMainFrame||!trusted(origin)||message.getData()==null)return;
+      runOnUiThread(()->{
+        try{
+          JSONObject command=new JSONObject(message.getData());
+          String action=command.optString("type");
+          if("start".equals(action))startGame(command);
+          else if("stop".equals(action))stopGame();
+          else if("launch".equals(action))launchGame();
+          else if("status".equals(action))notifyGameStatus(GameCaptureService.state,GameCaptureService.status,"");
+        }catch(Exception ignored){notifyGameStatus("error","Perintah GAME tidak valid.","");}
+      });
+    });
+    IntentFilter gameFilter=new IntentFilter(GameCaptureService.ACTION_STATUS);
+    if(Build.VERSION.SDK_INT>=33)registerReceiver(gameStatusReceiver,gameFilter,Context.RECEIVER_NOT_EXPORTED);
+    else registerReceiver(gameStatusReceiver,gameFilter);
+    gameReceiverRegistered=true;
     web.setWebViewClient(new WebViewClient(){
       @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest req){
         return loader.shouldInterceptRequest(req.getUrl());
@@ -149,6 +192,55 @@ public final class MainActivity extends Activity {
     setContentView(root);
     web.loadUrl(ONLINE_URL);
   }
+  private void startGame(JSONObject command){
+    if("live".equals(GameCaptureService.state)||"starting".equals(GameCaptureService.state)||"reconnecting".equals(GameCaptureService.state)){
+      notifyGameStatus(GameCaptureService.state,"GAME LIVE masih berjalan.","");return;
+    }
+    gameTitle=command.optString("title","NADMO GAME LIVE");
+    gameName=command.optString("game","Gaming");
+    gameFace=command.optBoolean("face",false);
+    if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED||
+       (gameFace&&checkSelfPermission(Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED)){
+      requestPermissions(gameFace?new String[]{Manifest.permission.RECORD_AUDIO,Manifest.permission.CAMERA}:
+        new String[]{Manifest.permission.RECORD_AUDIO},ASK_GAME_PERMISSION);
+    }else requestScreenPermission();
+  }
+  private void requestScreenPermission(){
+    try{
+      MediaProjectionManager manager=getSystemService(MediaProjectionManager.class);
+      if(manager==null){notifyGameStatus("error","Perekaman layar tidak tersedia di HP ini.","");return;}
+      notifyGameStatus("starting","Android akan meminta izin merekam layar.","");
+      startActivityForResult(manager.createScreenCaptureIntent(),ASK_SCREEN_CAPTURE);
+    }catch(Exception e){notifyGameStatus("error","Gagal meminta izin rekam layar.","");}
+  }
+  private void stopGame(){
+    startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_STOP));
+  }
+  private void launchGame(){
+    if(!"live".equals(GameCaptureService.state)){
+      notifyGameStatus("error","Mulai GAME LIVE sebelum membuka permainan.","");return;
+    }
+    String[] packages;
+    String key=gameName.toLowerCase(java.util.Locale.ROOT);
+    if(key.contains("mobile legends"))packages=new String[]{"com.mobile.legends"};
+    else if(key.contains("free fire"))packages=new String[]{"com.dts.freefireth","com.dts.freefiremax"};
+    else if(key.contains("pubg"))packages=new String[]{"com.tencent.ig","com.pubg.krmobile"};
+    else if(key.contains("honor of kings"))packages=new String[]{"com.levelinfinite.sgameGlobal"};
+    else if(key.contains("roblox"))packages=new String[]{"com.roblox.client"};
+    else if(key.contains("minecraft"))packages=new String[]{"com.mojang.minecraftpe"};
+    else packages=new String[0];
+    for(String id:packages){
+      Intent launch=getPackageManager().getLaunchIntentForPackage(id);
+      if(launch!=null){try{startActivity(launch);return;}catch(Exception ignored){}}
+    }
+    Toast.makeText(this,"Buka game melalui layar utama HP. GAME LIVE tetap berjalan.",Toast.LENGTH_LONG).show();
+  }
+  private void notifyGameStatus(String state,String message,String room){
+    if(web==null)return;
+    String payload="{state:"+JSONObject.quote(state==null?"":state)+",message:"+
+      JSONObject.quote(message==null?"":message)+",room:"+JSONObject.quote(room==null?"":room)+"}";
+    web.evaluateJavascript("window.dispatchEvent(new CustomEvent('nadmo-game-status',{detail:"+payload+"}));",null);
+  }
   private void grantMedia(){
     PermissionRequest req=pending;pending=null;
     if(req==null)return;
@@ -157,6 +249,19 @@ public final class MainActivity extends Activity {
   }
   @Override protected void onActivityResult(int request,int result,Intent data){
     super.onActivityResult(request,result,data);
+    if(request==ASK_SCREEN_CAPTURE){
+      if(result!=Activity.RESULT_OK||data==null){notifyGameStatus("error","Izin rekam layar dibatalkan.","");return;}
+      Intent run=new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_START)
+        .putExtra(GameCaptureService.EXTRA_RESULT,result)
+        .putExtra(GameCaptureService.EXTRA_PROJECTION,data)
+        .putExtra(GameCaptureService.EXTRA_TITLE,gameTitle)
+        .putExtra(GameCaptureService.EXTRA_GAME,gameName)
+        .putExtra(GameCaptureService.EXTRA_FACE,gameFace)
+        .putExtra(GameCaptureService.EXTRA_COOKIE,CookieManager.getInstance().getCookie(ONLINE_URL));
+      try{if(Build.VERSION.SDK_INT>=26)startForegroundService(run);else startService(run);}
+      catch(Exception e){notifyGameStatus("error","Android tidak mengizinkan layanan GAME LIVE.","");}
+      return;
+    }
     if(request!=PICK_AVATAR)return;
     final ValueCallback<Uri[]> callback=pendingPhoto;
     pendingPhoto=null;
@@ -177,6 +282,17 @@ public final class MainActivity extends Activity {
   }
   @Override public void onRequestPermissionsResult(int code,String[] names,int[] results){
     super.onRequestPermissionsResult(code,names,results);
+    if(code==ASK_GAME_PERMISSION){
+      if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){
+        notifyGameStatus("error","Izin mikrofon diperlukan untuk GAME LIVE.","");return;
+      }
+      // Optional facecam can be omitted if its separate permission is denied.
+      if(gameFace&&checkSelfPermission(Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED){
+        gameFace=false;
+        notifyGameStatus("starting","Kamera ditolak. GAME LIVE berjalan tanpa facecam.","");
+      }
+      requestScreenPermission();return;
+    }
     if(code!=ASK_MEDIA)return;
     if(checkSelfPermission(Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED
        && checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED){
@@ -199,6 +315,7 @@ public final class MainActivity extends Activity {
     super.onBackPressed();
   }
   @Override protected void onDestroy(){
+    if(gameReceiverRegistered){unregisterReceiver(gameStatusReceiver);gameReceiverRegistered=false;}
     if(pending!=null){pending.deny();pending=null;}
     if(pendingPhoto!=null){pendingPhoto.onReceiveValue(null);pendingPhoto=null;}
     if(web!=null){web.destroy();web=null;}
