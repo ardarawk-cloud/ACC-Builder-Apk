@@ -95,14 +95,22 @@ public final class GameCaptureService extends Service {
   private static final int NOTIFICATION_ID=7701;
   static final int CHAT_NOTIFICATION_ID=7702;
   private static final String CHAT_CHANNEL="nadmo_game_chat";
-  private static final long CHAT_POPUP_MIN_INTERVAL_MS=1800;
+  private static final long CHAT_POPUP_MIN_INTERVAL_MS=1200;
+  private static final int MAX_CHAT_NOTIFICATIONS=4;
   private long lastChatPopupAt=0L;
+  private int nextChatNotificationId=CHAT_NOTIFICATION_ID;
+  private final List<Integer> shownChatNotifications=new ArrayList<>();
+  private JSONObject queuedChat=null;
+  private Runnable queuedChatTask=null;
   private String hostSocketId="";
   private static final String CHANNEL="nadmo_game_live";
   private static final String TAG="NadmoGameLive";
   private final Handler main=new Handler(Looper.getMainLooper());
   private final Map<String,PeerConnection> viewers=new HashMap<>();
   private final Map<String,List<IceCandidate>> pendingIce=new HashMap<>();
+  // Repair a failed viewer route without interrupting MediaProjection or microphone.
+  private final Map<String,Runnable> peerRepairTasks=new HashMap<>();
+  private final Map<String,Long> lastPeerRepairAt=new HashMap<>();
   private OkHttpClient client;
   private WebSocket socket;
   private PeerConnectionFactory factory;
@@ -312,9 +320,25 @@ public final class GameCaptureService extends Service {
     String body=limit(message.optString("text",""),250,"");
     if(body.isEmpty())return;
     long now=android.os.SystemClock.elapsedRealtime();
-    if(now-lastChatPopupAt<CHAT_POPUP_MIN_INTERVAL_MS)return;
-    lastChatPopupAt=now;
+    if(now-lastChatPopupAt<CHAT_POPUP_MIN_INTERVAL_MS){
+      // During chat bursts retain the latest message rather than discard it.
+      queuedChat=message;
+      if(queuedChatTask==null){
+        queuedChatTask=()->{
+          queuedChatTask=null;
+          JSONObject pending=queuedChat;queuedChat=null;
+          if(pending!=null&&!stopping)onIncomingRoomChat(pending);
+        };
+        main.postDelayed(queuedChatTask,CHAT_POPUP_MIN_INTERVAL_MS-(now-lastChatPopupAt));
+      }
+      return;
+    }
     if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return;
+    NotificationManager manager=getSystemService(NotificationManager.class);
+    if(manager==null||!manager.areNotificationsEnabled())return;
+    NotificationChannel channel=manager.getNotificationChannel(CHAT_CHANNEL);
+    if(channel==null||channel.getImportance()<NotificationManager.IMPORTANCE_HIGH)return;
+    lastChatPopupAt=now;
     Intent back=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
     PendingIntent view=PendingIntent.getActivity(this,7703,back,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
     Notification.Builder builder=new Notification.Builder(this,CHAT_CHANNEL)
@@ -327,7 +351,13 @@ public final class GameCaptureService extends Service {
       .setVisibility(Notification.VISIBILITY_PRIVATE)
       .setAutoCancel(true)
       .setContentIntent(view);
-    getSystemService(NotificationManager.class).notify(CHAT_NOTIFICATION_ID,builder.build());
+    // Updating one ID repeatedly usually suppresses subsequent heads-up alerts.
+    // Keep separate recent notifications, capped to prevent UI clutter.
+    int notificationId=++nextChatNotificationId;
+    manager.notify(notificationId,builder.build());
+    shownChatNotifications.add(notificationId);
+    if(shownChatNotifications.size()>MAX_CHAT_NOTIFICATIONS)
+      manager.cancel(shownChatNotifications.remove(0));
   }
   private void updateNotification(String value){
     getSystemService(NotificationManager.class).notify(NOTIFICATION_ID,notification(value,true));
@@ -489,6 +519,7 @@ public final class GameCaptureService extends Service {
         offerTo(m.optString("id"));
       }else if("viewer-left".equals(type)){
         String id=m.optString("id");
+        cancelPeerRepair(id);lastPeerRepairAt.remove(id);
         PeerConnection pc=viewers.remove(id);
         pendingIce.remove(id);
         if(pc!=null){pc.close();pc.dispose();}
@@ -521,8 +552,39 @@ public final class GameCaptureService extends Service {
     retryTask=()->connectSignaling(!roomId.isEmpty());
     main.postDelayed(retryTask,delay);
   }
+  private void cancelPeerRepair(String id){
+    Runnable task=peerRepairTasks.remove(id);
+    if(task!=null)main.removeCallbacks(task);
+  }
+  private void onViewerIceState(String id,PeerConnection pc,PeerConnection.IceConnectionState iceState){
+    main.post(()->{
+      if(stopping||viewers.get(id)!=pc)return;
+      if(iceState==PeerConnection.IceConnectionState.CONNECTED||
+         iceState==PeerConnection.IceConnectionState.COMPLETED){
+        cancelPeerRepair(id);return;
+      }
+      if(iceState!=PeerConnection.IceConnectionState.FAILED&&
+         iceState!=PeerConnection.IceConnectionState.DISCONNECTED)return;
+      if(peerRepairTasks.containsKey(id))return;
+      long now=android.os.SystemClock.elapsedRealtime();
+      long last=lastPeerRepairAt.getOrDefault(id,0L);
+      long backoff=Math.max(0L,15000L-(now-last));
+      long delay=Math.max(backoff,iceState==PeerConnection.IceConnectionState.FAILED?1200L:6000L);
+      Runnable repair=()->{
+        peerRepairTasks.remove(id);
+        // Room resume independently reconstructs the viewer peer connections.
+        if(stopping||viewers.get(id)!=pc||!webSocketOpen)return;
+        lastPeerRepairAt.put(id,android.os.SystemClock.elapsedRealtime());
+        Log.w(TAG,"Repairing stalled viewer ICE "+id);
+        offerTo(id);
+      };
+      peerRepairTasks.put(id,repair);
+      main.postDelayed(repair,delay);
+    });
+  }
   private void offerTo(String id){
     if(id==null||id.isEmpty()||stopping||factory==null)return;
+    cancelPeerRepair(id);
     PeerConnection old=viewers.remove(id);
     if(old!=null){old.close();old.dispose();}
     pendingIce.remove(id);
@@ -538,6 +600,7 @@ public final class GameCaptureService extends Service {
         if(state==PeerConnection.IceConnectionState.FAILED ||
           state==PeerConnection.IceConnectionState.DISCONNECTED)
           Log.w(TAG,"Viewer WebRTC "+id+" connection "+state);
+        onViewerIceState(id,holder[0],state);
       }
       @Override public void onIceConnectionReceivingChange(boolean receiving){}
       @Override public void onIceGatheringChange(PeerConnection.IceGatheringState state){}
@@ -608,6 +671,8 @@ public final class GameCaptureService extends Service {
     }
   }
   private void clearViewers(){
+    for(Runnable task:peerRepairTasks.values())main.removeCallbacks(task);
+    peerRepairTasks.clear();lastPeerRepairAt.clear();
     for(PeerConnection pc:viewers.values()){pc.close();pc.dispose();}
     viewers.clear();pendingIce.clear();
   }
@@ -616,6 +681,8 @@ public final class GameCaptureService extends Service {
     if(retryTask!=null)main.removeCallbacks(retryTask);
     if(socketWatchdog!=null)main.removeCallbacks(socketWatchdog);
     if(firstFrameTimeout!=null)main.removeCallbacks(firstFrameTimeout);
+    if(queuedChatTask!=null)main.removeCallbacks(queuedChatTask);
+    queuedChatTask=null;queuedChat=null;
     if(networkCallback!=null&&connectivityManager!=null){
       try{connectivityManager.unregisterNetworkCallback(networkCallback);}
       catch(Exception ignored){}
@@ -641,7 +708,11 @@ public final class GameCaptureService extends Service {
     cookie="";roomId="";resumeToken="";started=false;activeRoom="";faceLayout=null;
     signalingStarted=false;firstFrameReceived.set(false);lastCapturedFrameAt=0;
     hostSocketId="";
-    try{getSystemService(NotificationManager.class).cancel(CHAT_NOTIFICATION_ID);}catch(Exception ignored){}
+    try{
+      NotificationManager manager=getSystemService(NotificationManager.class);
+      if(manager!=null)for(Integer id:shownChatNotifications)manager.cancel(id);
+    }catch(Exception ignored){}
+    shownChatNotifications.clear();
     state="stopped";status=reason;
     if("Siaran game diakhiri.".equals(reason))rememberFailure("LIVE_DIAKHIRI_HOST");
     else rememberFailure(reason);
