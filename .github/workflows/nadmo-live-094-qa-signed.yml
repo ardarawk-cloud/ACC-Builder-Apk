@@ -1,4 +1,4 @@
-name: NADMO LIVE v0.9.4 QA signed APK
+name: NADMO LIVE signed beta update
 on:
   push:
     branches: ['feat/nadmo-native-game-live-20261010']
@@ -45,23 +45,25 @@ jobs:
         run: |
           node nadmo-live/android/qa/offgrid-local-contract.mjs
           node -e "const fs=require('fs'),vm=require('vm');const html=fs.readFileSync('nadmo-live/android/app/src/main/assets/game-live-qa.html','utf8');const i=html.indexOf('<script>'),j=html.indexOf('</script>',i);if(i<0||j<i||!html.includes('gameLaunchGame'))process.exit(1);new vm.Script(html.slice(i+8,j));console.log('GAME HTML UI SYNTAX PASS')"
-      - name: Assemble signed QA APK with original certificate
+      - name: Check real Worker WebSocket Origin handshake
+        run: node nadmo-live/android/qa/game-signaling-gate.mjs
+      - name: Assemble signed beta APK with original certificate
         run: gradle -p nadmo-live/android :app:assembleRelease --no-daemon
-      - name: Verify fixed identity, version and old signer
+      - name: Verify fixed identity, version and original signer
         shell: bash
         run: |
           set -euo pipefail
           APK=nadmo-live/android/app/build/outputs/apk/release/app-release.apk
           test -s "$APK"
-          OUT="$RUNNER_TEMP/NADMO-LIVE-v0.9.4-qa1.apk"
+          OUT="$RUNNER_TEMP/NADMO-LIVE-v0.9.5-beta.apk"
           cp "$APK" "$OUT"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           SIGN="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           META=$("$AAPT" dump badging "$OUT" | head -1)
           printf '%s\n' "$META"
           printf '%s\n' "$META" | grep -F "name='id.nadmo.live'"
-          printf '%s\n' "$META" | grep -F "versionCode='13'"
-          printf '%s\n' "$META" | grep -F "versionName='0.9.4-qa1'"
+          printf '%s\n' "$META" | grep -F "versionCode='14'"
+          printf '%s\n' "$META" | grep -F "versionName='0.9.5-beta'"
           VERIFY=$("$SIGN" verify --verbose --print-certs "$OUT")
           printf '%s\n' "$VERIFY"
           printf '%s\n' "$VERIFY" | grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true'
@@ -72,12 +74,12 @@ jobs:
           if unzip -l "$OUT" | grep -q 'nadmo-release.jks';then echo 'Keystore leakage!';exit 1;fi
           unzip -t "$OUT" | tail -n 2
           mkdir -p "$GITHUB_WORKSPACE/qa-signed"
-          mv "$OUT" "$GITHUB_WORKSPACE/qa-signed/NADMO-LIVE-v0.9.4-qa1.apk"
-          (cd qa-signed && sha256sum NADMO-LIVE-v0.9.4-qa1.apk > SHA256SUMS.txt)
-          echo 'SIGNED QA UPDATE VERIFIED — same original certificate, app ID id.nadmo.live, versionCode 13.'
+          mv "$OUT" "$GITHUB_WORKSPACE/qa-signed/NADMO-LIVE-v0.9.5-beta.apk"
+          (cd qa-signed && sha256sum NADMO-LIVE-v0.9.5-beta.apk > SHA256SUMS.txt)
+          echo 'SIGNED BETA UPDATE VERIFIED — same original certificate, app ID id.nadmo.live, versionCode 13.'
       - uses: actions/upload-artifact@v4
         with:
-          name: nadmo-live-v094-qa-signed
+          name: nadmo-live-v095-beta-signed
           path: qa-signed/*
           retention-days: 14
           if-no-files-found: error
