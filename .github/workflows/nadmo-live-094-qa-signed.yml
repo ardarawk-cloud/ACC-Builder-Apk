@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: nadmo-v097-beta-signed
+  cancel-in-progress: true
 jobs:
   qa-signed:
     runs-on: ubuntu-latest
