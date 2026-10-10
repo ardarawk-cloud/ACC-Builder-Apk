@@ -70,6 +70,7 @@ public final class GameCaptureService extends Service {
   static final String EXTRA_GAME="game";
   static final String EXTRA_FACE="face";
   static final String EXTRA_COOKIE="cookie";
+  static final String EXTRA_FACE_LAYOUT="facecam";
   private static final String WS_URL="wss://nadmo-live-beta-20261009.ardarawk.workers.dev/ws";
   private static final int NOTIFICATION_ID=7701;
   private static final String CHANNEL="nadmo_game_live";
@@ -89,11 +90,12 @@ public final class GameCaptureService extends Service {
   private AudioSource micSource;
   private AudioTrack micTrack;
   private String roomId="",resumeToken="",title="",game="",cookie="";
+  private JSONObject faceLayout=null;
   private boolean stopping=false,started=false,wantFace=false,webSocketOpen=false;
   private long offlineSince=0L;
   private int reconnectAttempt=0;
   private Runnable retryTask;
-  static volatile String state="stopped",status="";
+  static volatile String state="stopped",status="",activeRoom="";
 
   @Override public IBinder onBind(Intent intent){return null;}
 
@@ -107,6 +109,7 @@ public final class GameCaptureService extends Service {
     cookie=intent.getStringExtra(EXTRA_COOKIE);
     if(cookie==null)cookie="";
     wantFace=intent.getBooleanExtra(EXTRA_FACE,false);
+    try{String raw=intent.getStringExtra(EXTRA_FACE_LAYOUT);if(wantFace&&raw!=null&&!raw.isEmpty())faceLayout=new JSONObject(raw);}catch(Exception ignored){}
     int result=intent.getIntExtra(EXTRA_RESULT,Activity.RESULT_CANCELED);
     Intent grant;
     if(Build.VERSION.SDK_INT>=33)grant=intent.getParcelableExtra(EXTRA_PROJECTION,Intent.class);
@@ -157,7 +160,7 @@ public final class GameCaptureService extends Service {
     getSystemService(NotificationManager.class).notify(NOTIFICATION_ID,notification(value,true));
   }
   private void report(String next,String message,String room){
-    state=next;status=message;
+    state=next;status=message;if(room!=null&&!room.isEmpty())activeRoom=room;
     Intent event=new Intent(ACTION_STATUS).setPackage(getPackageName());
     event.putExtra("state",next).putExtra("message",message).putExtra("room",room);
     sendBroadcast(event);
@@ -239,7 +242,7 @@ public final class GameCaptureService extends Service {
             if(resume&&roomId.length()>0&&resumeToken.length()>0)
               send(new JSONObjectSafe().put("type","resume").put("id",roomId).put("token",resumeToken).json());
             else send(new JSONObjectSafe().put("type","create").put("title",title)
-              .put("category","Gaming").put("mode","public").put("hostName","Host").json());
+              .put("category","Gaming").put("mode","public").put("hostName","Host").put("facecam",faceLayout).json());
           });
         }
         @Override public void onMessage(WebSocket ws,String body){main.post(()->{
@@ -400,7 +403,7 @@ public final class GameCaptureService extends Service {
     if(factory!=null)factory.dispose();
     if(egl!=null)egl.release();
     if(client!=null){client.dispatcher().executorService().shutdown();client.connectionPool().evictAll();}
-    cookie="";roomId="";resumeToken="";started=false;
+    cookie="";roomId="";resumeToken="";started=false;activeRoom="";faceLayout=null;
     state="stopped";status=reason;
     Intent event=new Intent(ACTION_STATUS).setPackage(getPackageName());
     event.putExtra("state","stopped").putExtra("message",reason).putExtra("room","");
