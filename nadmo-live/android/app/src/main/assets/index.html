@@ -371,12 +371,21 @@ body.live-immersive #watch .sheet-close:focus-visible{
 .post-external-link{color:#e3fd72;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
 .profile-composer button{margin-top:9px}
 
+.offgrid-entry{display:inline-block;margin-top:6px;border:1px solid #b94b43;border-radius:16px;background:#281312;color:#ffaaa3;padding:7px 10px;font:900 10px Arial,sans-serif;min-height:32px}
+.offgrid-modal{position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:18px}
+.offgrid-modal.hide{display:none!important}
+.offgrid-panel{width:min(100%,370px);background:#341110;border:1px solid #ed675a;border-radius:11px;padding:14px 15px 12px}
+.offgrid-panel-top{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#ffd0ca;font:900 15px Impact,"Arial Narrow",Arial,sans-serif;letter-spacing:1px}
+.offgrid-panel-top button{border:1px solid #b75a52;border-radius:7px;background:#481a18;color:#ffe5e0;min-width:34px;min-height:34px;font:900 21px Arial}
+.offgrid-panel p{font:12px/1.5 Arial,sans-serif;color:#ffe9e5;margin:10px 0 0}
+.offgrid-panel .offgrid-status{color:#ffbd9b;font-weight:800;border-top:1px solid #a34b45;padding-top:9px}
+.nadmo-pt-footer{padding:17px 0 5px;border-top:1px solid #262d28;margin-top:27px;color:#707d73;text-align:center;font:700 10px/1.6 Arial,sans-serif;letter-spacing:.3px}
 </style></head>
 <body>
 <div class="app">
 <header class="mast">
   <div class="logo"><span class="logo-mark">N/</span><div><div class="logo-name">NADMO <em>LIVE</em></div><div class="logo-sub">INDEPENDENT BROADCAST SYSTEM</div></div></div>
-  <div class="mast-right"><div class="micro"><span class="dot"></span><strong id="net">OFFLINE BETA</strong></div><div class="micro">BALI / IDN · 18+</div></div>
+  <div class="mast-right"><div class="micro"><span class="dot"></span><strong id="net">OFFLINE BETA</strong></div><div class="micro">BALI / IDN · 18+</div><button type="button" id="offgridEntry" class="offgrid-entry" aria-haspopup="dialog" aria-controls="offgridModal">OFFGRID</button></div>
 </header>
 <section id="home">
   <div class="ticker"><b>TRANSMISSION 001</b><span class="line"></span><small>NO FILTER / JUST SIGNAL</small></div>
@@ -601,8 +610,16 @@ body.live-immersive #watch .sheet-close:focus-visible{
     <p>Nilai untuk kreator di atas adalah <b>perkiraan sebelum biaya payment gateway, pajak, pembatalan, dan kewajiban lain</b>. Biaya aktual wajib ditampilkan sebelum transaksi ketika pembayaran resmi tersedia.</p>
   </div>
 </section>
+<footer class="nadmo-pt-footer">© 2026 PT NADMO Studio Indonesia</footer>
 </div>
 <div id="flash" class="flash hide" role="status" aria-live="polite"></div>
+<div id="offgridModal" class="offgrid-modal hide" role="dialog" aria-modal="true" aria-labelledby="offgridTitle" aria-describedby="offgridDescription">
+ <div class="offgrid-panel">
+  <div class="offgrid-panel-top"><span id="offgridTitle">OFFGRID / SIAGA</span><button type="button" id="offgridClose" aria-label="Tutup OFFGRID">×</button></div>
+  <p id="offgridDescription">Cadangan saat internet blackout. Dirancang untuk pesan jarak dekat antar-HP lewat koneksi lokal, tanpa server.</p>
+  <p class="offgrid-status">BELUM AKTIF — tidak bisa mengirim pesan offline saat ini.</p>
+ </div>
+</div>
 <nav aria-label="Main navigation">
   <button data-tab="explore" class="active"><i>◉</i>LIVE</button>
   <button data-tab="following"><i>☆</i>FOLLOW</button>
@@ -613,7 +630,17 @@ body.live-immersive #watch .sheet-close:focus-visible{
 <script>
 (function(){
  'use strict';
- const $=id=>document.getElementById(id), screens=['home','explore','following','studio','watch','tv','radio','signal','settings'];
+ const $=id=>document.getElementById(id);
+ const offgridModal=$('offgridModal'),offgridEntry=$('offgridEntry'),offgridClose=$('offgridClose');
+ function closeOffgrid(){offgridModal.classList.add('hide');offgridEntry.focus({preventScroll:true})}
+ offgridEntry.onclick=()=>{offgridModal.classList.remove('hide');offgridClose.focus({preventScroll:true})};
+ offgridClose.onclick=closeOffgrid;
+ offgridModal.addEventListener('click',event=>{if(event.target===offgridModal)closeOffgrid()});
+ offgridModal.addEventListener('keydown',event=>{
+  if(event.key==='Escape'){event.preventDefault();closeOffgrid()}
+  else if(event.key==='Tab'){event.preventDefault();offgridClose.focus()}
+ });
+ const screens=['home','explore','following','studio','watch','tv','radio','signal','settings'];
  const DEFAULT_BACKEND='https://nadmo-live-beta-20261009.ardarawk.workers.dev';
  let server=DEFAULT_BACKEND, socket=null, localStream=null, currentRoom='', selfId='', host=false, peers=new Map(), peer=null;
  let cachedRooms=[], selectedFilter='all', savedIds=new Set(JSON.parse(localStorage.getItem('nadmo.beta.saved')||'[]')), afkTrack=null, afkTimer=null, afkMode=false, pendingIce=new Map(), resumeToken='', roomPassword='', reconnectTimer=null, reconnectDeadline=0, reconnectCount=0, manuallyLeaving=false, activeAccessMode='public', recoveringForeground=false, lastForegroundRecovery=0, lastBackgroundAt=0, mirrorPreview=localStorage.getItem('nadmo.mirror.preview')!=='off', mirrorBroadcast=false;

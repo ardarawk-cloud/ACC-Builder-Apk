@@ -46,6 +46,8 @@ jobs:
           echo "NADMO_LIVE_RELEASE_STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
           echo "NADMO_LIVE_RELEASE_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
           echo "NADMO_LIVE_RELEASE_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+      - name: Verify offline OFFGRID bundled page and HTTPS fallback behavior
+        run: node nadmo-live/android/qa/offgrid-local-contract.mjs
       - name: Assemble signed release
         run: gradle -p nadmo-live/android :app:assembleRelease --no-daemon
       - name: Verify release signature and package
@@ -85,28 +87,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="nadmo-live-v0.9.1-beta"
+          TAG="nadmo-live-v0.9.2-beta"
           SOURCE="nadmo-live/android/app/build/outputs/apk/release/NADMO-LIVE-signed-beta.apk"
-          OUTPUT="$RUNNER_TEMP/NADMO-LIVE-v0.9.1-beta.apk"
+          OUTPUT="$RUNNER_TEMP/NADMO-LIVE-v0.9.2-beta.apk"
           test -s "$SOURCE"
           META=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SOURCE" | head -1)
           printf '%s\\n' "$META"
           printf '%s\\n' "$META" | grep -F "name='id.nadmo.live'"
-          printf '%s\\n' "$META" | grep -F "versionCode='10'"
-          printf '%s\\n' "$META" | grep -F "versionName='0.9.1-beta'"
+          printf '%s\\n' "$META" | grep -F "versionCode='11'"
+          printf '%s\\n' "$META" | grep -F "versionName='0.9.2-beta'"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::error::Release tag $TAG already exists. Refusing to overwrite a published APK."
             exit 1
           fi
           cp "$SOURCE" "$OUTPUT"
-          (cd "$RUNNER_TEMP" && sha256sum "NADMO-LIVE-v0.9.1-beta.apk" > "NADMO-LIVE-v0.9.1-beta.sha256")
-          gh release create "$TAG" "$OUTPUT" "$RUNNER_TEMP/NADMO-LIVE-v0.9.1-beta.sha256" \
+          (cd "$RUNNER_TEMP" && sha256sum "NADMO-LIVE-v0.9.2-beta.apk" > "NADMO-LIVE-v0.9.2-beta.sha256")
+          gh release create "$TAG" "$OUTPUT" "$RUNNER_TEMP/NADMO-LIVE-v0.9.2-beta.sha256" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "NADMO LIVE v0.9.1-beta — Android APK signed" \
-            --notes "Official NADMO LIVE Android beta, package id.nadmo.live, versionCode 10. Signed with the existing verified owner signing certificate. Direct APK download: no ZIP extraction required. Current LIVE/SOSIAL/PESAN/ME web functionality loads from the existing backend. Install only if you trust NADMO and back up important data." \
+            --title "NADMO LIVE v0.9.2-beta — Android APK signed" \
+            --notes "Official NADMO LIVE Android beta, package id.nadmo.live, versionCode 11. Signed with the existing verified owner signing certificate. Direct APK download: no ZIP extraction required. The offline-bundled fallback includes login-free OFFGRID status, plus the corporate footer. Actual offline messaging is not available; online LIVE/SOSIAL/PESAN/ME still require server connectivity. Install only if you trust NADMO and back up important data." \
             --prerelease --latest=false
-          URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/NADMO-LIVE-v0.9.1-beta.apk"
+          URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/NADMO-LIVE-v0.9.2-beta.apk"
           echo "Direct verified signed APK: $URL" >> "$GITHUB_STEP_SUMMARY"
       - name: Wipe signing material
         if: always()
