@@ -14,6 +14,8 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
+import android.content.Context;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
@@ -97,6 +99,13 @@ public final class GameCaptureService extends Service {
   private long offlineSince=0L;
   private int reconnectAttempt=0;
   private Runnable retryTask;
+  private Runnable socketWatchdog;
+  private PowerManager.WakeLock cpuWakeLock;
+  private long lastServerMessageAt=0;
+  private long socketOpenedAt=0;
+  private static final long SOCKET_STALE_MS=65000L;
+  private static final long SOCKET_CONNECT_STALE_MS=25000L;
+  private String diagnostic="Belum ada koneksi";
   static volatile String state="stopped",status="",activeRoom="";
 
   @Override public IBinder onBind(Intent intent){return null;}
@@ -127,7 +136,9 @@ public final class GameCaptureService extends Service {
       if(Build.VERSION.SDK_INT>=29)startForeground(NOTIFICATION_ID,notification("Menyiapkan layar game...",true),types);
       else startForeground(NOTIFICATION_ID,notification("Menyiapkan layar game...",true));
       report("starting","Menghubungkan GAME LIVE...","");
+      holdCaptureCpu();
       initCapture(grant);
+      startSocketWatchdog();
       connectSignaling(false);
     }catch(Exception error){
       Log.e(TAG,"GAME init failed",error);
@@ -137,6 +148,38 @@ public final class GameCaptureService extends Service {
     return START_NOT_STICKY;
   }
 
+  private void holdCaptureCpu(){
+    PowerManager pm=(PowerManager)getSystemService(Context.POWER_SERVICE);
+    if(pm==null)return;
+    cpuWakeLock=pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"NADMO:GameBroadcast");
+    cpuWakeLock.setReferenceCounted(false);
+    cpuWakeLock.acquire(180000);
+  }
+  private void startSocketWatchdog(){
+    if(socketWatchdog!=null)main.removeCallbacks(socketWatchdog);
+    socketWatchdog=new Runnable(){
+      @Override public void run(){
+        if(stopping)return;
+        long now=android.os.SystemClock.elapsedRealtime();
+        if(cpuWakeLock!=null&&!cpuWakeLock.isHeld())cpuWakeLock.acquire(180000);
+        if(webSocketOpen&&lastServerMessageAt>0&&now-lastServerMessageAt>SOCKET_STALE_MS){
+          Log.w(TAG,"No server heartbeat for "+(now-lastServerMessageAt)+"ms; retrying signaling");
+          disconnectStaleSocket("Server tidak mengirim heartbeat");
+        }else if(!webSocketOpen&&socketOpenedAt>0&&now-socketOpenedAt>SOCKET_CONNECT_STALE_MS){
+          Log.w(TAG,"WebSocket connect timed out; retrying");
+          disconnectStaleSocket("Koneksi GAME LIVE terlalu lama");
+        }
+        main.postDelayed(this,15000);
+      }
+    };
+    main.postDelayed(socketWatchdog,15000);
+  }
+  private void disconnectStaleSocket(String note){
+    diagnostic=note;
+    WebSocket old=socket;socket=null;webSocketOpen=false;socketOpenedAt=0;
+    if(old!=null)old.cancel();
+    lostConnection();
+  }
   private static String limit(String raw,int max,String fallback){
     if(raw==null)return fallback;
     raw=raw.trim();
@@ -236,11 +279,15 @@ public final class GameCaptureService extends Service {
       Request.Builder request=new Request.Builder().url(WS_URL).header("Origin",WS_ORIGIN);
       if(!cookie.isEmpty())request.header("Cookie",cookie);
       webSocketOpen=false;
+      socketOpenedAt=android.os.SystemClock.elapsedRealtime();
       socket=client.newWebSocket(request.build(),new WebSocketListener(){
         @Override public void onOpen(WebSocket ws,Response response){
           main.post(()->{
             if(stopping||ws!=socket)return;
             webSocketOpen=true;
+            socketOpenedAt=0;
+            lastServerMessageAt=android.os.SystemClock.elapsedRealtime();
+            diagnostic="WebSocket terhubung";
             if(resume&&roomId.length()>0&&resumeToken.length()>0)
               send(new JSONObjectSafe().put("type","resume").put("id",roomId).put("token",resumeToken).json());
             else send(new JSONObjectSafe().put("type","create").put("title",title)
@@ -248,12 +295,13 @@ public final class GameCaptureService extends Service {
           });
         }
         @Override public void onMessage(WebSocket ws,String body){main.post(()->{
-          if(!stopping&&ws==socket)handleMessage(body);
+          if(!stopping&&ws==socket){lastServerMessageAt=android.os.SystemClock.elapsedRealtime();handleMessage(body);}
         });}
         @Override public void onFailure(WebSocket ws,Throwable failure,Response response){
           final int httpCode=response==null?0:response.code();
           final String error=failure==null?"Unknown":failure.getClass().getSimpleName();
           Log.w(TAG,"Game signaling failure HTTP "+httpCode+" ("+error+")");
+          diagnostic="WebSocket HTTP "+httpCode+" / "+error;
           main.post(()->{
             if(stopping||ws!=socket)return;
             if(httpCode==403||httpCode==401){
@@ -264,6 +312,7 @@ public final class GameCaptureService extends Service {
         }
         @Override public void onClosed(WebSocket ws,int code,String reason){
           Log.w(TAG,"Game signaling closed (code "+code+")");
+          diagnostic="WebSocket ditutup kode "+code;
           main.post(()->{if(!stopping&&ws==socket)lostConnection();});
         }
       });
@@ -307,14 +356,14 @@ public final class GameCaptureService extends Service {
   }
   private void lostConnection(){
     if(stopping)return;
-    webSocketOpen=false;
+    webSocketOpen=false;socketOpenedAt=0;
     if(offlineSince==0)offlineSince=System.currentTimeMillis();
     if(System.currentTimeMillis()-offlineSince>85000||roomId.isEmpty()&&reconnectAttempt>=4){
       report("error","Jaringan tidak pulih. GAME LIVE dihentikan.",roomId);
       stopGame("Jaringan berakhir.");
       return;
     }
-    report("reconnecting","Jaringan terputus, menghubungkan ulang...",roomId);
+    report("reconnecting","Koneksi GAME terputus; pemulihan otomatis... ("+diagnostic+")",roomId);
     if(retryTask!=null)main.removeCallbacks(retryTask);
     final int delay=Math.min(1200*(1<<Math.min(reconnectAttempt++,3)),9000);
     retryTask=()->connectSignaling(!roomId.isEmpty());
@@ -399,6 +448,8 @@ public final class GameCaptureService extends Service {
   private void stopGame(String reason){
     if(stopping)return;stopping=true;
     if(retryTask!=null)main.removeCallbacks(retryTask);
+    if(socketWatchdog!=null)main.removeCallbacks(socketWatchdog);
+    if(cpuWakeLock!=null&&cpuWakeLock.isHeld())cpuWakeLock.release();
     try{send(new JSONObjectSafe().put("type","leave").json());}catch(Exception ignored){}
     if(socket!=null){socket.close(1000,"game stream ended");socket=null;}
     webSocketOpen=false;clearViewers();
