@@ -4633,6 +4633,17 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
  };
  watchVideo.addEventListener('loadedmetadata',syncWatchAspect);
  watchVideo.addEventListener('resize',syncWatchAspect);
+ // A remote track and connected ICE do not prove a decoded video frame.
+ const markDecodedViewerVideo=()=>{
+  if(host||!currentRoom||watchVideo.videoWidth<=0||watchVideo.readyState<2)return;
+  if($('watchState').textContent!=='Video tersambung'){
+   $('watchState').textContent='Video tersambung';
+   clearWatchWarning();
+  }
+  updateDeckUI();
+ };
+ for(const event of ['loadeddata','playing','resize'])
+  watchVideo.addEventListener(event,markDecodedViewerVideo);
  health();sessionRestore();show('explore');
  const incomingPost=new URLSearchParams(location.search).get('post');
  if(incomingPost&&/^[a-f0-9-]{36}$/.test(incomingPost))setTimeout(()=>show('socialPage'),650);
