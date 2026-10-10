@@ -1548,7 +1548,7 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
 @media(max-width:799px){
  body.live-immersive.watch-viewer.watch-game #watch{
   --game-stage-top:clamp(135px,20dvh,181px);
-  --game-stage-height:calc((100vw - 40px) * .5625 + 12px);
+  --game-stage-height:var(--game-stage-height-live,calc((100vw - 40px) * .5625 + 12px));
   background:
    radial-gradient(ellipse 130% 34% at 50% 31%,#24472a70,transparent 72%),
    repeating-linear-gradient(90deg,#6eaa7420 0 1px,transparent 1px 26px),
@@ -4854,11 +4854,23 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
   const width=watchVideo.videoWidth,height=watchVideo.videoHeight;
   const landscape=height>0&&width>height*1.12;
   document.body.classList.toggle('watch-landscape',landscape);
-  if(width>0&&height>0)document.body.style.setProperty('--deck-video-aspect',width+' / '+height);
-  else document.body.style.removeProperty('--deck-video-aspect');
+  if(width>0&&height>0){
+   document.body.style.setProperty('--deck-video-aspect',width+' / '+height);
+   // Game broadcast sources can be wider than 16:9 (20:9 phone screens).
+   // Fit the actual decoded resolution, without cropping and without letting
+   // portrait capture consume the chat/controls on a short phone screen.
+   const natural=(Math.max(240,window.innerWidth-40)*height/width)+12;
+   const cap=Math.min(310,Math.max(150,window.innerHeight*.38));
+   const fitted=Math.max(130,Math.min(natural,cap));
+   document.body.style.setProperty('--game-stage-height-live',fitted.toFixed(1)+'px');
+  }else{
+   document.body.style.removeProperty('--deck-video-aspect');
+   document.body.style.removeProperty('--game-stage-height-live');
+  }
  };
  watchVideo.addEventListener('loadedmetadata',syncWatchAspect);
  watchVideo.addEventListener('resize',syncWatchAspect);
+ window.addEventListener('resize',syncWatchAspect);
  // A remote track and connected ICE do not prove a decoded video frame.
  const markDecodedViewerVideo=()=>{
   if(host||!currentRoom||watchVideo.videoWidth<=0||watchVideo.readyState<2)return;
