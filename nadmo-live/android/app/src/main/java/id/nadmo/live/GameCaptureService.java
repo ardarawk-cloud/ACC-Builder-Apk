@@ -40,6 +40,8 @@ import org.webrtc.MediaStream;
 import org.webrtc.PeerConnection;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.RtpReceiver;
+import org.webrtc.RtpSender;
+import org.webrtc.RtpParameters;
 import org.webrtc.ScreenCapturerAndroid;
 import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
@@ -130,6 +132,11 @@ public final class GameCaptureService extends Service {
   private PowerManager.WakeLock cpuWakeLock;
   private long lastServerMessageAt=0;
   private long socketOpenedAt=0;
+  // Stability-first video profile. Original 1280px fixed capture could saturate
+  // low-memory mobile hardware encoders while a heavy game runs in foreground.
+  private static final int GAME_VIDEO_MAX_EDGE=960;
+  private static final int GAME_VIDEO_FPS=20;
+  private static final int GAME_VIDEO_BITRATE_BPS=850000;
   private static final long SOCKET_STALE_MS=65000L;
   private static final long SOCKET_CONNECT_STALE_MS=25000L;
   private String diagnostic="Belum ada koneksi";
@@ -365,7 +372,7 @@ public final class GameCaptureService extends Service {
     });
     screenCapturer.initialize(screenHelper,this,screenSource.getCapturerObserver());
     int[] dimensions=captureDimensions();
-    screenCapturer.startCapture(dimensions[0],dimensions[1],20);
+    screenCapturer.startCapture(dimensions[0],dimensions[1],GAME_VIDEO_FPS);
     micSource=factory.createAudioSource(new MediaConstraints());
     micTrack=factory.createAudioTrack("nadmo_microphone",micSource);
     micTrack.setEnabled(true);
@@ -374,7 +381,7 @@ public final class GameCaptureService extends Service {
   private int[] captureDimensions(){
     DisplayMetrics m=getResources().getDisplayMetrics();
     int width=Math.max(1,m.widthPixels),height=Math.max(1,m.heightPixels);
-    float scale=Math.min(1f,1280f/Math.max(width,height));
+    float scale=Math.min(1f,(float)GAME_VIDEO_MAX_EDGE/Math.max(width,height));
     int w=Math.max(2,Math.round(width*scale)/2*2);
     int h=Math.max(2,Math.round(height*scale)/2*2);
     return new int[]{w,h};
@@ -383,7 +390,7 @@ public final class GameCaptureService extends Service {
     super.onConfigurationChanged(configuration);
     if(screenCapturer!=null&&!stopping){
       int[] d=captureDimensions();
-      try{screenCapturer.changeCaptureFormat(d[0],d[1],20);}
+      try{screenCapturer.changeCaptureFormat(d[0],d[1],GAME_VIDEO_FPS);}
       catch(Exception e){Log.w(TAG,"Screen format rotation update failed",e);}
     }
   }
@@ -527,7 +534,11 @@ public final class GameCaptureService extends Service {
     final PeerConnection[] holder=new PeerConnection[1];
     PeerConnection pc=factory.createPeerConnection(cfg,new PeerConnection.Observer(){
       @Override public void onSignalingChange(PeerConnection.SignalingState state){}
-      @Override public void onIceConnectionChange(PeerConnection.IceConnectionState state){}
+      @Override public void onIceConnectionChange(PeerConnection.IceConnectionState state){
+        if(state==PeerConnection.IceConnectionState.FAILED ||
+          state==PeerConnection.IceConnectionState.DISCONNECTED)
+          Log.w(TAG,"Viewer WebRTC "+id+" connection "+state);
+      }
       @Override public void onIceConnectionReceivingChange(boolean receiving){}
       @Override public void onIceGatheringChange(PeerConnection.IceGatheringState state){}
       @Override public void onIceCandidate(IceCandidate candidate){main.post(()->{
@@ -546,7 +557,17 @@ public final class GameCaptureService extends Service {
     if(pc==null){report("error","Tidak bisa menyambungkan penonton WebRTC.",roomId);return;}
     holder[0]=pc;
     viewers.put(id,pc);
-    pc.addTrack(screenTrack,Arrays.asList("NADMO_GAME_SCREEN"));
+    RtpSender screenSender=pc.addTrack(screenTrack,Arrays.asList("NADMO_GAME_SCREEN"));
+    if(screenSender!=null){
+      try{
+        RtpParameters params=screenSender.getParameters();
+        for(RtpParameters.Encoding encoding:params.encodings){
+          encoding.maxBitrateBps=GAME_VIDEO_BITRATE_BPS;
+          encoding.maxFramerate=GAME_VIDEO_FPS;
+        }
+        if(!screenSender.setParameters(params))Log.w(TAG,"GAME bitrate cap rejected by encoder");
+      }catch(Exception error){Log.w(TAG,"GAME encoder limits unavailable",error);}
+    }
     pc.addTrack(micTrack,Arrays.asList("NADMO_GAME_SCREEN"));
     if(faceTrack!=null)pc.addTrack(faceTrack,Arrays.asList("NADMO_GAME_FACE"));
     pc.createOffer(new SdpAdapter(){
