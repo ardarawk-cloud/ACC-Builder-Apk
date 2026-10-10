@@ -413,15 +413,9 @@ public final class GameCaptureService extends Service {
     // Obtain the projection already held by the current screen capturer.
     if(Build.VERSION.SDK_INT>=29){
       try{
-        MediaProjection projection=null;
-        try{
-          java.lang.reflect.Method method=screenCapturer.getClass().getMethod("getMediaProjection");
-          projection=(MediaProjection)method.invoke(screenCapturer);
-        }catch(NoSuchMethodException absent){
-          java.lang.reflect.Field field=screenCapturer.getClass().getDeclaredField("mediaProjection");
-          field.setAccessible(true);
-          projection=(MediaProjection)field.get(screenCapturer);
-        }
+        // WebRTC publishes the existing MediaProjection. Reuse the same one:
+        // calling getMediaProjection(resultData) again is forbidden on Android 14.
+        MediaProjection projection=screenCapturer.getMediaProjection();
         if(projection!=null){
           gameAudio=new GameAudioRelay();
           if(!gameAudio.start(projection))gameAudio=null;
