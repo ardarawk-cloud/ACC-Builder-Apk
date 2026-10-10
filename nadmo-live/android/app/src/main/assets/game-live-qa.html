@@ -1530,6 +1530,16 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
  body.live-immersive.watch-viewer #watch .deck-live-telemetry{left:calc(var(--pc-stage-left) + 305px)!important}
  body.live-immersive.watch-viewer #watch .deck-live-metric:last-child{display:none!important}
 }
+/* Keep LIVE rooms above the fold: mobile heading cannot wrap around count. */
+@media(max-width:799px){
+ body:not(.live-immersive) #explore>.explore-head{gap:6px;padding:10px 11px;margin:4px 0 10px}
+ body:not(.live-immersive) #explore .explore-head>div{min-width:0}
+ body:not(.live-immersive) #explore .explore-head h2{font-size:22px;line-height:1;letter-spacing:0;white-space:nowrap}
+ body:not(.live-immersive) #explore .explore-count{font-size:9px}
+}
+@media(max-width:370px){
+ body:not(.live-immersive) #explore .explore-head h2{font-size:20px}
+}
 </style></head>
 <body>
 <div class="app">
