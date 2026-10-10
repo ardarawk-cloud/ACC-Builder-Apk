@@ -56,6 +56,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Foreground screen broadcaster. GAME runs in another Android app while capture,
@@ -107,6 +108,10 @@ public final class GameCaptureService extends Service {
   private int reconnectAttempt=0;
   private Runnable retryTask;
   private Runnable socketWatchdog;
+  private final AtomicBoolean firstFrameReceived=new AtomicBoolean(false);
+  private volatile long lastCapturedFrameAt=0;
+  private boolean signalingStarted=false;
+  private Runnable firstFrameTimeout;
   private PowerManager.WakeLock cpuWakeLock;
   private long lastServerMessageAt=0;
   private long socketOpenedAt=0;
@@ -146,7 +151,14 @@ public final class GameCaptureService extends Service {
       holdCaptureCpu();
       initCapture(grant);
       startSocketWatchdog();
-      connectSignaling(false);
+      // Never publish a room before MediaProjection delivers actual video frames.
+      firstFrameTimeout=()->{
+        if(!firstFrameReceived.get()&&!stopping){
+          Log.e(TAG,"MediaProjection produced no frame in 15s");
+          stopGame("Layar tidak terekam. Izinkan seluruh layar di Android.");
+        }
+      };
+      main.postDelayed(firstFrameTimeout,15000);
     }catch(Exception error){
       Log.e(TAG,"GAME init failed",error);
       report("error","Gagal menyiapkan GAME LIVE: "+error.getClass().getSimpleName(),"");
@@ -259,10 +271,20 @@ public final class GameCaptureService extends Service {
     screenSource=factory.createVideoSource(true);
     screenTrack=factory.createVideoTrack("nadmo_screen",screenSource);
     screenTrack.setEnabled(true);
+    screenTrack.addSink(frame->{
+      lastCapturedFrameAt=android.os.SystemClock.elapsedRealtime();
+      if(firstFrameReceived.compareAndSet(false,true))main.post(()->{
+        if(stopping||signalingStarted)return;
+        signalingStarted=true;
+        if(firstFrameTimeout!=null)main.removeCallbacks(firstFrameTimeout);
+        report("starting","Layar game tertangkap. Menyambungkan penonton...","");
+        connectSignaling(false);
+      });
+    });
     screenHelper=SurfaceTextureHelper.create("NadmoScreenCapture",egl.getEglBaseContext());
     screenCapturer=new ScreenCapturerAndroid(permissionData,new MediaProjection.Callback(){
       @Override public void onStop(){main.post(()->{
-        if(!stopping){report("error","Android menghentikan izin perekaman layar.","");stopGame("Izin layar berakhir.");}
+        if(!stopping){Log.w(TAG,"MediaProjection ended by Android");stopGame("Android menghentikan rekam layar. Mulai ulang GAME LIVE dan izinkan seluruh layar.");}
       });}
     });
     screenCapturer.initialize(screenHelper,this,screenSource.getCapturerObserver());
@@ -489,6 +511,7 @@ public final class GameCaptureService extends Service {
     if(stopping)return;stopping=true;
     if(retryTask!=null)main.removeCallbacks(retryTask);
     if(socketWatchdog!=null)main.removeCallbacks(socketWatchdog);
+    if(firstFrameTimeout!=null)main.removeCallbacks(firstFrameTimeout);
     if(cpuWakeLock!=null&&cpuWakeLock.isHeld())cpuWakeLock.release();
     try{send(new JSONObjectSafe().put("type","leave").json());}catch(Exception ignored){}
     if(socket!=null){socket.close(1000,"game stream ended");socket=null;}
@@ -507,6 +530,7 @@ public final class GameCaptureService extends Service {
     if(egl!=null)egl.release();
     if(client!=null){client.dispatcher().executorService().shutdown();client.connectionPool().evictAll();}
     cookie="";roomId="";resumeToken="";started=false;activeRoom="";faceLayout=null;
+    signalingStarted=false;firstFrameReceived.set(false);lastCapturedFrameAt=0;
     hostSocketId="";
     try{getSystemService(NotificationManager.class).cancel(CHAT_NOTIFICATION_ID);}catch(Exception ignored){}
     state="stopped";status=reason;
