@@ -1265,6 +1265,271 @@ body.live-immersive.watch-viewer #watch .live-stage::before{
 }
 body.live-immersive.watch-viewer #watch .deck-live-metric{max-width:205px}
 }
+
+/* NADMO CYBERDECK REFERENCE-MATCH v5 — single cohesive desktop composition.
+   This is the actual functional player/chat DOM, not a raster screenshot. */
+@media(min-width:1000px){
+ body.live-immersive.watch-viewer #watch{
+  --pc-rail:0px;--pc-gap:12px;
+  --pc-chat:clamp(310px,28vw,475px);
+  --pc-stage-left:22px;
+  --pc-stage-right:calc(var(--pc-chat) + 31px);
+  background-color:#070d09!important;
+  background-image:
+   linear-gradient(#74a95710 1px,transparent 1px),
+   linear-gradient(90deg,#74a95710 1px,transparent 1px),
+   radial-gradient(ellipse at 42% 32%,#1c382122,transparent 65%)!important;
+  background-size:42px 42px,42px 42px,auto!important;
+ }
+ body.live-immersive.watch-viewer #watch .deck-shell-art{
+  position:absolute;inset:0;z-index:8;pointer-events:none;display:block!important;
+  background:linear-gradient(90deg,#c4ff3025 0 3px,transparent 3px) 0 30px/100% 1px no-repeat;
+ }
+ body.live-immersive.watch-viewer #watch .deck-shell-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+ body.live-immersive.watch-viewer #watch .deck-shell-bottom{
+  position:absolute;left:3%;right:3%;bottom:1.35%;height:24px;
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  font:900 10px/1 Arial,sans-serif;letter-spacing:2.4px;color:#dfff6b;
+ }
+ body.live-immersive.watch-viewer #watch .deck-shell-bottom i{
+  height:8px;flex:1;
+  background:repeating-linear-gradient(90deg,#a9cc3577 0 3px,transparent 3px 7px,#69bb9c55 7px 9px,transparent 9px 15px);
+  clip-path:polygon(0 0,100% 0,99% 100%,0 100%);opacity:.8;
+ }
+ body.live-immersive.watch-viewer #watch .deck-shell-bottom span{font-size:8px;color:#79ba9f;letter-spacing:1.2px}
+ body.live-immersive.watch-viewer #watch #pcWatchRail{
+  display:block!important;position:absolute;z-index:15;
+  top:126px;left:20px;bottom:auto;right:auto;inset:auto!important;
+  width:31px;height:31px;padding:0;margin:0;
+  background:none!important;border:0!important;box-shadow:none!important;
+ }
+ body.live-immersive.watch-viewer #watch #pcWatchRail>.pc-logo,
+ body.live-immersive.watch-viewer #watch #pcWatchRail>span{display:none!important}
+ body.live-immersive.watch-viewer #watch #pcWatchRail button{
+  width:30px;height:30px;border-radius:3px;background:#101e14c4;
+  border:1px solid #739e53;color:#e2fc94;font-size:16px}
+ body.live-immersive.watch-viewer #watch .live-stage{
+  top:30px;bottom:68px;
+  left:var(--pc-stage-left);right:var(--pc-stage-right);
+  border:2px solid #a1cd50!important;border-radius:1px!important;
+  background:
+   linear-gradient(#6d91611a 1px,transparent 1px),
+   linear-gradient(90deg,#6d91611a 1px,transparent 1px),
+   radial-gradient(ellipse at 48% 48%,#172b1a,#06120b 75%)!important;
+  background-size:35px 35px,35px 35px,auto!important;
+  box-shadow:0 0 0 3px #06150b,0 0 0 5px #78a5424d,inset 0 0 0 7px #0b180ecf,0 15px 35px #0009!important;
+  overflow:hidden;
+ }
+ body.live-immersive.watch-viewer #watch .live-stage::before{
+  position:absolute;inset:6px;z-index:3;content:"";
+  opacity:1!important;pointer-events:none;
+  background:
+   linear-gradient(90deg,#f4ff76 0 12%,transparent 12% 84%,#f4ff76 84% 88%,transparent 88%) left top / 100% 4px no-repeat,
+   linear-gradient(90deg,#85f0cf 0 6%,transparent 6% 96%,#b7e044 96%) left bottom / 100% 2px no-repeat,
+   linear-gradient(#c6f65c 0 22%,transparent 22% 80%,#c6f65c 80%) left top / 2px 100% no-repeat,
+   linear-gradient(#b1e74f 0 18%,transparent 18% 92%,#b1e74f 92%) right top / 2px 100% no-repeat!important;
+  border:0!important;
+ }
+ body.live-immersive.watch-viewer #watch .live-stage::after{display:none!important}
+ body.live-immersive.watch-viewer #watch .page-top{
+  position:absolute;z-index:12;top:55px;
+  left:calc(var(--pc-stage-left) + 18px);right:auto;
+  width:360px;max-width:360px;padding:0;background:none;
+ }
+ body.live-immersive.watch-viewer #watch #hostProfileCard{
+  border:1px solid #91c859!important;
+  border-radius:1px!important;background:linear-gradient(115deg,#16271ddc,#07120fdc)!important;
+  padding:8px 21px 8px 7px!important;
+  clip-path:polygon(0 0,calc(100% - 24px) 0,100% 24px,100% 100%,16px 100%,0 calc(100% - 15px));
+  box-shadow:inset 0 2px #c0f24f61!important;
+ }
+ body.live-immersive.watch-viewer #watch #watchTitle{
+  font:900 clamp(17px,1.4vw,23px)/1.05 Arial,sans-serif!important;letter-spacing:-.25px!important;
+  color:#fff;text-shadow:0 2px 10px #000!important;
+ }
+ body.live-immersive.watch-viewer #watch .onair-label{color:#e5ff73!important}
+ body.live-immersive.watch-viewer #watch .room-subtitle{font-size:12px!important;padding:5px 0 0 8px;color:#d7e4d1}
+ body.live-immersive.watch-viewer #watch .deck-live-telemetry{
+  top:64px;left:calc(var(--pc-stage-left) + 390px);right:calc(var(--pc-stage-right) + 20px);
+  display:flex!important;gap:7px;z-index:12;
+ }
+ body.live-immersive.watch-viewer #watch .deck-live-metric{
+  flex:1;max-width:none;min-height:57px;padding:6px 10px;
+  gap:8px;border:1px solid #779b50!important;
+  background:linear-gradient(110deg,#1b3020e8,#091811db)!important;
+  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);
+ }
+ body.live-immersive.watch-viewer #watch .deck-live-metric>span{font-size:24px!important;color:#d1ff4b}
+ body.live-immersive.watch-viewer #watch .deck-live-metric small{font-size:9px!important;color:#c8dfc3}
+ body.live-immersive.watch-viewer #watch .deck-live-metric strong{font-size:13px!important;color:#d4ff5b}
+ body.live-immersive.watch-viewer.watch-landscape #watch .live-stage>.viewfinder{
+  width:calc(100% - 40px)!important;max-width:none!important;
+  left:20px!important;right:auto!important;top:calc(50% - 24px)!important;
+  height:auto!important;max-height:calc(100% - 200px)!important;min-height:0!important;
+  aspect-ratio:var(--deck-video-aspect,16 / 9)!important;
+  transform:translateY(-50%)!important;bottom:auto!important;
+  border:2px solid #83c957!important;border-radius:0!important;
+  background:#020603!important;
+  box-shadow:0 0 0 4px #030f09,0 0 0 6px #abdf5370,0 10px 30px #000b!important;
+ }
+ body.live-immersive.watch-viewer.watch-landscape #watch #remote{
+  display:block;width:100%!important;height:100%!important;object-fit:contain!important;
+ }
+ body.live-immersive.watch-viewer #watch .deck-player-controls{
+  bottom:91px;left:19px;right:19px;height:51px;z-index:11;
+  border:1px solid #66934e!important;background:#06120ce9!important;
+  gap:12px;padding:0 15px!important;
+ }
+ body.live-immersive.watch-viewer #watch .deck-player-live{font-size:13px!important;color:#d4ff60}
+ body.live-immersive.watch-viewer #watch .deck-player-controls button{
+  border-radius:2px;font-size:12px;min-height:34px;padding:6px 12px;
+  background:#102119;border:1px solid #7ba85b;color:#e9f8df;
+ }
+ body.live-immersive.watch-viewer #watch .deck-player-controls small{font-size:10px}
+ body.live-immersive.watch-viewer #watch #desktopSawerBar{
+  bottom:14px;left:calc(var(--pc-stage-left) + 19px);
+  right:calc(var(--pc-stage-right) + 19px);
+  height:63px!important;min-height:63px!important;padding:8px 13px!important;
+  border:1px solid #b0dc57!important;border-radius:1px!important;gap:10px!important;
+  background:linear-gradient(105deg,#111f16f5,#08140aed)!important;
+  clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,15px 100%,0 calc(100% - 15px));
+ }
+ body.live-immersive.watch-viewer #watch #desktopSawerBar .pc-gift-label{
+  font:900 18px/1 Impact,"Arial Narrow",sans-serif;color:#d2ff55;margin-right:12px}
+ body.live-immersive.watch-viewer #watch #desktopSawerBar button{
+  min-width:82px;height:41px;min-height:41px;
+  background:linear-gradient(135deg,#1b2d20,#0b1914)!important;
+  border:1px solid #a8d65a!important;
+  border-radius:0!important;
+  clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));
+  color:#fff;font:800 13px Arial,sans-serif;
+ }
+ body.live-immersive.watch-viewer #watch #desktopSawerBar small{color:#c8d7be;letter-spacing:.3px}
+ body.live-immersive.watch-viewer #watch .live-chat{
+  position:absolute;top:30px;bottom:68px;right:20px;left:auto;
+  width:var(--pc-chat);height:auto;
+  border:2px solid #a4d457!important;border-radius:1px!important;
+  background:
+   linear-gradient(#7198780a 1px,transparent 1px),
+   linear-gradient(90deg,#7198780a 1px,transparent 1px),
+   linear-gradient(180deg,#12271b,#08150c 83%)!important;
+  background-size:35px 35px,35px 35px,auto!important;
+  box-shadow:inset 0 0 0 7px #0a1a11f7,0 0 0 3px #062015,0 0 0 5px #83a8474b!important;
+  padding:25px 18px 19px!important;gap:0;
+ }
+ body.live-immersive.watch-viewer #watch .live-chat::before{
+  content:"";height:6px;width:100%;flex:none;display:block;
+  margin:0 0 12px;padding:0;
+  border:none!important;
+  background:linear-gradient(90deg,#ccfa51 0 29%,transparent 29% 78%,#b5eb4b 78% 100%);
+  clip-path:polygon(0 0,100% 0,98% 100%,2% 100%);
+ }
+ body.live-immersive.watch-viewer #watch .live-chat .show-label{
+  display:flex;align-items:center;justify-content:space-between;gap:7px;
+  min-height:49px;padding:7px 1px 15px;margin:0;
+  border-bottom:1px solid #a6ce56!important;
+ }
+ body.live-immersive.watch-viewer #watch .live-chat .show-label b{
+  font:900 29px/1 Impact,"Arial Narrow",sans-serif!important;color:#f7fff4;
+ }
+ body.live-immersive.watch-viewer #watch .live-chat .show-label small{
+  font:800 9px Arial,sans-serif!important;color:#b9d4bd;letter-spacing:1px}
+ body.live-immersive.watch-viewer #watch #chat{
+  padding:22px 2px 10px!important;background:none!important;
+  border:0!important;
+ }
+ body.live-immersive.watch-viewer #watch #chat div{
+  border:0!important;border-left:2px solid #c4ec577d!important;
+  background:linear-gradient(90deg,#182f21d9,#0c1d12bb)!important;
+  padding:11px 12px!important;margin:0 0 10px!important;
+  border-radius:0 4px 4px 0!important;
+  font-size:14px!important;color:#f5fff1!important;
+ }
+ body.live-immersive.watch-viewer #watch .live-chat .row{
+  border-top:1px solid #8eaa55;padding:12px 0 9px!important;gap:8px}
+ body.live-immersive.watch-viewer #watch #message{
+  border:1px solid #afce5d!important;background:#0b1710!important;
+  border-radius:1px!important;min-height:46px;padding:12px!important;
+  clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%);
+ }
+ body.live-immersive.watch-viewer #watch #send{
+  background:#ddfa63!important;color:#0b150a!important;
+  border:1px solid #f3ffb1!important;border-radius:2px!important;
+  min-height:46px;font:900 11px Arial,sans-serif!important;
+ }
+ body.live-immersive.watch-viewer #watch .room-safety{padding-top:8px}
+ body.live-immersive.watch-viewer #watch .room-safety button{border-color:#688e45;color:#e8f5ce;border-radius:1px}
+}
+@media(min-width:1000px) and (max-width:1320px){
+ body.live-immersive.watch-viewer #watch{
+  --pc-chat:clamp(298px,28vw,365px);--pc-stage-left:18px;
+  --pc-stage-right:calc(var(--pc-chat) + 28px)
+ }
+ body.live-immersive.watch-viewer #watch .page-top{width:265px;max-width:265px}
+ body.live-immersive.watch-viewer #watch .deck-live-telemetry{
+  left:calc(var(--pc-stage-left) + 285px);right:calc(var(--pc-stage-right) + 12px);gap:5px}
+ body.live-immersive.watch-viewer #watch .deck-live-metric{
+  min-height:49px;gap:4px;padding:5px 6px}
+ body.live-immersive.watch-viewer #watch .deck-live-metric>span{font-size:18px!important}
+ body.live-immersive.watch-viewer #watch .deck-live-metric small{font-size:8px!important}
+ body.live-immersive.watch-viewer #watch .deck-live-metric strong{font-size:10px!important}
+ body.live-immersive.watch-viewer #watch #desktopSawerBar button{min-width:60px;padding:6px}
+ body.live-immersive.watch-viewer #watch #desktopSawerBar .pc-gift-label{font-size:14px;margin-right:0}
+}
+
+/* Desktop visual inspection adjustments: sawer belongs above the bottom
+   HUD frame (not over the footer), chat heading stays one line at 1014 px. */
+@media(min-width:1000px){
+body.live-immersive.watch-viewer #watch #desktopSawerBar{
+ bottom:83px!important;
+}
+body.live-immersive.watch-viewer #watch .deck-live-metric:last-child>span{color:#bcf16f!important}
+}
+@media(min-width:1000px) and (max-width:1320px){
+body.live-immersive.watch-viewer #watch .deck-live-metric:last-child{display:none}
+body.live-immersive.watch-viewer #watch .live-chat .show-label b{
+ font-size:21px!important;white-space:nowrap}
+body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8px!important}
+}
+
+/* Real no-frame state, rendered below media only while the stream hasn't
+   delivered playable video. It is never used as a fake game screenshot. */
+#watch .deck-video-idle{position:absolute;z-index:1;inset:0;display:flex;align-items:center;
+ justify-content:center;flex-direction:column;pointer-events:none;gap:9px;
+ background:
+ radial-gradient(circle at 50% 52%,#375d244d,transparent 29%),
+ repeating-linear-gradient(0deg,transparent 0 37px,#90cf5430 38px),
+ repeating-linear-gradient(90deg,transparent 0 37px,#90cf5430 38px),
+ linear-gradient(130deg,#07170b,#030804 80%);
+ color:#c7fb73;letter-spacing:1.4px}
+#watch .deck-video-idle .deck-idle-target{
+ display:grid;place-items:center;width:100px;height:100px;margin-bottom:4px;
+ border:1px solid #a6d954;border-radius:50%;font:900 44px Impact,Arial,sans-serif;
+ box-shadow:0 0 0 10px #92c74b14,0 0 0 23px #75b8590a,inset 0 0 20px #94c04d48}
+#watch .deck-video-idle strong{font:900 12px Arial,sans-serif}
+#watch .deck-video-idle small{font:700 9px Arial,sans-serif;color:#7db89c}
+#watch .deck-has-video .deck-video-idle{display:none}
+@media(max-width:799px){
+ #watch .deck-video-idle .deck-idle-target{width:68px;height:68px;font-size:30px}
+ #watch .deck-video-idle strong{font-size:10px}
+ #watch .deck-video-idle small{font-size:7px}
+}
+@media(min-width:1400px){
+ body.live-immersive.watch-viewer #watch .page-top{
+  width:423px!important;max-width:423px!important}
+ body.live-immersive.watch-viewer #watch .deck-live-telemetry{
+  left:calc(var(--pc-stage-left) + 490px)!important;
+  right:calc(var(--pc-stage-right) + 18px)!important}
+ body.live-immersive.watch-viewer #watch #desktopSawerBar button{
+  min-width:100px!important;height:45px!important;
+  font-size:15px!important}
+ body.live-immersive.watch-viewer #watch #desktopSawerBar .pc-gift-label{font-size:20px!important}
+}
+@media(min-width:1321px) and (max-width:1399px){
+ body.live-immersive.watch-viewer #watch .page-top{width:275px!important;max-width:275px!important}
+ body.live-immersive.watch-viewer #watch .deck-live-telemetry{left:calc(var(--pc-stage-left) + 305px)!important}
+ body.live-immersive.watch-viewer #watch .deck-live-metric:last-child{display:none!important}
+}
 </style></head>
 <body>
 <div class="app">
@@ -1344,6 +1609,23 @@ body.live-immersive.watch-viewer #watch .deck-live-metric{max-width:205px}
   </div>
 </section>
 <section id="watch" class="hide">
+  <!-- Functional cyberdeck chrome: independent of the stream; never rasterize the mockup into UI. -->
+  <div class="deck-shell-art desktop-watch-only" aria-hidden="true">
+    <svg class="deck-shell-svg" viewBox="0 0 1680 940" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <g fill="none" stroke-linecap="square">
+        <path d="M15 140 V57 L56 18 H316 L342 37 H1114 L1150 63 H1180 L1212 27 H1606 L1654 65 V874 L1623 908 H1206 L1176 886 H1170 L1141 909 H49 L18 875 V796" stroke="#d7ff36" stroke-width="2.2"/>
+        <path d="M24 146 V65 L64 29 H312 L339 47 H1106 L1145 73 H1189 L1220 39 H1602 L1643 78 V867 L1618 895 H1207 L1178 876 M1154 895 H57 L30 868" stroke="#61c9a6" stroke-width=".8" opacity=".78"/>
+        <path d="M40 43 H145 L159 34 H318 M344 49 H500 M692 36 H1049 L1108 65 M1212 49 H1347 M1494 44 H1603 L1631 72" stroke="#d7ff36" stroke-width="4"/>
+        <path d="M30 150 H24 M28 790 V865 L62 896 H288 M327 896 H610 M1085 898 H1135 M1203 894 H1388 M1456 895 H1612 L1642 864" stroke="#d7ff36" stroke-width="3.4"/>
+        <path d="M1184 70 H1197 L1220 49 M1182 874 H1201 L1224 895" stroke="#d7ff36" stroke-width="5"/>
+        <path d="M11 68 L39 40 M15 86 L50 51 M1608 24 L1647 63 M1625 28 L1650 52 M27 884 L56 913 M35 901 L49 915" stroke="#bfff33" stroke-width="1.5"/>
+        <path d="M90 12 H178 M228 12 H298 M403 22 H543 M975 18 H1068 M1200 17 H1292 M1438 16 H1570 M84 919 H201 M265 917 H368 M756 922 H948 M1175 921 H1296 M1510 919 H1570" stroke="#72deb7" stroke-width="1" opacity=".6" stroke-dasharray="16 8 2 5"/>
+      </g>
+      <g fill="#daff46"><path d="M98 22 H213 L195 30 H89Z M412 42 H490 V45 H411Z M1021 44 H1107 L1126 57 H1089Z M1578 43 L1613 52 L1625 64 L1590 55Z M63 893 H206 L223 900 H75Z M1482 891 H1582 L1569 899 H1470Z"/></g>
+      <g fill="#62e6d0" opacity=".7"><path d="M1124 71 H1166 V74 H1124Z M1259 891 H1301 V894 H1259Z M1034 900 H1122 V902 H1034Z"/></g>
+    </svg>
+    <span class="deck-shell-bottom"><b>NADMO LIVE</b><i></i><span>CYBERDECK / ACTIVE BROADCAST UI</span><i></i><b>STAY CONNECTED</b></span>
+  </div>
   <aside id="pcWatchRail" class="desktop-watch-only" aria-label="Navigasi menonton PC">
     <div class="pc-logo">N/</div>
     <button type="button" id="pcBack" title="Kembali ke daftar LIVE" aria-label="Kembali ke daftar LIVE">←</button>
@@ -1358,6 +1640,7 @@ body.live-immersive.watch-viewer #watch .deck-live-metric{max-width:205px}
   <div class="deck-live-metric"><span>▣</span><div><small>VIDEO FEED</small><strong id="deckVideoStatus">MENUNGGU</strong></div></div>
   <div class="deck-live-metric"><span>♫</span><div><small>AUDIO TRACK</small><strong id="deckAudioStatus">MENUNGGU</strong></div></div>
   <div class="deck-live-metric"><span>⌁</span><div><small>KONEKSI</small><strong id="deckNetStatus">MENYAMBUNG</strong></div></div>
+  <div class="deck-live-metric"><span>▤</span><div><small>LIVE CHAT</small><strong id="deckChatStatus">MENUNGGU</strong></div></div>
  </div>
  <div id="guestStageGrid" aria-label="Tamu di panggung live"></div>
  <div id="hostProfilePanel" class="panel" role="dialog" aria-label="Profil host" aria-modal="true">
@@ -1365,7 +1648,7 @@ body.live-immersive.watch-viewer #watch .deck-live-metric{max-width:205px}
   <div class="host-public-header"><span class="host-public-photo"><span>N/</span><img id="hostPublicAvatarImage" alt="" hidden></span><h3 id="hostPublicName">Host</h3></div><p id="hostPublicBio"></p><div class="host-public-links" id="hostPublicLinks"></div>
   <button type="button" class="btn secondary" id="hostProfileTip">Rp SAWER HOST</button>
  </div>
-  <div class="panel live-stage"><div class="viewfinder"><video id="remote" playsinline autoplay controls></video><video id="gameRemoteFace" autoplay muted playsinline hidden aria-label="Kamera host game"></video></div>
+  <div class="panel live-stage"><div class="viewfinder"><div class="deck-video-idle" aria-hidden="true"><span class="deck-idle-target">N/</span><strong>MENUNGGU SINYAL LIVE</strong><small>STREAM BELUM MENGIRIM FRAME VIDEO</small></div><video id="remote" playsinline autoplay controls></video><video id="gameRemoteFace" autoplay muted playsinline hidden aria-label="Kamera host game"></video></div>
    <div class="deck-player-controls desktop-watch-only" aria-label="Kontrol pemutar video">
     <span class="deck-player-live">● LIVE</span>
     <button id="deckMute" type="button" aria-label="Bisukan suara video">♫ SUARA ON</button>
@@ -4292,10 +4575,12 @@ body.live-immersive.watch-viewer #watch .deck-live-metric{max-width:205px}
   const audio=media&&typeof media.getAudioTracks==='function'&&media.getAudioTracks().some(t=>t.readyState==='live'&&t.enabled);
   const ice=peer?.iceConnectionState||'new';
   const videoStatus=playing?'AKTIF':watchVideo.error?'ERROR':watchVideo.readyState>=2?'TERJEDA':'MENUNGGU';
+  watchVideo.closest('.viewfinder')?.classList.toggle('deck-has-video',playing);
   $('deckVideoStatus').textContent=videoStatus;
   $('deckAudioStatus').textContent=audio?'TERDETEKSI':'BELUM ADA';
   $('deckNetStatus').textContent=['connected','completed'].includes(ice)?'TERHUBUNG':
     ice==='disconnected'?'TERPUTUS':ice==='failed'?'GAGAL':ice==='checking'?'MEMERIKSA':'MENYAMBUNG';
+  $('deckChatStatus').textContent=socket?.readyState===WebSocket.OPEN&&currentRoom?'ROOM AKTIF':'OFFLINE';
   $('deckMediaLabel').textContent='STREAM / '+(playing?'VIDEO DITERIMA':videoStatus);
   $('deckMute').textContent=watchVideo.muted?'♫ SUARA OFF':'♫ SUARA ON';
  }
