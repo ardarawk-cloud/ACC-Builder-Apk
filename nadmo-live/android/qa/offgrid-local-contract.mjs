@@ -16,8 +16,8 @@ assert.ok(html.includes("offgridEntry.onclick=()=>{offgridModal.classList.remove
 assert.ok(activity.includes('FALLBACK_URL="https://appassets.androidplatform.net/assets/index.html"'),'local fallback exists');
 assert.ok(activity.includes('if(req.isForMainFrame() && LIVE_HOST.equalsIgnoreCase(req.getUrl().getHost()))'),'online error triggers local fallback');
 assert.ok(activity.includes('view.loadUrl(FALLBACK_URL)'),'local fallback activates during outage');
-assert.match(gradle,/versionCode\s+17/);
-assert.match(gradle,/versionName\s+'0\.9\.8-beta'/);
+assert.match(gradle,/versionCode\s+18/);
+assert.match(gradle,/versionName\s+'0\.9\.9-beta'/);
 const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 assert.ok(scripts.length>=1);
 for(const block of scripts)new Function(block[1]);
