@@ -18,6 +18,9 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.Network;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
@@ -70,6 +73,13 @@ public final class GameCaptureService extends Service {
   static final String ACTION_STOP="id.nadmo.live.GAME_STOP";
   static final String ACTION_STATUS="id.nadmo.live.GAME_STATUS";
   static final String ACTION_QUERY="id.nadmo.live.GAME_QUERY";
+  // Failure codes are strictly device-local: never store session cookies,
+  // stream URLs, chat content or WebRTC offer/candidate details.
+  private static final String DIAG_PREFS="nadmo_game_status";
+  private static final String DIAG_ARMED="capture_active";
+  private static final String DIAG_LAST="last_diagnostic";
+  private static final String DIAG_TIME="last_diagnostic_at";
+  private static final int DIAG_MAX=150;
   static final String EXTRA_PROJECTION="projection";
   static final String EXTRA_RESULT="result";
   static final String EXTRA_TITLE="title";
@@ -109,6 +119,10 @@ public final class GameCaptureService extends Service {
   private int reconnectAttempt=0;
   private Runnable retryTask;
   private Runnable socketWatchdog;
+  private ConnectivityManager connectivityManager;
+  private ConnectivityManager.NetworkCallback networkCallback;
+  private Network activeNetwork;
+  private boolean networkLost=false;
   private final AtomicBoolean firstFrameReceived=new AtomicBoolean(false);
   private volatile long lastCapturedFrameAt=0;
   private boolean signalingStarted=false;
@@ -121,13 +135,57 @@ public final class GameCaptureService extends Service {
   private String diagnostic="Belum ada koneksi";
   static volatile String state="stopped",status="",activeRoom="";
 
+  private SharedPreferences diagnosticPrefs(){
+    return getSharedPreferences(DIAG_PREFS,Context.MODE_PRIVATE);
+  }
+  private void rememberFailure(String reason){
+    String safe=limit(reason,DIAG_MAX,"Status tidak tersedia");
+    diagnosticPrefs().edit().putString(DIAG_LAST,safe)
+      .putLong(DIAG_TIME,System.currentTimeMillis()).apply();
+  }
+  private String lastFailure(){
+    SharedPreferences prefs=diagnosticPrefs();
+    if(prefs.getBoolean(DIAG_ARMED,false))
+      return "SERVICE_INTERRUPTED: proses siaran GAME berhenti mendadak saat aplikasi lain dibuka.";
+    return prefs.getString(DIAG_LAST,"Belum ada catatan kesalahan GAME LIVE.");
+  }
+  private void watchNetwork(){
+    connectivityManager=(ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+    if(connectivityManager==null)return;
+    networkCallback=new ConnectivityManager.NetworkCallback(){
+      @Override public void onAvailable(Network network){main.post(()->{
+        if(stopping||!started)return;
+        boolean switched=networkLost||(activeNetwork!=null&&!activeNetwork.equals(network));
+        activeNetwork=network;networkLost=false;
+        if(switched){
+          diagnostic="NETWORK_SWITCH";
+          rememberFailure("NETWORK_SWITCH: koneksi HP berubah saat GAME berjalan");
+          if(socket!=null)disconnectStaleSocket(diagnostic);
+        }
+      });}
+      @Override public void onLost(Network network){main.post(()->{
+        if(!stopping&&started&&network.equals(activeNetwork)){
+          activeNetwork=null;networkLost=true;
+          diagnostic="NETWORK_LOST";
+          rememberFailure("NETWORK_LOST: jaringan HP terputus saat GAME berjalan");
+        }
+      });}
+    };
+    try{connectivityManager.registerDefaultNetworkCallback(networkCallback);}
+    catch(Exception error){
+      Log.w(TAG,"Cannot monitor default mobile network",error);
+      networkCallback=null;
+    }
+  }
   @Override public IBinder onBind(Intent intent){return null;}
 
   @Override public int onStartCommand(Intent intent,int flags,int startId){
     if(intent==null)return START_NOT_STICKY;
     if(ACTION_QUERY.equals(intent.getAction())){
       Intent event=new Intent(ACTION_STATUS).setPackage(getPackageName());
-      event.putExtra("state",state).putExtra("message",status).putExtra("room",activeRoom);
+      event.putExtra("state",started?state:"stopped")
+        .putExtra("message",started?status:lastFailure())
+        .putExtra("room",started?activeRoom:"");
       sendBroadcast(event);
       if(!started)stopSelf(startId);
       return START_NOT_STICKY;
@@ -135,6 +193,8 @@ public final class GameCaptureService extends Service {
     if(ACTION_STOP.equals(intent.getAction())){stopGame("Siaran game diakhiri.");return START_NOT_STICKY;}
     if(!ACTION_START.equals(intent.getAction())||started)return START_NOT_STICKY;
     stopping=false;started=true;
+    diagnosticPrefs().edit().putBoolean(DIAG_ARMED,true)
+      .putString(DIAG_LAST,"GAME LIVE mulai; menunggu perekaman layar.").commit();
     title=limit(intent.getStringExtra(EXTRA_TITLE),60,"NADMO GAME LIVE");
     game=limit(intent.getStringExtra(EXTRA_GAME),35,"Gaming");
     cookie=intent.getStringExtra(EXTRA_COOKIE);
@@ -158,19 +218,23 @@ public final class GameCaptureService extends Service {
       report("starting","Menghubungkan GAME LIVE...","");
       holdCaptureCpu();
       initCapture(grant);
+      watchNetwork();
       startSocketWatchdog();
       // Never publish a room before MediaProjection delivers actual video frames.
       firstFrameTimeout=()->{
         if(!firstFrameReceived.get()&&!stopping){
           Log.e(TAG,"MediaProjection produced no frame in 15s");
-          stopGame("Layar tidak terekam. Izinkan seluruh layar di Android.");
+          rememberFailure("PROJECTION_NO_FRAME");
+          stopGame("PROJECTION_NO_FRAME: Android tidak mengirim video awal.");
         }
       };
       main.postDelayed(firstFrameTimeout,15000);
     }catch(Exception error){
       Log.e(TAG,"GAME init failed",error);
-      report("error","Gagal menyiapkan GAME LIVE: "+error.getClass().getSimpleName(),"");
-      stopGame("Capture gagal.");
+      String code="CAPTURE_INIT_"+error.getClass().getSimpleName();
+      rememberFailure(code);
+      report("error","Gagal menyiapkan GAME LIVE: "+code,"");
+      stopGame(code);
     }
     return START_NOT_STICKY;
   }
@@ -292,7 +356,11 @@ public final class GameCaptureService extends Service {
     screenHelper=SurfaceTextureHelper.create("NadmoScreenCapture",egl.getEglBaseContext());
     screenCapturer=new ScreenCapturerAndroid(permissionData,new MediaProjection.Callback(){
       @Override public void onStop(){main.post(()->{
-        if(!stopping){Log.w(TAG,"MediaProjection ended by Android");stopGame("Android menghentikan rekam layar. Mulai ulang GAME LIVE dan izinkan seluruh layar.");}
+        if(!stopping){
+          Log.w(TAG,"MediaProjection ended by Android");
+          rememberFailure("PROJECTION_STOP: izin layar dicabut Android atau penghentian rekaman");
+          stopGame("PROJECTION_STOP: Android mengakhiri rekam layar.");
+        }
       });}
     });
     screenCapturer.initialize(screenHelper,this,screenSource.getCapturerObserver());
@@ -368,7 +436,8 @@ public final class GameCaptureService extends Service {
           final int httpCode=response==null?0:response.code();
           final String error=failure==null?"Unknown":failure.getClass().getSimpleName();
           Log.w(TAG,"Game signaling failure HTTP "+httpCode+" ("+error+")");
-          diagnostic="WebSocket HTTP "+httpCode+" / "+error;
+          diagnostic="WS_HTTP_"+httpCode+"_"+error;
+          rememberFailure(diagnostic);
           main.post(()->{
             if(stopping||ws!=socket)return;
             if(httpCode==403||httpCode==401){
@@ -379,11 +448,17 @@ public final class GameCaptureService extends Service {
         }
         @Override public void onClosed(WebSocket ws,int code,String reason){
           Log.w(TAG,"Game signaling closed (code "+code+")");
-          diagnostic="WebSocket ditutup kode "+code;
+          diagnostic="WS_CLOSE_"+code;
+          rememberFailure(diagnostic);
           main.post(()->{if(!stopping&&ws==socket)lostConnection();});
         }
       });
-    }catch(Exception e){Log.e(TAG,"Connection failed",e);lostConnection();}
+    }catch(Exception e){
+      Log.e(TAG,"Connection failed",e);
+      diagnostic="WS_CONNECT_"+e.getClass().getSimpleName();
+      rememberFailure(diagnostic);
+      lostConnection();
+    }
   }
   private void send(JSONObject obj){if(socket!=null&&webSocketOpen)socket.send(obj.toString());}
   private void handleMessage(String raw){
@@ -429,8 +504,8 @@ public final class GameCaptureService extends Service {
     webSocketOpen=false;socketOpenedAt=0;
     if(offlineSince==0)offlineSince=System.currentTimeMillis();
     if(System.currentTimeMillis()-offlineSince>85000||roomId.isEmpty()&&reconnectAttempt>=4){
-      report("error","Jaringan tidak pulih. GAME LIVE dihentikan.",roomId);
-      stopGame("Jaringan berakhir.");
+      report("error","GAME terputus: "+diagnostic,roomId);
+      stopGame("SIGNAL_TIMEOUT_"+diagnostic);
       return;
     }
     report("reconnecting","Koneksi GAME terputus; pemulihan otomatis... ("+diagnostic+")",roomId);
@@ -520,6 +595,11 @@ public final class GameCaptureService extends Service {
     if(retryTask!=null)main.removeCallbacks(retryTask);
     if(socketWatchdog!=null)main.removeCallbacks(socketWatchdog);
     if(firstFrameTimeout!=null)main.removeCallbacks(firstFrameTimeout);
+    if(networkCallback!=null&&connectivityManager!=null){
+      try{connectivityManager.unregisterNetworkCallback(networkCallback);}
+      catch(Exception ignored){}
+      networkCallback=null;activeNetwork=null;
+    }
     if(cpuWakeLock!=null&&cpuWakeLock.isHeld())cpuWakeLock.release();
     try{send(new JSONObjectSafe().put("type","leave").json());}catch(Exception ignored){}
     if(socket!=null){socket.close(1000,"game stream ended");socket=null;}
@@ -542,13 +622,18 @@ public final class GameCaptureService extends Service {
     hostSocketId="";
     try{getSystemService(NotificationManager.class).cancel(CHAT_NOTIFICATION_ID);}catch(Exception ignored){}
     state="stopped";status=reason;
+    if("Siaran game diakhiri.".equals(reason))rememberFailure("LIVE_DIAKHIRI_HOST");
+    else rememberFailure(reason);
+    // Commit synchronously so a subsequent process recreation can read the
+    // accurate final cause, including after resource pressure from the game.
+    diagnosticPrefs().edit().putBoolean(DIAG_ARMED,false).commit();
     Intent event=new Intent(ACTION_STATUS).setPackage(getPackageName());
     event.putExtra("state","stopped").putExtra("message",reason).putExtra("room","");
     sendBroadcast(event);
     stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();
   }
   @Override public void onDestroy(){
-    if(started&&!stopping)stopGame("GAME LIVE dihentikan Android.");
+    if(started&&!stopping)stopGame("SERVICE_DESTROYED: Android menghentikan proses siaran.");
     super.onDestroy();
   }
   private static class JSONObjectSafe {
