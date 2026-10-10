@@ -42,6 +42,7 @@ public final class MainActivity extends Activity {
   private static final int ASK_SCREEN_CAPTURE=45;
   private String gameTitle="",gameName="";
   private boolean gameFace=false;
+  private String gameFaceLayout="";
   private boolean gameReceiverRegistered=false;
   private final BroadcastReceiver gameStatusReceiver=new BroadcastReceiver(){
     @Override public void onReceive(Context context,Intent intent){
@@ -106,7 +107,7 @@ public final class MainActivity extends Activity {
           if("start".equals(action))startGame(command);
           else if("stop".equals(action))stopGame();
           else if("launch".equals(action))launchGame();
-          else if("status".equals(action))notifyGameStatus(GameCaptureService.state,GameCaptureService.status,"");
+          else if("status".equals(action))notifyGameStatus(GameCaptureService.state,GameCaptureService.status,GameCaptureService.activeRoom);
         }catch(Exception ignored){notifyGameStatus("error","Perintah GAME tidak valid.","");}
       });
     });
@@ -199,6 +200,7 @@ public final class MainActivity extends Activity {
     gameTitle=command.optString("title","NADMO GAME LIVE");
     gameName=command.optString("game","Gaming");
     gameFace=command.optBoolean("face",false);
+    gameFaceLayout=gameFace&&command.optJSONObject("facecam")!=null?command.optJSONObject("facecam").toString():"";
     if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED||
        (gameFace&&checkSelfPermission(Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED)){
       requestPermissions(gameFace?new String[]{Manifest.permission.RECORD_AUDIO,Manifest.permission.CAMERA}:
@@ -257,6 +259,7 @@ public final class MainActivity extends Activity {
         .putExtra(GameCaptureService.EXTRA_TITLE,gameTitle)
         .putExtra(GameCaptureService.EXTRA_GAME,gameName)
         .putExtra(GameCaptureService.EXTRA_FACE,gameFace)
+        .putExtra(GameCaptureService.EXTRA_FACE_LAYOUT,gameFaceLayout)
         .putExtra(GameCaptureService.EXTRA_COOKIE,CookieManager.getInstance().getCookie(ONLINE_URL));
       try{if(Build.VERSION.SDK_INT>=26)startForegroundService(run);else startService(run);}
       catch(Exception e){notifyGameStatus("error","Android tidak mengizinkan layanan GAME LIVE.","");}
