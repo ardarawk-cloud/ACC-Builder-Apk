@@ -25,7 +25,7 @@
   </queries>
   <application android:label="NADMO LIVE" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:theme="@android:style/Theme.Material.NoActionBar"
     android:usesCleartextTraffic="false" android:allowBackup="false">
-    <service android:name=".GameCaptureService" android:exported="false" android:foregroundServiceType="mediaProjection|microphone|camera" />
+    <service android:name=".GameCaptureService" android:exported="false" android:process=":game" android:stopWithTask="false" android:foregroundServiceType="mediaProjection|microphone|camera" />
     <activity android:name=".MainActivity" android:exported="true"
       android:configChanges="orientation|screenSize|keyboardHidden">
       <intent-filter>
