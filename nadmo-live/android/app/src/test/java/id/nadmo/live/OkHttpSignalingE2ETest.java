@@ -85,4 +85,35 @@ public final class OkHttpSignalingE2ETest {
       client.connectionPool().evictAll();
     }
   }
+  @Test public void nativeHostReceivesActualViewerChatPacket() throws Exception{
+    OkHttpClient client=new OkHttpClient.Builder()
+      .pingInterval(20,TimeUnit.SECONDS).connectTimeout(12,TimeUnit.SECONDS).build();
+    Session host=null,viewer=null;
+    try{
+      host=connect(client);
+      assertTrue(host.socket.send(new JSONObject()
+        .put("type","create").put("title","GAME CHAT SIGNAL TEST")
+        .put("category","Gaming").put("mode","public")
+        .put("hostName","NADMO QA").toString()));
+      String room=host.until("created",20).getString("id");
+      viewer=connect(client);
+      assertTrue(viewer.socket.send(new JSONObject().put("type","join").put("id",room).toString()));
+      viewer.until("joined",20);
+      host.until("viewer-joined",20);
+      String proof="CHAT_PING_"+System.nanoTime();
+      assertTrue(viewer.socket.send(new JSONObject().put("type","chat").put("text",proof).toString()));
+      JSONObject received=host.until("chat",20);
+      assertEquals("Native GAME host must get viewer chat for popup notification",proof,received.optString("text"));
+      assertTrue("Sender identifier needed to suppress host's own message",received.optString("from").length()>0);
+      assertTrue(host.socket.send(new JSONObject().put("type","leave").toString()));
+      host.until("left",10);
+      System.out.println("PASS real viewer chat reaches GAME Android OkHttp host, ready for system notification");
+    }finally{
+      if(host!=null&&host.socket!=null)host.socket.cancel();
+      if(viewer!=null&&viewer.socket!=null)viewer.socket.cancel();
+      client.dispatcher().executorService().shutdown();
+      client.connectionPool().evictAll();
+    }
+  }
+
 }
