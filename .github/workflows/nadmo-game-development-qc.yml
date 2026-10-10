@@ -1,0 +1,37 @@
+name: NADMO GAME native development QC
+on:
+  push:
+    branches: ['feat/nadmo-native-game-live-20261010']
+    paths:
+      - 'nadmo-live/android/**'
+      - '.github/workflows/nadmo-game-development-qc.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-game-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Verify standalone offline OFFGRID launcher remains bundled
+        run: node nadmo-live/android/qa/offgrid-local-contract.mjs
+      - name: Compile native MediaProjection/Game WebRTC candidate
+        run: gradle -p nadmo-live/android :app:assembleDebug --no-daemon --stacktrace
+      - name: Test real Android OkHttp host connection, heartbeat and 90s recovery
+        run: gradle -p nadmo-live/android :app:testDebugUnitTest --tests id.nadmo.live.OkHttpSignalingE2ETest --no-daemon --stacktrace
+      - name: Inspect APK identity without publishing
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging nadmo-live/android/app/build/outputs/apk/debug/app-debug.apk | head -1
+          test -s nadmo-live/android/app/build/outputs/apk/debug/app-debug.apk

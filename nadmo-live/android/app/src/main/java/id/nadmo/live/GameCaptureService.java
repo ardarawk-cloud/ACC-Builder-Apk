@@ -1,0 +1,789 @@
+package id.nadmo.live;
+
+import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.app.PendingIntent;
+import android.app.Service;
+import android.content.Intent;
+import android.content.pm.ServiceInfo;
+import android.content.res.Configuration;
+import android.media.projection.MediaProjection;
+import android.os.Build;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.os.PowerManager;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.util.DisplayMetrics;
+import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.webrtc.AudioSource;
+import org.webrtc.AudioTrack;
+import org.webrtc.Camera2Enumerator;
+import org.webrtc.CameraVideoCapturer;
+import org.webrtc.DataChannel;
+import org.webrtc.DefaultVideoDecoderFactory;
+import org.webrtc.DefaultVideoEncoderFactory;
+import org.webrtc.EglBase;
+import org.webrtc.IceCandidate;
+import org.webrtc.MediaConstraints;
+import org.webrtc.MediaStream;
+import org.webrtc.PeerConnection;
+import org.webrtc.PeerConnectionFactory;
+import org.webrtc.RtpReceiver;
+import org.webrtc.RtpSender;
+import org.webrtc.RtpParameters;
+import org.webrtc.ScreenCapturerAndroid;
+import org.webrtc.SdpObserver;
+import org.webrtc.SessionDescription;
+import org.webrtc.SurfaceTextureHelper;
+import org.webrtc.VideoSource;
+import org.webrtc.VideoTrack;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.WebSocket;
+import okhttp3.WebSocketListener;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+/**
+ * Foreground screen broadcaster. GAME runs in another Android app while capture,
+ * WebRTC microphone, optional front camera and NADMO signaling stay in this process.
+ *
+ * Captures game playback audio only if Android 10+ and the game itself allow it.
+ * Uses a separate low-latency WebRTC data channel for PCM and keeps the microphone
+ * on its original audio track. Do not report successful game audio without samples.
+ */
+public final class GameCaptureService extends Service {
+  static final String ACTION_START="id.nadmo.live.GAME_START";
+  static final String ACTION_STOP="id.nadmo.live.GAME_STOP";
+  static final String ACTION_STATUS="id.nadmo.live.GAME_STATUS";
+  static final String ACTION_QUERY="id.nadmo.live.GAME_QUERY";
+  // Failure codes are strictly device-local: never store session cookies,
+  // stream URLs, chat content or WebRTC offer/candidate details.
+  private static final String DIAG_PREFS="nadmo_game_status";
+  private static final String DIAG_ARMED="capture_active";
+  private static final String DIAG_LAST="last_diagnostic";
+  private static final String DIAG_TIME="last_diagnostic_at";
+  private static final int DIAG_MAX=150;
+  static final String EXTRA_PROJECTION="projection";
+  static final String EXTRA_RESULT="result";
+  static final String EXTRA_TITLE="title";
+  static final String EXTRA_GAME="game";
+  static final String EXTRA_FACE="face";
+  static final String EXTRA_COOKIE="cookie";
+  static final String EXTRA_FACE_LAYOUT="facecam";
+  private static final String WS_URL="wss://nadmo-live-beta-20261009.ardarawk.workers.dev/ws";
+  // Server checks Origin for CSWSH defense. OkHttp (unlike browser WebSocket) does not set it.
+  private static final String WS_ORIGIN="https://nadmo-live-beta-20261009.ardarawk.workers.dev";
+  private static final int NOTIFICATION_ID=7701;
+  static final int CHAT_NOTIFICATION_ID=7702;
+  private static final String CHAT_CHANNEL="nadmo_game_chat";
+  private static final long CHAT_POPUP_MIN_INTERVAL_MS=1200;
+  private static final int MAX_CHAT_NOTIFICATIONS=4;
+  private long lastChatPopupAt=0L;
+  private int nextChatNotificationId=CHAT_NOTIFICATION_ID;
+  private final List<Integer> shownChatNotifications=new ArrayList<>();
+  private JSONObject queuedChat=null;
+  private Runnable queuedChatTask=null;
+  private String hostSocketId="";
+  private static final String CHANNEL="nadmo_game_live";
+  private static final String TAG="NadmoGameLive";
+  private final Handler main=new Handler(Looper.getMainLooper());
+  private final Map<String,PeerConnection> viewers=new HashMap<>();
+  private final Map<String,List<IceCandidate>> pendingIce=new HashMap<>();
+  private final Map<String,RtpSender> screenSenders=new HashMap<>();
+  // Repair a failed viewer route without interrupting MediaProjection or microphone.
+  private final Map<String,Runnable> peerRepairTasks=new HashMap<>();
+  private final Map<String,Long> lastPeerRepairAt=new HashMap<>();
+  private OkHttpClient client;
+  private WebSocket socket;
+  private PeerConnectionFactory factory;
+  private EglBase egl;
+  private SurfaceTextureHelper screenHelper,faceHelper;
+  private ScreenCapturerAndroid screenCapturer;
+  private CameraVideoCapturer faceCapturer;
+  private VideoSource screenSource,faceSource;
+  private VideoTrack screenTrack,faceTrack;
+  private AudioSource micSource;
+  private AudioTrack micTrack;
+  private GameAudioRelay gameAudio;
+  private String roomId="",resumeToken="",title="",game="",cookie="";
+  private JSONObject faceLayout=null;
+  private boolean stopping=false,started=false,wantFace=false,webSocketOpen=false;
+  private long offlineSince=0L;
+  private int reconnectAttempt=0;
+  private Runnable retryTask;
+  private Runnable socketWatchdog;
+  private ConnectivityManager connectivityManager;
+  private ConnectivityManager.NetworkCallback networkCallback;
+  private Network activeNetwork;
+  private boolean networkLost=false;
+  private final AtomicBoolean firstFrameReceived=new AtomicBoolean(false);
+  private volatile long lastCapturedFrameAt=0;
+  private boolean signalingStarted=false;
+  private Runnable firstFrameTimeout;
+  private PowerManager.WakeLock cpuWakeLock;
+  private long lastServerMessageAt=0;
+  private long socketOpenedAt=0;
+  // Stability-first video profile. Original 1280px fixed capture could saturate
+  // low-memory mobile hardware encoders while a heavy game runs in foreground.
+  private static final int GAME_VIDEO_MAX_EDGE=960;
+  private static final int GAME_VIDEO_FPS=20;
+  private static final int GAME_VIDEO_BITRATE_BPS=850000;
+  // Without an SFU the phone uploads one screen encode per viewer. Keep that
+  // combined screen-video budget bounded so the game retains network headroom.
+  private static final int GAME_TOTAL_SCREEN_UPLOAD_BPS=2000000;
+  private static final long SOCKET_STALE_MS=65000L;
+  private static final long SOCKET_CONNECT_STALE_MS=25000L;
+  private String diagnostic="Belum ada koneksi";
+  static volatile String state="stopped",status="",activeRoom="";
+
+  private SharedPreferences diagnosticPrefs(){
+    return getSharedPreferences(DIAG_PREFS,Context.MODE_PRIVATE);
+  }
+  private void rememberFailure(String reason){
+    String safe=limit(reason,DIAG_MAX,"Status tidak tersedia");
+    diagnosticPrefs().edit().putString(DIAG_LAST,safe)
+      .putLong(DIAG_TIME,System.currentTimeMillis()).apply();
+  }
+  private String lastFailure(){
+    SharedPreferences prefs=diagnosticPrefs();
+    if(prefs.getBoolean(DIAG_ARMED,false))
+      return "SERVICE_INTERRUPTED: proses siaran GAME berhenti mendadak saat aplikasi lain dibuka.";
+    return prefs.getString(DIAG_LAST,"Belum ada catatan kesalahan GAME LIVE.");
+  }
+  private void watchNetwork(){
+    connectivityManager=(ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+    if(connectivityManager==null)return;
+    networkCallback=new ConnectivityManager.NetworkCallback(){
+      @Override public void onAvailable(Network network){main.post(()->{
+        if(stopping||!started)return;
+        boolean switched=networkLost||(activeNetwork!=null&&!activeNetwork.equals(network));
+        activeNetwork=network;networkLost=false;
+        if(switched){
+          diagnostic="NETWORK_SWITCH";
+          rememberFailure("NETWORK_SWITCH: koneksi HP berubah saat GAME berjalan");
+          if(socket!=null)disconnectStaleSocket(diagnostic);
+        }
+      });}
+      @Override public void onLost(Network network){main.post(()->{
+        if(!stopping&&started&&network.equals(activeNetwork)){
+          activeNetwork=null;networkLost=true;
+          diagnostic="NETWORK_LOST";
+          rememberFailure("NETWORK_LOST: jaringan HP terputus saat GAME berjalan");
+        }
+      });}
+    };
+    try{connectivityManager.registerDefaultNetworkCallback(networkCallback);}
+    catch(Exception error){
+      Log.w(TAG,"Cannot monitor default mobile network",error);
+      networkCallback=null;
+    }
+  }
+  @Override public IBinder onBind(Intent intent){return null;}
+
+  @Override public int onStartCommand(Intent intent,int flags,int startId){
+    if(intent==null)return START_NOT_STICKY;
+    if(ACTION_QUERY.equals(intent.getAction())){
+      Intent event=new Intent(ACTION_STATUS).setPackage(getPackageName());
+      event.putExtra("state",started?state:"stopped")
+        .putExtra("message",started?status:lastFailure())
+        .putExtra("room",started?activeRoom:"");
+      sendBroadcast(event);
+      if(!started)stopSelf(startId);
+      return START_NOT_STICKY;
+    }
+    if(ACTION_STOP.equals(intent.getAction())){stopGame("Siaran game diakhiri.");return START_NOT_STICKY;}
+    if(!ACTION_START.equals(intent.getAction())||started)return START_NOT_STICKY;
+    stopping=false;started=true;
+    diagnosticPrefs().edit().putBoolean(DIAG_ARMED,true)
+      .putString(DIAG_LAST,"GAME LIVE mulai; menunggu perekaman layar.").commit();
+    title=limit(intent.getStringExtra(EXTRA_TITLE),60,"NADMO GAME LIVE");
+    game=limit(intent.getStringExtra(EXTRA_GAME),35,"Gaming");
+    cookie=intent.getStringExtra(EXTRA_COOKIE);
+    if(cookie==null)cookie="";
+    wantFace=intent.getBooleanExtra(EXTRA_FACE,false);
+    try{String raw=intent.getStringExtra(EXTRA_FACE_LAYOUT);if(wantFace&&raw!=null&&!raw.isEmpty())faceLayout=new JSONObject(raw);}catch(Exception ignored){}
+    int result=intent.getIntExtra(EXTRA_RESULT,Activity.RESULT_CANCELED);
+    Intent grant;
+    if(Build.VERSION.SDK_INT>=33)grant=intent.getParcelableExtra(EXTRA_PROJECTION,Intent.class);
+    else grant=intent.getParcelableExtra(EXTRA_PROJECTION);
+    if(result!=Activity.RESULT_OK||grant==null){
+      report("error","Izin rekam layar tidak diberikan.","");stopGame("Izin ditolak.");return START_NOT_STICKY;
+    }
+    try{
+      createChannel();
+      int types=ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+        |ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
+      if(wantFace)types|=ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA;
+      if(Build.VERSION.SDK_INT>=29)startForeground(NOTIFICATION_ID,notification("Menyiapkan layar game...",true),types);
+      else startForeground(NOTIFICATION_ID,notification("Menyiapkan layar game...",true));
+      report("starting","Menghubungkan GAME LIVE...","");
+      holdCaptureCpu();
+      initCapture(grant);
+      watchNetwork();
+      startSocketWatchdog();
+      // Never publish a room before MediaProjection delivers actual video frames.
+      firstFrameTimeout=()->{
+        if(!firstFrameReceived.get()&&!stopping){
+          Log.e(TAG,"MediaProjection produced no frame in 15s");
+          rememberFailure("PROJECTION_NO_FRAME");
+          stopGame("PROJECTION_NO_FRAME: Android tidak mengirim video awal.");
+        }
+      };
+      main.postDelayed(firstFrameTimeout,15000);
+    }catch(Exception error){
+      Log.e(TAG,"GAME init failed",error);
+      String code="CAPTURE_INIT_"+error.getClass().getSimpleName();
+      rememberFailure(code);
+      report("error","Gagal menyiapkan GAME LIVE: "+code,"");
+      stopGame(code);
+    }
+    return START_NOT_STICKY;
+  }
+
+  private void holdCaptureCpu(){
+    PowerManager pm=(PowerManager)getSystemService(Context.POWER_SERVICE);
+    if(pm==null)return;
+    cpuWakeLock=pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"NADMO:GameBroadcast");
+    cpuWakeLock.setReferenceCounted(false);
+    cpuWakeLock.acquire(180000);
+  }
+  private void startSocketWatchdog(){
+    if(socketWatchdog!=null)main.removeCallbacks(socketWatchdog);
+    socketWatchdog=new Runnable(){
+      @Override public void run(){
+        if(stopping)return;
+        long now=android.os.SystemClock.elapsedRealtime();
+        if(cpuWakeLock!=null&&!cpuWakeLock.isHeld())cpuWakeLock.acquire(180000);
+        if(webSocketOpen&&lastServerMessageAt>0&&now-lastServerMessageAt>SOCKET_STALE_MS){
+          Log.w(TAG,"No server heartbeat for "+(now-lastServerMessageAt)+"ms; retrying signaling");
+          disconnectStaleSocket("Server tidak mengirim heartbeat");
+        }else if(!webSocketOpen&&socketOpenedAt>0&&now-socketOpenedAt>SOCKET_CONNECT_STALE_MS){
+          Log.w(TAG,"WebSocket connect timed out; retrying");
+          disconnectStaleSocket("Koneksi GAME LIVE terlalu lama");
+        }
+        main.postDelayed(this,15000);
+      }
+    };
+    main.postDelayed(socketWatchdog,15000);
+  }
+  private void disconnectStaleSocket(String note){
+    diagnostic=note;
+    WebSocket old=socket;socket=null;webSocketOpen=false;socketOpenedAt=0;
+    if(old!=null)old.cancel();
+    lostConnection();
+  }
+  private static String limit(String raw,int max,String fallback){
+    if(raw==null)return fallback;
+    raw=raw.trim();
+    return raw.isEmpty()?fallback:raw.substring(0,Math.min(max,raw.length()));
+  }
+  private void createChannel(){
+    NotificationChannel channel=new NotificationChannel(CHANNEL,"NADMO GAME LIVE",NotificationManager.IMPORTANCE_LOW);
+    channel.setDescription("Siaran layar game berjalan. Ketuk STOP untuk mengakhiri.");
+    NotificationManager manager=getSystemService(NotificationManager.class);
+    manager.createNotificationChannel(channel);
+    NotificationChannel chatChannel=new NotificationChannel(CHAT_CHANNEL,"Chat saat main game",NotificationManager.IMPORTANCE_HIGH);
+    chatChannel.setDescription("Chat penonton muncul saat bermain. Jawab langsung lewat mikrofon LIVE.");
+    chatChannel.enableVibration(true);
+    manager.createNotificationChannel(chatChannel);
+  }
+  private Notification notification(String text,boolean ongoing){
+    Intent open=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    PendingIntent go=PendingIntent.getActivity(this,0,open,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+    Intent stop=new Intent(this,GameCaptureService.class).setAction(ACTION_STOP);
+    PendingIntent cancel=PendingIntent.getService(this,1,stop,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+    Notification.Builder b=Build.VERSION.SDK_INT>=26?new Notification.Builder(this,CHANNEL):new Notification.Builder(this);
+    return b.setSmallIcon(android.R.drawable.presence_video_online)
+      .setContentTitle("NADMO / GAME LIVE").setContentText(text)
+      .setContentIntent(go).setOngoing(ongoing).setOnlyAlertOnce(true)
+      .addAction(android.R.drawable.ic_menu_close_clear_cancel,"AKHIRI LIVE",cancel).build();
+  }
+  private void onIncomingRoomChat(JSONObject message){
+    if(!started||stopping||roomId.isEmpty())return;
+    String senderId=message.optString("from","");
+    if(!hostSocketId.isEmpty()&&hostSocketId.equals(senderId))return;
+    String name=limit(message.optString("name","Penonton"),35,"Penonton");
+    String body=limit(message.optString("text",""),250,"");
+    if(body.isEmpty())return;
+    long now=android.os.SystemClock.elapsedRealtime();
+    if(now-lastChatPopupAt<CHAT_POPUP_MIN_INTERVAL_MS){
+      // During chat bursts retain the latest message rather than discard it.
+      queuedChat=message;
+      if(queuedChatTask==null){
+        queuedChatTask=()->{
+          queuedChatTask=null;
+          JSONObject pending=queuedChat;queuedChat=null;
+          if(pending!=null&&!stopping)onIncomingRoomChat(pending);
+        };
+        main.postDelayed(queuedChatTask,CHAT_POPUP_MIN_INTERVAL_MS-(now-lastChatPopupAt));
+      }
+      return;
+    }
+    if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return;
+    NotificationManager manager=getSystemService(NotificationManager.class);
+    if(manager==null||!manager.areNotificationsEnabled())return;
+    NotificationChannel channel=manager.getNotificationChannel(CHAT_CHANNEL);
+    if(channel==null||channel.getImportance()<NotificationManager.IMPORTANCE_HIGH)return;
+    lastChatPopupAt=now;
+    Intent back=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    PendingIntent view=PendingIntent.getActivity(this,7703,back,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+    Notification.Builder builder=new Notification.Builder(this,CHAT_CHANNEL)
+      .setSmallIcon(android.R.drawable.sym_action_chat)
+      .setContentTitle(name+" · GAME LIVE")
+      .setContentText(body)
+      .setStyle(new Notification.BigTextStyle().bigText(body))
+      .setCategory(Notification.CATEGORY_MESSAGE)
+      .setPriority(Notification.PRIORITY_HIGH)
+      .setVisibility(Notification.VISIBILITY_PRIVATE)
+      .setAutoCancel(true)
+      .setContentIntent(view);
+    // Updating one ID repeatedly usually suppresses subsequent heads-up alerts.
+    // Keep separate recent notifications, capped to prevent UI clutter.
+    int notificationId=++nextChatNotificationId;
+    manager.notify(notificationId,builder.build());
+    shownChatNotifications.add(notificationId);
+    if(shownChatNotifications.size()>MAX_CHAT_NOTIFICATIONS)
+      manager.cancel(shownChatNotifications.remove(0));
+  }
+  private void updateNotification(String value){
+    getSystemService(NotificationManager.class).notify(NOTIFICATION_ID,notification(value,true));
+  }
+  private void report(String next,String message,String room){
+    state=next;status=message;if(room!=null&&!room.isEmpty())activeRoom=room;
+    Intent event=new Intent(ACTION_STATUS).setPackage(getPackageName());
+    event.putExtra("state",next).putExtra("message",message).putExtra("room",room);
+    sendBroadcast(event);
+    if(started&&!stopping)updateNotification(message);
+  }
+  private void initCapture(Intent permissionData){
+    PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(this)
+      .setEnableInternalTracer(false).createInitializationOptions());
+    egl=EglBase.create();
+    factory=PeerConnectionFactory.builder()
+      .setVideoEncoderFactory(new DefaultVideoEncoderFactory(egl.getEglBaseContext(),true,true))
+      .setVideoDecoderFactory(new DefaultVideoDecoderFactory(egl.getEglBaseContext()))
+      .createPeerConnectionFactory();
+    screenSource=factory.createVideoSource(true);
+    screenTrack=factory.createVideoTrack("nadmo_screen",screenSource);
+    screenTrack.setEnabled(true);
+    screenTrack.addSink(frame->{
+      lastCapturedFrameAt=android.os.SystemClock.elapsedRealtime();
+      if(firstFrameReceived.compareAndSet(false,true))main.post(()->{
+        if(stopping||signalingStarted)return;
+        signalingStarted=true;
+        if(firstFrameTimeout!=null)main.removeCallbacks(firstFrameTimeout);
+        report("starting","Layar game tertangkap. Menyambungkan penonton...","");
+        connectSignaling(false);
+      });
+    });
+    screenHelper=SurfaceTextureHelper.create("NadmoScreenCapture",egl.getEglBaseContext());
+    screenCapturer=new ScreenCapturerAndroid(permissionData,new MediaProjection.Callback(){
+      @Override public void onStop(){main.post(()->{
+        if(!stopping){
+          Log.w(TAG,"MediaProjection ended by Android");
+          rememberFailure("PROJECTION_STOP: izin layar dicabut Android atau penghentian rekaman");
+          stopGame("PROJECTION_STOP: Android mengakhiri rekam layar.");
+        }
+      });}
+    });
+    screenCapturer.initialize(screenHelper,this,screenSource.getCapturerObserver());
+    int[] dimensions=captureDimensions();
+    screenCapturer.startCapture(dimensions[0],dimensions[1],GAME_VIDEO_FPS);
+    // Android 14 forbids reusing the projection intent for a second session.
+    // Obtain the projection already held by the current screen capturer.
+    if(Build.VERSION.SDK_INT>=29){
+      try{
+        // WebRTC publishes the existing MediaProjection. Reuse the same one:
+        // calling getMediaProjection(resultData) again is forbidden on Android 14.
+        MediaProjection projection=screenCapturer.getMediaProjection();
+        if(projection!=null){
+          gameAudio=new GameAudioRelay();
+          if(!gameAudio.start(projection))gameAudio=null;
+        }
+      }catch(Exception unavailable){
+        Log.w(TAG,"Internal GAME audio not capturable; microphone remains active",unavailable);
+        gameAudio=null;
+      }
+    }
+    micSource=factory.createAudioSource(new MediaConstraints());
+    micTrack=factory.createAudioTrack("nadmo_microphone",micSource);
+    micTrack.setEnabled(true);
+    if(wantFace)startFaceCamera();
+  }
+  private int[] captureDimensions(){
+    DisplayMetrics m=getResources().getDisplayMetrics();
+    int width=Math.max(1,m.widthPixels),height=Math.max(1,m.heightPixels);
+    float scale=Math.min(1f,(float)GAME_VIDEO_MAX_EDGE/Math.max(width,height));
+    int w=Math.max(2,Math.round(width*scale)/2*2);
+    int h=Math.max(2,Math.round(height*scale)/2*2);
+    return new int[]{w,h};
+  }
+  @Override public void onConfigurationChanged(Configuration configuration){
+    super.onConfigurationChanged(configuration);
+    if(screenCapturer!=null&&!stopping){
+      int[] d=captureDimensions();
+      try{screenCapturer.changeCaptureFormat(d[0],d[1],GAME_VIDEO_FPS);}
+      catch(Exception e){Log.w(TAG,"Screen format rotation update failed",e);}
+    }
+  }
+  private void startFaceCamera(){
+    try{
+      Camera2Enumerator cameras=new Camera2Enumerator(this);
+      for(String device:cameras.getDeviceNames()){
+        if(!cameras.isFrontFacing(device))continue;
+        faceCapturer=cameras.createCapturer(device,null);
+        if(faceCapturer==null)continue;
+        faceSource=factory.createVideoSource(false);
+        faceHelper=SurfaceTextureHelper.create("NadmoFaceCapture",egl.getEglBaseContext());
+        faceCapturer.initialize(faceHelper,this,faceSource.getCapturerObserver());
+        faceTrack=factory.createVideoTrack("nadmo_face",faceSource);
+        faceCapturer.startCapture(320,240,12);
+        break;
+      }
+    }catch(Exception error){
+      Log.w(TAG,"Optional front camera unavailable",error);
+      faceTrack=null;wantFace=false;
+    }
+  }
+  private void connectSignaling(boolean resume){
+    if(stopping)return;
+    try{
+      if(client==null)client=new OkHttpClient.Builder().pingInterval(20,TimeUnit.SECONDS)
+        .connectTimeout(12,TimeUnit.SECONDS).build();
+      Request.Builder request=new Request.Builder().url(WS_URL).header("Origin",WS_ORIGIN);
+      if(!cookie.isEmpty())request.header("Cookie",cookie);
+      webSocketOpen=false;
+      socketOpenedAt=android.os.SystemClock.elapsedRealtime();
+      socket=client.newWebSocket(request.build(),new WebSocketListener(){
+        @Override public void onOpen(WebSocket ws,Response response){
+          main.post(()->{
+            if(stopping||ws!=socket)return;
+            webSocketOpen=true;
+            socketOpenedAt=0;
+            lastServerMessageAt=android.os.SystemClock.elapsedRealtime();
+            diagnostic="WebSocket terhubung";
+            if(resume&&roomId.length()>0&&resumeToken.length()>0)
+              send(new JSONObjectSafe().put("type","resume").put("id",roomId).put("token",resumeToken).json());
+            else send(new JSONObjectSafe().put("type","create").put("title",title)
+              .put("category","Gaming").put("mode","public").put("hostName","Host").put("facecam",faceLayout).json());
+          });
+        }
+        @Override public void onMessage(WebSocket ws,String body){main.post(()->{
+          if(!stopping&&ws==socket){lastServerMessageAt=android.os.SystemClock.elapsedRealtime();handleMessage(body);}
+        });}
+        @Override public void onFailure(WebSocket ws,Throwable failure,Response response){
+          final int httpCode=response==null?0:response.code();
+          final String error=failure==null?"Unknown":failure.getClass().getSimpleName();
+          Log.w(TAG,"Game signaling failure HTTP "+httpCode+" ("+error+")");
+          diagnostic="WS_HTTP_"+httpCode+"_"+error;
+          rememberFailure(diagnostic);
+          main.post(()->{
+            if(stopping||ws!=socket)return;
+            if(httpCode==403||httpCode==401){
+              report("error","Server menolak koneksi GAME (HTTP "+httpCode+").",roomId);
+              stopGame("Server menolak sesi GAME LIVE.");
+            }else lostConnection();
+          });
+        }
+        @Override public void onClosed(WebSocket ws,int code,String reason){
+          Log.w(TAG,"Game signaling closed (code "+code+")");
+          diagnostic="WS_CLOSE_"+code;
+          rememberFailure(diagnostic);
+          main.post(()->{if(!stopping&&ws==socket)lostConnection();});
+        }
+      });
+    }catch(Exception e){
+      Log.e(TAG,"Connection failed",e);
+      diagnostic="WS_CONNECT_"+e.getClass().getSimpleName();
+      rememberFailure(diagnostic);
+      lostConnection();
+    }
+  }
+  private void send(JSONObject obj){if(socket!=null&&webSocketOpen)socket.send(obj.toString());}
+  private void handleMessage(String raw){
+    try{
+      JSONObject m=new JSONObject(raw);String type=m.optString("type","");
+      if("created".equals(type)||"resumed".equals(type)){
+        roomId=m.optString("id",roomId);
+        hostSocketId=m.optString("selfId",hostSocketId);
+        if("created".equals(type))resumeToken=m.optString("resumeToken","");
+        reconnectAttempt=0;offlineSince=0;
+        String message="GAME LIVE aktif · "+game+" · mic"+(faceTrack!=null?" · facecam":"");
+        report("live",message,roomId);
+        if("resumed".equals(type)){
+          clearViewers();
+          JSONArray ids=m.optJSONArray("viewers");
+          if(ids!=null)for(int i=0;i<ids.length();i++)offerTo(ids.optString(i));
+        }
+      }else if("chat".equals(type)){
+        onIncomingRoomChat(m);
+      }else if("viewer-joined".equals(type)){
+        offerTo(m.optString("id"));
+      }else if("viewer-left".equals(type)){
+        String id=m.optString("id");
+        cancelPeerRepair(id);lastPeerRepairAt.remove(id);
+        PeerConnection pc=viewers.remove(id);
+        pendingIce.remove(id);
+        screenSenders.remove(id);
+        if(gameAudio!=null)gameAudio.detach(id);
+        if(pc!=null){pc.close();pc.dispose();}
+        balanceScreenUpload();
+      }else if("media-refresh-request".equals(type)){
+        offerTo(m.optString("id"));
+      }else if("signal".equals(type)){
+        String id=m.optString("from");JSONObject data=m.optJSONObject("data");
+        if(data!=null)handleSignal(id,data);
+      }else if("error".equals(type)){
+        String message=m.optString("message","Room ditolak server");
+        report("error",message,roomId);
+        if(roomId.isEmpty()||message.contains("Pemulihan")||message.contains("terverifikasi"))stopGame(message);
+      }else if("room-ended".equals(type)){
+        stopGame("Room telah berakhir.");
+      }
+    }catch(Exception e){Log.w(TAG,"Invalid signaling event",e);}
+  }
+  private void lostConnection(){
+    if(stopping)return;
+    webSocketOpen=false;socketOpenedAt=0;
+    if(offlineSince==0)offlineSince=System.currentTimeMillis();
+    if(System.currentTimeMillis()-offlineSince>85000||roomId.isEmpty()&&reconnectAttempt>=4){
+      report("error","GAME terputus: "+diagnostic,roomId);
+      stopGame("SIGNAL_TIMEOUT_"+diagnostic);
+      return;
+    }
+    report("reconnecting","Koneksi GAME terputus; pemulihan otomatis... ("+diagnostic+")",roomId);
+    if(retryTask!=null)main.removeCallbacks(retryTask);
+    final int delay=Math.min(1200*(1<<Math.min(reconnectAttempt++,3)),9000);
+    retryTask=()->connectSignaling(!roomId.isEmpty());
+    main.postDelayed(retryTask,delay);
+  }
+  private void cancelPeerRepair(String id){
+    Runnable task=peerRepairTasks.remove(id);
+    if(task!=null)main.removeCallbacks(task);
+  }
+  private void onViewerIceState(String id,PeerConnection pc,PeerConnection.IceConnectionState iceState){
+    main.post(()->{
+      if(stopping||viewers.get(id)!=pc)return;
+      if(iceState==PeerConnection.IceConnectionState.CONNECTED||
+         iceState==PeerConnection.IceConnectionState.COMPLETED){
+        cancelPeerRepair(id);return;
+      }
+      if(iceState!=PeerConnection.IceConnectionState.FAILED&&
+         iceState!=PeerConnection.IceConnectionState.DISCONNECTED)return;
+      if(peerRepairTasks.containsKey(id))return;
+      long now=android.os.SystemClock.elapsedRealtime();
+      long last=lastPeerRepairAt.getOrDefault(id,0L);
+      long backoff=Math.max(0L,15000L-(now-last));
+      long delay=Math.max(backoff,iceState==PeerConnection.IceConnectionState.FAILED?1200L:6000L);
+      Runnable repair=()->{
+        peerRepairTasks.remove(id);
+        // Room resume independently reconstructs the viewer peer connections.
+        if(stopping||viewers.get(id)!=pc||!webSocketOpen)return;
+        lastPeerRepairAt.put(id,android.os.SystemClock.elapsedRealtime());
+        Log.w(TAG,"Repairing stalled viewer ICE "+id);
+        offerTo(id);
+      };
+      peerRepairTasks.put(id,repair);
+      main.postDelayed(repair,delay);
+    });
+  }
+  private void balanceScreenUpload(){
+    int count=Math.max(1,screenSenders.size());
+    int perViewer=Math.min(GAME_VIDEO_BITRATE_BPS,GAME_TOTAL_SCREEN_UPLOAD_BPS/count);
+    for(RtpSender sender:screenSenders.values()){
+      try{
+        RtpParameters params=sender.getParameters();
+        for(RtpParameters.Encoding encoding:params.encodings){
+          encoding.maxBitrateBps=perViewer;
+          encoding.maxFramerate=GAME_VIDEO_FPS;
+        }
+        if(!sender.setParameters(params))Log.w(TAG,"Encoder rejected shared upload cap");
+      }catch(Exception error){Log.w(TAG,"Cannot tune GAME viewer bitrate",error);}
+    }
+  }
+  private void offerTo(String id){
+    if(id==null||id.isEmpty()||stopping||factory==null)return;
+    cancelPeerRepair(id);
+    screenSenders.remove(id);
+    if(gameAudio!=null)gameAudio.detach(id);
+    PeerConnection old=viewers.remove(id);
+    if(old!=null){old.close();old.dispose();}
+    pendingIce.remove(id);
+    List<PeerConnection.IceServer> ice=Arrays.asList(
+      PeerConnection.IceServer.builder("stun:stun.cloudflare.com:3478").createIceServer(),
+      PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer());
+    PeerConnection.RTCConfiguration cfg=new PeerConnection.RTCConfiguration(ice);
+    cfg.sdpSemantics=PeerConnection.SdpSemantics.UNIFIED_PLAN;
+    final PeerConnection[] holder=new PeerConnection[1];
+    PeerConnection pc=factory.createPeerConnection(cfg,new PeerConnection.Observer(){
+      @Override public void onSignalingChange(PeerConnection.SignalingState state){}
+      @Override public void onIceConnectionChange(PeerConnection.IceConnectionState state){
+        if(state==PeerConnection.IceConnectionState.FAILED ||
+          state==PeerConnection.IceConnectionState.DISCONNECTED)
+          Log.w(TAG,"Viewer WebRTC "+id+" connection "+state);
+        onViewerIceState(id,holder[0],state);
+      }
+      @Override public void onIceConnectionReceivingChange(boolean receiving){}
+      @Override public void onIceGatheringChange(PeerConnection.IceGatheringState state){}
+      @Override public void onIceCandidate(IceCandidate candidate){main.post(()->{
+        if(viewers.get(id)!=holder[0]||stopping)return;
+        JSONObject c=new JSONObjectSafe().put("candidate",candidate.sdp)
+          .put("sdpMid",candidate.sdpMid).put("sdpMLineIndex",candidate.sdpMLineIndex).json();
+        signal(id,new JSONObjectSafe().put("candidate",c).json());
+      });}
+      @Override public void onIceCandidatesRemoved(IceCandidate[] candidates){}
+      @Override public void onAddStream(MediaStream stream){}
+      @Override public void onRemoveStream(MediaStream stream){}
+      @Override public void onDataChannel(DataChannel channel){}
+      @Override public void onRenegotiationNeeded(){}
+      @Override public void onAddTrack(RtpReceiver receiver,MediaStream[] streams){}
+    });
+    if(pc==null){report("error","Tidak bisa menyambungkan penonton WebRTC.",roomId);return;}
+    holder[0]=pc;
+    viewers.put(id,pc);
+    // GAME PCM is transported over SCTP/WebRTC, never via signaling or disk.
+    // Unreliable, unordered chunks avoid seconds of delayed audio after packet loss.
+    if(gameAudio!=null&&gameAudio.isCapturing()){
+      DataChannel.Init audioOptions=new DataChannel.Init();
+      audioOptions.ordered=false;
+      audioOptions.maxRetransmits=0;
+      DataChannel channel=pc.createDataChannel("nadmo-game-audio",audioOptions);
+      gameAudio.attach(id,channel);
+    }
+    RtpSender screenSender=pc.addTrack(screenTrack,Arrays.asList("NADMO_GAME_SCREEN"));
+    if(screenSender!=null)screenSenders.put(id,screenSender);
+    balanceScreenUpload();
+    pc.addTrack(micTrack,Arrays.asList("NADMO_GAME_SCREEN"));
+    if(faceTrack!=null)pc.addTrack(faceTrack,Arrays.asList("NADMO_GAME_FACE"));
+    pc.createOffer(new SdpAdapter(){
+      @Override public void onCreateSuccess(SessionDescription description){
+        pc.setLocalDescription(new SdpAdapter(){
+          @Override public void onSetSuccess(){main.post(()->{
+            if(viewers.get(id)!=pc||stopping)return;
+            JSONObject desc=new JSONObjectSafe().put("type","offer").put("sdp",description.description).json();
+            signal(id,new JSONObjectSafe().put("description",desc).put("reset",true).json());
+          });}
+        },description);
+      }
+    },new MediaConstraints());
+  }
+  private void signal(String id,JSONObject data){
+    send(new JSONObjectSafe().put("type","signal").put("to",id).put("data",data).json());
+  }
+  private void handleSignal(String id,JSONObject data){
+    PeerConnection pc=viewers.get(id);if(pc==null)return;
+    JSONObject description=data.optJSONObject("description");
+    if(description!=null&&"answer".equals(description.optString("type"))){
+      SessionDescription answer=new SessionDescription(SessionDescription.Type.ANSWER,description.optString("sdp"));
+      pc.setRemoteDescription(new SdpAdapter(){
+        @Override public void onSetSuccess(){
+          main.post(()->{
+            List<IceCandidate> candidates=pendingIce.remove(id);
+            if(candidates!=null&&viewers.get(id)==pc)for(IceCandidate c:candidates)pc.addIceCandidate(c);
+          });
+        }
+      },answer);
+    }
+    JSONObject ice=data.optJSONObject("candidate");
+    if(ice!=null){
+      IceCandidate candidate=new IceCandidate(ice.optString("sdpMid"),
+        ice.optInt("sdpMLineIndex"),ice.optString("candidate"));
+      if(pc.getRemoteDescription()!=null)pc.addIceCandidate(candidate);
+      else pendingIce.computeIfAbsent(id,k->new ArrayList<>()).add(candidate);
+    }
+  }
+  private void clearViewers(){
+    for(Runnable task:peerRepairTasks.values())main.removeCallbacks(task);
+    peerRepairTasks.clear();lastPeerRepairAt.clear();
+    if(gameAudio!=null)for(String id:viewers.keySet())gameAudio.detach(id);
+    for(PeerConnection pc:viewers.values()){pc.close();pc.dispose();}
+    viewers.clear();pendingIce.clear();screenSenders.clear();
+  }
+  private void stopGame(String reason){
+    if(stopping)return;stopping=true;
+    if(retryTask!=null)main.removeCallbacks(retryTask);
+    if(socketWatchdog!=null)main.removeCallbacks(socketWatchdog);
+    if(firstFrameTimeout!=null)main.removeCallbacks(firstFrameTimeout);
+    if(queuedChatTask!=null)main.removeCallbacks(queuedChatTask);
+    queuedChatTask=null;queuedChat=null;
+    if(networkCallback!=null&&connectivityManager!=null){
+      try{connectivityManager.unregisterNetworkCallback(networkCallback);}
+      catch(Exception ignored){}
+      networkCallback=null;activeNetwork=null;
+    }
+    if(cpuWakeLock!=null&&cpuWakeLock.isHeld())cpuWakeLock.release();
+    try{send(new JSONObjectSafe().put("type","leave").json());}catch(Exception ignored){}
+    if(socket!=null){socket.close(1000,"game stream ended");socket=null;}
+    webSocketOpen=false;clearViewers();
+    if(gameAudio!=null){gameAudio.stop();gameAudio=null;}
+    try{if(faceCapturer!=null){faceCapturer.stopCapture();faceCapturer.dispose();}}catch(Exception e){Log.w(TAG,"Stop face camera",e);}
+    try{if(screenCapturer!=null){screenCapturer.stopCapture();screenCapturer.dispose();}}catch(Exception e){Log.w(TAG,"Stop projection",e);}
+    if(screenTrack!=null)screenTrack.dispose();
+    if(faceTrack!=null)faceTrack.dispose();
+    if(micTrack!=null)micTrack.dispose();
+    if(micSource!=null)micSource.dispose();
+    if(screenSource!=null)screenSource.dispose();
+    if(faceSource!=null)faceSource.dispose();
+    if(screenHelper!=null)screenHelper.dispose();
+    if(faceHelper!=null)faceHelper.dispose();
+    if(factory!=null)factory.dispose();
+    if(egl!=null)egl.release();
+    if(client!=null){client.dispatcher().executorService().shutdown();client.connectionPool().evictAll();}
+    cookie="";roomId="";resumeToken="";started=false;activeRoom="";faceLayout=null;
+    signalingStarted=false;firstFrameReceived.set(false);lastCapturedFrameAt=0;
+    hostSocketId="";
+    try{
+      NotificationManager manager=getSystemService(NotificationManager.class);
+      if(manager!=null)for(Integer id:shownChatNotifications)manager.cancel(id);
+    }catch(Exception ignored){}
+    shownChatNotifications.clear();
+    state="stopped";status=reason;
+    if("Siaran game diakhiri.".equals(reason))rememberFailure("LIVE_DIAKHIRI_HOST");
+    else rememberFailure(reason);
+    // Commit synchronously so a subsequent process recreation can read the
+    // accurate final cause, including after resource pressure from the game.
+    diagnosticPrefs().edit().putBoolean(DIAG_ARMED,false).commit();
+    Intent event=new Intent(ACTION_STATUS).setPackage(getPackageName());
+    event.putExtra("state","stopped").putExtra("message",reason).putExtra("room","");
+    sendBroadcast(event);
+    stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();
+  }
+  @Override public void onDestroy(){
+    if(started&&!stopping)stopGame("SERVICE_DESTROYED: Android menghentikan proses siaran.");
+    super.onDestroy();
+  }
+  private static class JSONObjectSafe {
+    private final JSONObject obj=new JSONObject();
+    JSONObjectSafe put(String key,Object value){
+      try{obj.put(key,value);}catch(Exception ignored){}
+      return this;
+    }
+    JSONObject json(){return obj;}
+  }
+  private static class SdpAdapter implements SdpObserver {
+    @Override public void onCreateSuccess(SessionDescription sdp){}
+    @Override public void onSetSuccess(){}
+    @Override public void onCreateFailure(String reason){Log.w(TAG,"SDP create "+reason);}
+    @Override public void onSetFailure(String reason){Log.w(TAG,"SDP set "+reason);}
+  }
+}

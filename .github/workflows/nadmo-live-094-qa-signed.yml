@@ -1,0 +1,141 @@
+name: NADMO LIVE signed beta update
+on:
+  push:
+    branches: ['feat/nadmo-native-game-live-20261010']
+    paths: ['.github/workflows/nadmo-live-094-qa-signed.yml', 'nadmo-live/android/qa/game-background-contract.mjs']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nadmo-v0101-beta-signed
+  cancel-in-progress: true
+jobs:
+  qa-signed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with: {packages: ''}
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.10.2'}
+      - name: Require the existing owner keystore
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.NADMO_LIVE_KEYSTORE_B64 }}
+          STORE_PASS: ${{ secrets.NADMO_LIVE_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.NADMO_LIVE_RELEASE_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.NADMO_LIVE_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_B64"
+          test -n "$STORE_PASS"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASS"
+          umask 077
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/nadmo-release.jks"
+          test -s "$RUNNER_TEMP/nadmo-release.jks"
+          echo "NADMO_LIVE_RELEASE_STORE_FILE=$RUNNER_TEMP/nadmo-release.jks" >> "$GITHUB_ENV"
+          echo "NADMO_LIVE_RELEASE_STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
+          echo "NADMO_LIVE_RELEASE_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "NADMO_LIVE_RELEASE_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+      - name: Preflight GAME UI and OFFGRID fallback
+        run: |
+          node nadmo-live/android/qa/offgrid-local-contract.mjs
+          node -e "const fs=require('fs'),vm=require('vm');const html=fs.readFileSync('nadmo-live/android/app/src/main/assets/game-live-qa.html','utf8');const i=html.indexOf('<script>'),j=html.indexOf('</script>',i);if(i<0||j<i||!html.includes('gameLaunchGame'))process.exit(1);new vm.Script(html.slice(i+8,j));console.log('GAME HTML UI SYNTAX PASS')"
+      - name: Check real Worker WebSocket Origin handshake
+        run: node nadmo-live/android/qa/game-signaling-gate.mjs
+      - name: Validate separate Android media foreground process and stable state IPC
+        run: node nadmo-live/android/qa/game-background-contract.mjs
+      - name: Check chat overlay remains voice-first (no text reply)
+        shell: bash
+        run: |
+          set -euo pipefail
+          GAME="nadmo-live/android/app/src/main/java/id/nadmo/live/GameCaptureService.java"
+          grep -Fq 'onIncomingRoomChat' "$GAME"
+          grep -Fq 'micTrack.setEnabled(true)' "$GAME"
+          grep -Fq 'CATEGORY_MESSAGE' "$GAME"
+          if grep -Eq 'GameChatReplyReceiver|RemoteInput|ACTION_CHAT_REPLY' "$GAME";then
+            echo 'Unexpected text reply bridge in GAME'
+            exit 1
+          fi
+      - name: Verify Android 14+ entire-display consent and first real frame gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN="nadmo-live/android/app/src/main/java/id/nadmo/live/MainActivity.java"
+          SERVICE="nadmo-live/android/app/src/main/java/id/nadmo/live/GameCaptureService.java"
+          grep -Fq 'MediaProjectionConfig.createConfigForDefaultDisplay()' "$MAIN"
+          grep -Fq 'firstFrameReceived.compareAndSet(false,true)' "$SERVICE"
+          grep -Fq 'screenTrack.addSink(' "$SERVICE"
+          grep -Fq 'firstFrameTimeout' "$SERVICE"
+      - name: Check actual host-to-viewer GAME video and voice via public Worker
+        shell: bash
+        run: |
+          npm install --prefix nadmo-live/android/qa --no-save --no-audit --no-fund puppeteer-core@24
+          export CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
+          node nadmo-live/android/qa/game-native-media-e2e.cjs
+      - name: Verify host-side WebSocket heartbeat and forced-disconnect room recovery
+        run: gradle -p nadmo-live/android :app:testReleaseUnitTest --tests id.nadmo.live.OkHttpSignalingE2ETest --no-daemon
+      - name: Verify incoming viewer chat reaches Android host signaling
+        run: gradle -p nadmo-live/android :app:testReleaseUnitTest --tests id.nadmo.live.OkHttpSignalingE2ETest.nativeHostReceivesActualViewerChatPacket --no-daemon
+      - name: Real Chromium visual layout QA — game landscape fills desktop, mobile keeps controls readable
+        shell: bash
+        run: |
+          export CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
+          node nadmo-live/android/qa/cyberdeck-layout-qc.cjs
+      - name: Verify new cyberdeck and truthful game-audio state are bundled
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTML=nadmo-live/android/app/src/main/assets/game-live-qa.html
+          grep -Fq 'NADMO CYBERDECK v2' "$HTML"
+          grep -Fq 'watch-landscape' "$HTML"
+          grep -Fq 'deck-system-bar' "$HTML"
+          grep -Fq 'AUDIO GAME / BELUM TERSEDIA' "$HTML"
+          grep -Fq 'gameChatSettings' "$HTML"
+          grep -Fq 'GAME_VIDEO_MAX_EDGE=960' nadmo-live/android/app/src/main/java/id/nadmo/live/GameCaptureService.java
+      - name: Assemble signed beta APK with original certificate
+        run: gradle -p nadmo-live/android :app:assembleRelease --no-daemon
+      - name: Verify fixed identity, version and original signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=nadmo-live/android/app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          OUT="$RUNNER_TEMP/NADMO-LIVE-v0.10.1-beta.apk"
+          cp "$APK" "$OUT"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          SIGN="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          META=$("$AAPT" dump badging "$OUT" | head -1)
+          printf '%s\n' "$META"
+          printf '%s\n' "$META" | grep -F "name='id.nadmo.live'"
+          printf '%s\n' "$META" | grep -F "versionCode='20'"
+          printf '%s\n' "$META" | grep -F "versionName='0.10.1-beta'"
+          VERIFY=$("$SIGN" verify --verbose --print-certs "$OUT")
+          printf '%s\n' "$VERIFY"
+          printf '%s\n' "$VERIFY" | grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true'
+          EXPECTED=$(jq -r '.certificate_sha256' nadmo-live/android/release-identity.json)
+          ACTUAL=$(printf '%s\n' "$VERIFY" | sed -n 's/.*Signer #1 certificate SHA-256 digest: //p' | head -1)
+          test -n "$EXPECTED"
+          test "$ACTUAL" = "$EXPECTED"
+          if unzip -l "$OUT" | grep -q 'nadmo-release.jks';then echo 'Keystore leakage!';exit 1;fi
+          unzip -t "$OUT" | tail -n 2
+          mkdir -p "$GITHUB_WORKSPACE/qa-signed"
+          mv "$OUT" "$GITHUB_WORKSPACE/qa-signed/NADMO-LIVE-v0.10.1-beta.apk"
+          (cd qa-signed && sha256sum NADMO-LIVE-v0.10.1-beta.apk > SHA256SUMS.txt)
+          echo 'SIGNED BETA UPDATE VERIFIED — same original certificate, app ID id.nadmo.live, versionCode 20.'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nadmo-live-v0101-beta-signed
+          path: qa-signed/*
+          retention-days: 14
+          if-no-files-found: error
+      - name: Wipe private keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/nadmo-release.jks"
