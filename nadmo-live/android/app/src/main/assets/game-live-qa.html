@@ -1062,6 +1062,87 @@ body:not(.live-immersive) .chat{background:#0b1711;border:1px solid #425844;bord
 .game-deck-health>span{font:800 9px/1.35 Arial,sans-serif;padding:7px 9px;background:#0d1a14;border:1px solid #385541;border-radius:5px;color:#cde3c1;white-space:normal}
 #gameDeckAudio{color:#efcc8c;border-color:#78613b;background:#251d14}
 #gameChatSettings{margin:0 0 9px;padding:9px 11px;min-height:40px;border:1px solid #9aa65c}
+
+/* NADMO CYBERDECK v2 — explicit, visible mobile Lite / desktop Full. */
+.deck-system-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+ margin:0 0 14px;padding:8px 12px;background:linear-gradient(90deg,#223d22,#0b1913);
+ border:1px solid #8db54d;border-left:4px solid #e3fd72;
+ color:#e0ff91;font:800 9px/1.5 Arial,sans-serif;letter-spacing:1px}
+.deck-system-bar span:nth-child(2){color:#cde6ca}
+.deck-system-led{color:#77edcf}
+body:not(.live-immersive) .mast{margin-bottom:7px;border-bottom:1px solid #77984f}
+body:not(.live-immersive) .intro{border-left:4px solid #e3fd72;border-bottom:1px solid #64864d;
+ padding:12px;background:linear-gradient(90deg,#203821,#081910)}
+body:not(.live-immersive) .intro h1{font-size:clamp(35px,11vw,64px)}
+body:not(.live-immersive) .intro .text-outline{-webkit-text-stroke:1px #ccf563}
+body:not(.live-immersive) .intro .sub{color:#a6e9cd}
+body:not(.live-immersive) .signal-stage{
+ border:1px solid #b1dd52;box-shadow:inset 0 0 0 4px #080f0b,0 12px 35px #0007;
+ clip-path:polygon(0 0,calc(100% - 24px) 0,100% 24px,100% 100%,24px 100%,0 calc(100% - 24px));
+ background:radial-gradient(ellipse at 40% 80%,#cbf94e24,transparent 55%),
+ repeating-linear-gradient(0deg,transparent 0 28px,#69bc8712 29px),
+ repeating-linear-gradient(90deg,transparent 0 28px,#69bc8712 29px),
+ linear-gradient(140deg,#1d3728,#07130c 58%,#1b3521)}
+body:not(.live-immersive) .signal-stage .circle{background:#0b1913b3;border:2px solid #88b55d;
+ box-shadow:0 0 0 12px #c0f96a0b,inset 0 0 27px #b5f75a18}
+body:not(.live-immersive) .signal-stage .circle strong{text-shadow:0 0 24px #e3fd7275}
+body:not(.live-immersive) .stage-head{border-bottom:1px solid #53844e;padding-bottom:8px}
+body:not(.live-immersive) .freq button{
+ border:1px solid #89a658;background:linear-gradient(145deg,#203a26,#0a1810);
+ clip-path:polygon(0 0,calc(100% - 11px) 0,100% 11px,100% 100%,0 100%)}
+body:not(.live-immersive) .freq .num{color:#86efd0}
+body:not(.live-immersive) .page-top{border:0;border-left:4px solid #e3fd72;
+ padding:13px 15px;background:linear-gradient(90deg,#234025,#0b1912)}
+body:not(.live-immersive) #explore>.explore-head{
+ border:0;border-left:3px solid #e3fd72;background:linear-gradient(90deg,#1e3922,#0a1710);
+ padding:12px 15px;margin:7px 0 14px}
+body:not(.live-immersive) #explore .room{border:1px solid #69875c;background:linear-gradient(115deg,#192e20,#09160e)}
+body:not(.live-immersive) #studio .mode-grid button{background:linear-gradient(140deg,#263c29,#101d16);
+ border:1px solid #738b59;position:relative;overflow:hidden}
+body:not(.live-immersive) #studio .mode-grid button.active{background:linear-gradient(115deg,#49602e,#1a3a25);
+ border:1px solid #e3fd72;box-shadow:inset 0 0 0 1px #f0ff9e66}
+body:not(.live-immersive) #studio .mode-grid button.active:after{
+ content:"";position:absolute;bottom:0;left:0;right:0;height:4px;background:#e3fd72}
+body:not(.live-immersive) #studio #createRoom{
+ background:linear-gradient(100deg,#eaff77,#b5f33f);color:#091409;
+ border:0;border-radius:0;min-height:57px;font:900 17px Impact,Arial,sans-serif;
+ clip-path:polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px))}
+@media(max-width:799px){
+ .deck-system-bar{padding:7px 9px;font-size:8px}
+ .deck-system-bar span:nth-child(2){display:none}
+ body:not(.live-immersive) .signal-stage{height:310px}
+ body:not(.live-immersive) #studio .mode-grid button{min-height:74px}
+ body.live-immersive.watch-landscape #watch #remote{object-fit:contain!important}
+}
+@media(min-width:800px){
+ body.live-immersive.watch-viewer #watch #pcWatchRail{border-right:2px solid #9bbb57;
+ background:linear-gradient(180deg,#1b3020,#07120d)}
+ body.live-immersive.watch-viewer #watch .live-stage{
+ border:2px solid #9abf59;border-radius:5px;box-shadow:0 18px 44px #0009}
+ body.live-immersive.watch-viewer #watch .live-stage:after{
+ content:"NADMO // VIDEO";position:absolute;top:8px;right:9px;z-index:2;
+ padding:6px 8px;border:1px solid #679977;background:#07130fc8;
+ font:800 9px Arial,sans-serif;letter-spacing:1px;color:#a8f3d1;pointer-events:none}
+ body.live-immersive.watch-viewer #watch .live-chat{border:2px solid #83ad60;
+ border-radius:5px;box-shadow:inset 0 1px #e3fd7255,0 18px 44px #0008}
+ body.live-immersive.watch-viewer #watch .live-chat:before{
+ content:"COMM // 01";flex:none;color:#7fe3c5;font:800 9px Arial,sans-serif;
+ letter-spacing:1px;padding:1px 0 7px}
+ body.live-immersive.watch-viewer #watch #chat div{border-left:3px solid #85c2678a;
+ margin:0 0 7px;padding:8px 9px;background:#17291cb3;border-radius:3px 7px 7px 3px}
+ body.live-immersive.watch-viewer #watch #desktopSawerBar{
+ border:1px solid #aacd58;border-radius:4px;background:linear-gradient(90deg,#1b2f1d,#09140d)}
+ body.live-immersive.watch-viewer #watch #desktopSawerBar button{
+ border:1px solid #7aa263;border-radius:4px;background:#1b3020}
+ /* Key bug fix: original desktop player is a forced 9:16 box; restore
+    landscape width only once remote video dimensions are known. */
+ body.live-immersive.watch-viewer.watch-landscape #watch .live-stage>.viewfinder{
+ left:14px!important;right:14px!important;top:88px!important;bottom:88px!important;
+ width:auto!important;max-width:none!important;height:auto!important;
+ transform:none!important;min-height:0!important;border:1px solid #90be63}
+ body.live-immersive.watch-viewer.watch-landscape #watch #remote{
+ width:100%;height:100%;object-fit:contain!important;background:#020503}
+}
 </style></head>
 <body>
 <div class="app">
@@ -1069,9 +1150,10 @@ body:not(.live-immersive) .chat{background:#0b1711;border:1px solid #425844;bord
   <div class="logo"><span class="logo-mark">N/</span><div><div class="logo-name">NADMO <em>LIVE</em></div><div class="logo-sub">INDEPENDENT BROADCAST SYSTEM</div></div></div>
   <div class="mast-right"><div class="micro"><span class="dot"></span><strong id="net">OFFLINE BETA</strong></div><div class="micro">BALI / IDN · 18+</div><div class="mast-quick-actions"><button type="button" id="offgridEntry" class="offgrid-entry" aria-haspopup="dialog" aria-controls="offgridModal">OFFGRID</button><button type="button" id="mastLogin" class="mast-login">MASUK</button></div></div>
 </header>
+<div class="deck-system-bar" aria-hidden="true"><span>◈ NADMO / CYBERDECK</span><span>LIVE • CREATE • PLAY</span><span class="deck-system-led">● LIVE NETWORK</span></div>
 <section id="home">
   <div class="ticker"><b>TRANSMISSION 001</b><span class="line"></span><small>NO FILTER / JUST SIGNAL</small></div>
-  <div class="intro"><h1>OWN THE<br><span class="text-outline">AIRWAVES.</span></h1><span class="sub">Your voice.<br>Your space.<br>Your rules.</span></div>
+  <div class="intro"><h1>YOUR LIVE.<br><span class="text-outline">YOUR WORLD.</span></h1><span class="sub">MAIN • STREAM<br>NGOBROL • SAWER<br>NADMO LIVE</span></div>
   <div class="signal-stage">
     <div class="stage-head"><span>FREQUENCY / <span style="color:var(--neon)">CH—001</span></span><span class="liveflag">◉ STANDBY</span></div>
     <div class="stage-core"><div class="circle"><strong>N<i>/</i></strong></div><p>WAITING FOR FIRST BROADCAST</p></div>
@@ -4056,7 +4138,7 @@ body:not(.live-immersive) .chat{background:#0b1711;border:1px solid #425844;bord
   if(peer){peer.close();peer=null}
   if(afkTimer)clearInterval(afkTimer);afkTimer=null;afkTrack=null;afkMode=false;
   currentRoom='';selfId='';host=false;resumeToken='';roomPassword='';recoveringForeground=false;lastForegroundRecovery=0;lastBackgroundAt=0;
-  $('remote').srcObject=null;$('remote').muted=false;$('gameRemoteFace').srcObject=null;$('gameRemoteFace').hidden=true;document.body.classList.remove('watch-game');$('chat').replaceChildren();$('hostPublicLinks').replaceChildren();hostPublicIdentity={name:'Host',handle:''};setTipRecipient('host','Host');
+  $('remote').srcObject=null;$('remote').muted=false;$('gameRemoteFace').srcObject=null;$('gameRemoteFace').hidden=true;document.body.classList.remove('watch-game','watch-landscape');$('chat').replaceChildren();$('hostPublicLinks').replaceChildren();hostPublicIdentity={name:'Host',handle:''};setTipRecipient('host','Host');
   $('hostControls').hidden=true;$('hostAccessPanel').hidden=true;$('viewerTipPanel').hidden=true;$('privateControls').classList.add('hide');$('afkHint').hidden=true;$('restartRoom').classList.add('hide');activeAccessMode='public';mirrorBroadcast=false;$('giftQuick').hidden=false;$('endLiveConfirm').classList.add('hide');applyMirroring();
   $('afkToggle').textContent='▤ KAMERA OFF';
   $('stopCamera').click();show('explore');manuallyLeaving=false;
@@ -4064,6 +4146,12 @@ body:not(.live-immersive) .chat{background:#0b1711;border:1px solid #425844;bord
  $('leave').onclick=()=>{if(host&&currentRoom)showEndConfirm();else leave()};
  // Do not stop camera/microphone on pagehide: Android WebView can suspend/resume.
  // An explicit Leave button stops media; foreground recovery reacquires camera if needed.
+ // Source orientation must control the player size; GAME is landscape.
+ const watchVideo=$('remote');
+ const syncWatchAspect=()=>document.body.classList.toggle('watch-landscape',
+   watchVideo.videoHeight>0&&watchVideo.videoWidth>watchVideo.videoHeight*1.12);
+ watchVideo.addEventListener('loadedmetadata',syncWatchAspect);
+ watchVideo.addEventListener('resize',syncWatchAspect);
  health();sessionRestore();show('explore');
  const incomingPost=new URLSearchParams(location.search).get('post');
  if(incomingPost&&/^[a-f0-9-]{36}$/.test(incomingPost))setTimeout(()=>show('socialPage'),650);
