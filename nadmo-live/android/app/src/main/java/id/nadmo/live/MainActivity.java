@@ -117,7 +117,28 @@ public final class MainActivity extends Activity {
     gameReceiverRegistered=true;
     web.setWebViewClient(new WebViewClient(){
       @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest req){
-        return loader.shouldInterceptRequest(req.getUrl());
+        // QA-only in-APK GAME UI uses the exact worker HTTPS origin, so account
+        // cookies, API and WebSocket remain same-origin with the existing backend.
+        // No production HTML or server deployment is modified for this phone test.
+        Uri u=req.getUrl();
+        if(req.isForMainFrame() && "GET".equalsIgnoreCase(req.getMethod())
+          && LIVE_HOST.equalsIgnoreCase(u.getHost())
+          && ("/app/".equals(u.getPath())||"/app".equals(u.getPath()))){
+          try{
+            android.webkit.WebResourceResponse html=new android.webkit.WebResourceResponse(
+              "text/html","UTF-8",getAssets().open("game-live-qa.html"));
+            java.util.Map<String,String> headers=new java.util.HashMap<>();
+            headers.put("Cache-Control","no-store");
+            html.setResponseHeaders(headers);
+            return html;
+          }catch(java.io.IOException e){
+            android.util.Log.e("NadmoGameQA","Bundled GAME UI missing",e);
+            return new android.webkit.WebResourceResponse("text/plain","UTF-8",503,"Service Unavailable",
+              java.util.Collections.singletonMap("Cache-Control","no-store"),
+              new java.io.ByteArrayInputStream("NADMO GAME UI belum tersedia".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+          }
+        }
+        return loader.shouldInterceptRequest(u);
       }
       @Override public void onReceivedError(WebView view,WebResourceRequest req,android.webkit.WebResourceError error){
         if(req.isForMainFrame() && LIVE_HOST.equalsIgnoreCase(req.getUrl().getHost())){
