@@ -69,6 +69,7 @@ public final class GameCaptureService extends Service {
   static final String ACTION_START="id.nadmo.live.GAME_START";
   static final String ACTION_STOP="id.nadmo.live.GAME_STOP";
   static final String ACTION_STATUS="id.nadmo.live.GAME_STATUS";
+  static final String ACTION_QUERY="id.nadmo.live.GAME_QUERY";
   static final String EXTRA_PROJECTION="projection";
   static final String EXTRA_RESULT="result";
   static final String EXTRA_TITLE="title";
@@ -124,6 +125,13 @@ public final class GameCaptureService extends Service {
 
   @Override public int onStartCommand(Intent intent,int flags,int startId){
     if(intent==null)return START_NOT_STICKY;
+    if(ACTION_QUERY.equals(intent.getAction())){
+      Intent event=new Intent(ACTION_STATUS).setPackage(getPackageName());
+      event.putExtra("state",state).putExtra("message",status).putExtra("room",activeRoom);
+      sendBroadcast(event);
+      if(!started)stopSelf(startId);
+      return START_NOT_STICKY;
+    }
     if(ACTION_STOP.equals(intent.getAction())){stopGame("Siaran game diakhiri.");return START_NOT_STICKY;}
     if(!ACTION_START.equals(intent.getAction())||started)return START_NOT_STICKY;
     stopping=false;started=true;
@@ -540,7 +548,7 @@ public final class GameCaptureService extends Service {
     stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();
   }
   @Override public void onDestroy(){
-    if(!stopping)stopGame("GAME LIVE dihentikan Android.");
+    if(started&&!stopping)stopGame("GAME LIVE dihentikan Android.");
     super.onDestroy();
   }
   private static class JSONObjectSafe {
