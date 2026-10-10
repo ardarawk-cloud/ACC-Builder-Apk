@@ -185,7 +185,7 @@ public final class GameCaptureService extends Service {
     });
     screenCapturer.initialize(screenHelper,this,screenSource.getCapturerObserver());
     int[] dimensions=captureDimensions();
-    screenCapturer.startCapture(dimensions[0],dimensions[1],15);
+    screenCapturer.startCapture(dimensions[0],dimensions[1],20);
     micSource=factory.createAudioSource(new MediaConstraints());
     micTrack=factory.createAudioTrack("nadmo_microphone",micSource);
     micTrack.setEnabled(true);
@@ -194,7 +194,7 @@ public final class GameCaptureService extends Service {
   private int[] captureDimensions(){
     DisplayMetrics m=getResources().getDisplayMetrics();
     int width=Math.max(1,m.widthPixels),height=Math.max(1,m.heightPixels);
-    float scale=Math.min(1f,720f/Math.max(width,height));
+    float scale=Math.min(1f,1280f/Math.max(width,height));
     int w=Math.max(2,Math.round(width*scale)/2*2);
     int h=Math.max(2,Math.round(height*scale)/2*2);
     return new int[]{w,h};
@@ -203,7 +203,7 @@ public final class GameCaptureService extends Service {
     super.onConfigurationChanged(configuration);
     if(screenCapturer!=null&&!stopping){
       int[] d=captureDimensions();
-      try{screenCapturer.changeCaptureFormat(d[0],d[1],15);}
+      try{screenCapturer.changeCaptureFormat(d[0],d[1],20);}
       catch(Exception e){Log.w(TAG,"Screen format rotation update failed",e);}
     }
   }
