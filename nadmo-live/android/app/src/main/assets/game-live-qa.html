@@ -1143,6 +1143,128 @@ body:not(.live-immersive) #studio #createRoom{
  body.live-immersive.watch-viewer.watch-landscape #watch #remote{
  width:100%;height:100%;object-fit:contain!important;background:#020503}
 }
+
+/* CYBERDECK WATCHROOM V4 — desktop control deck, functional real media status.
+   No fake viewers, artificial signals, unverified game audio or costly animations. */
+@media(min-width:800px){
+body.live-immersive.watch-viewer #watch{
+ --pc-rail:62px;--pc-gap:9px;--pc-chat:clamp(290px,28vw,390px);
+ --pc-stage-left:calc(var(--pc-rail) + var(--pc-gap));
+ --pc-stage-right:calc(var(--pc-chat) + var(--pc-gap) * 2);
+ background-color:#060e0a;background-image:linear-gradient(#4fab7c12 1px,transparent 1px),linear-gradient(90deg,#4fab7c12 1px,transparent 1px);
+ background-size:32px 32px}
+body.live-immersive.watch-viewer #watch .live-stage{
+ border:1px solid #9fd15c;border-radius:2px;
+ background:radial-gradient(ellipse at 49% 47%,#173621,#07130d 68%,#050a07);
+ box-shadow:inset 0 0 0 4px #0c1b12,0 18px 35px #0009}
+body.live-immersive.watch-viewer #watch .live-stage::before{
+ opacity:.4;background-image:linear-gradient(90deg,#b4ef6b 0 14%,transparent 14% 74%,#b4ef6b 74% 80%,transparent 80%),linear-gradient(#76ba8c20 1px,transparent 1px),linear-gradient(90deg,#76ba8c20 1px,transparent 1px);
+ background-size:100% 4px,26px 26px,26px 26px}
+body.live-immersive.watch-viewer #watch .live-stage::after{
+ content:"NADMO // STREAM FEED";z-index:3;top:12px;right:11px;
+ padding:6px 8px;background:#081910cc;border:1px solid #5a9780;
+ font:800 9px Arial,sans-serif;letter-spacing:1px;color:#8be9ce}
+body.live-immersive.watch-viewer #watch .page-top{
+ top:14px;left:calc(var(--pc-stage-left) + 13px);right:auto;
+ width:215px;max-width:215px;padding:0;z-index:11;pointer-events:auto}
+body.live-immersive.watch-viewer #watch #hostProfileCard{
+ border:1px solid #719e57;background:linear-gradient(120deg,#1c2d20ee,#09130ceb);
+ border-radius:3px;padding:7px 10px 7px 7px;box-shadow:inset 0 1px #dfff6d2e}
+body.live-immersive.watch-viewer #watch #watchTitle{font:900 18px Arial,sans-serif;text-shadow:0 2px 8px #000}
+body.live-immersive.watch-viewer #watch .deck-live-telemetry{
+ position:absolute;display:flex;z-index:10;top:16px;
+ left:calc(var(--pc-stage-left) + 236px);
+ right:calc(var(--pc-stage-right) + 70px);
+ min-width:0;gap:5px;pointer-events:none}
+body.live-immersive.watch-viewer #watch .deck-live-metric{
+ display:flex;align-items:center;flex:1;gap:6px;min-width:0;min-height:52px;
+ border:1px solid #5b8c6c;background:linear-gradient(135deg,#152c20f0,#071911ed);
+ padding:6px 7px;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
+body.live-immersive.watch-viewer #watch .deck-live-metric>span{font-size:18px;flex:none;color:#dfff6d}
+body.live-immersive.watch-viewer #watch .deck-live-metric div{min-width:0}
+body.live-immersive.watch-viewer #watch .deck-live-metric small{display:block;font:800 8px Arial,sans-serif;letter-spacing:.4px;color:#91d8bc;white-space:nowrap}
+body.live-immersive.watch-viewer #watch .deck-live-metric strong{display:block;font:900 10px/1.5 Arial,sans-serif;color:#dcfb78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.live-immersive.watch-viewer #watch .deck-player-controls{
+ display:flex;position:absolute;z-index:9;bottom:87px;left:14px;right:14px;
+ height:39px;align-items:center;gap:9px;padding:0 11px;
+ background:linear-gradient(90deg,#162b1de5,#07180ff0);
+ border-block:1px solid #547c56;pointer-events:auto}
+body.live-immersive.watch-viewer #watch .deck-player-live{font:900 11px Arial,sans-serif;letter-spacing:1px;color:#dfff6d}
+body.live-immersive.watch-viewer #watch .deck-player-controls button{
+ min-height:28px;padding:5px 10px;border:1px solid #608663;
+ background:#162c1a;color:#edffea;border-radius:3px;font:800 11px Arial,sans-serif}
+body.live-immersive.watch-viewer #watch .deck-player-controls button:hover{border-color:#e3fd72}
+body.live-immersive.watch-viewer #watch .deck-player-controls small{font:800 9px Arial,sans-serif;color:#9bdcc9;letter-spacing:.7px}
+body.live-immersive.watch-viewer #watch .deck-player-spacer{flex:1}
+body.live-immersive.watch-viewer.watch-landscape #watch .live-stage>.viewfinder{
+ left:14px!important;right:auto!important;bottom:auto!important;
+ width:calc(100% - 28px)!important;max-width:none!important;
+ height:min(calc(100% - 176px),calc((100vw - var(--pc-stage-left) - var(--pc-stage-right) - 30px) * 9 / 16))!important;
+ top:calc(50% - 4px)!important;transform:translateY(-50%)!important;min-height:0!important;
+ border:1px solid #a7d267;box-shadow:0 0 0 4px #142a18,0 9px 25px #0009}
+body.live-immersive.watch-viewer.watch-landscape #watch #remote{width:100%;height:100%;object-fit:contain!important;background:#020603}
+body.live-immersive.watch-viewer #watch .live-chat{
+ border:1px solid #8dbd62;border-radius:2px;
+ background:linear-gradient(160deg,#142b1c,#08150e 64%);
+ padding:14px 13px;box-shadow:inset 0 0 0 4px #102117,0 14px 37px #000a}
+body.live-immersive.watch-viewer #watch .live-chat::before{
+ content:"COMMUNICATION / CH 01";display:block;flex:none;
+ color:#91e5cb;font:800 9px Arial,sans-serif;letter-spacing:1.2px;
+ border-bottom:1px solid #638356;padding:3px 2px 13px;margin-bottom:10px}
+body.live-immersive.watch-viewer #watch .live-chat .show-label{padding:2px 2px 12px;border-color:#7ca55e}
+body.live-immersive.watch-viewer #watch .live-chat .show-label b{font:900 23px Impact,"Arial Narrow",sans-serif;letter-spacing:.8px;color:#fff}
+body.live-immersive.watch-viewer #watch .live-chat .show-label small{font:800 8px Arial,sans-serif;color:#91c6ad}
+body.live-immersive.watch-viewer #watch #chat{padding:16px 2px 8px}
+body.live-immersive.watch-viewer #watch #chat:empty::before{
+ content:"◌ MENUNGGU PESAN LIVE";display:block;text-align:center;
+ color:#86ba9b;border:1px dashed #45664f;padding:15px 7px;
+ font:800 10px Arial,sans-serif;letter-spacing:1px}
+body.live-immersive.watch-viewer #watch #chat div{
+ border:1px solid #315441;border-left:3px solid #b7e763;
+ background:#162e1f;padding:9px 10px;margin:0 0 8px;border-radius:3px 8px 8px 3px;font-size:13px}
+body.live-immersive.watch-viewer #watch .live-chat .row{padding-top:8px;border-top:1px solid #5b7b55;gap:5px}
+body.live-immersive.watch-viewer #watch #message{border-radius:4px;min-height:43px;background:#08190f;border-color:#5b805a;padding:11px}
+body.live-immersive.watch-viewer #watch #send{border-radius:3px;min-height:43px;background:#dfff6d;color:#08130b;border:0;padding:0 10px}
+body.live-immersive.watch-viewer #watch #desktopSawerBar{
+ bottom:13px;left:calc(var(--pc-stage-left) + 14px);right:calc(var(--pc-stage-right) + 14px);
+ min-height:58px;gap:6px;border:1px solid #95c75f;border-radius:2px;
+ background:linear-gradient(90deg,#14281af2,#09180ff0)}
+body.live-immersive.watch-viewer #watch #desktopSawerBar button{border-radius:3px;background:#1d3523;border-color:#749b63;padding:9px 10px}
+body.live-immersive.watch-viewer #watch #pcWatchRail{
+ border-right:2px solid #a3cf6c;background:linear-gradient(180deg,#12291a,#07130c);box-shadow:inset -4px 0 #2b4e2e}
+body.live-immersive.watch-viewer #watch #pcWatchRail button{border-radius:7px}
+body.live-immersive.watch-viewer #watch #pcWatchRail span{color:#a7d5b2;font-weight:900;letter-spacing:3px}
+}
+@media(min-width:800px) and (max-width:1100px){
+ body.live-immersive.watch-viewer #watch{--pc-chat:clamp(274px,29vw,325px);--pc-rail:58px;--pc-gap:7px}
+ body.live-immersive.watch-viewer #watch .deck-live-telemetry{left:calc(var(--pc-stage-left) + 230px);right:calc(var(--pc-stage-right) + 15px)}
+ body.live-immersive.watch-viewer #watch .deck-live-metric{gap:3px;padding:4px}
+ body.live-immersive.watch-viewer #watch .deck-live-metric>span{font-size:14px}
+ body.live-immersive.watch-viewer #watch .deck-live-metric small{font-size:7px}
+ body.live-immersive.watch-viewer #watch .deck-live-metric strong{font-size:9px}
+ body.live-immersive.watch-viewer #watch #desktopSawerBar button{padding:8px 5px}
+}
+
+/* Video frame adapts to actual decoded game dimensions, not a fabricated 16:9 ratio.
+   CSS aspect-ratio is used instead of browser-dependent calc multiplication. */
+@media(min-width:800px){
+body.live-immersive.watch-viewer #watch .live-stage::after{display:none}
+body.live-immersive.watch-viewer.watch-landscape #watch .live-stage>.viewfinder{
+ aspect-ratio:var(--deck-video-aspect,16 / 9)!important;
+ height:auto!important;max-height:calc(100% - 176px)!important;
+ top:50%!important;transform:translateY(-50%)!important}
+}
+
+/* QA visual correction: the diagonal accent was unintentionally tiled as
+   enormous vertical green bands. Use one short top accent + subtle grid only. */
+@media(min-width:800px){
+body.live-immersive.watch-viewer #watch .live-stage::before{
+ background-repeat:no-repeat,repeat,repeat!important;
+ background-position:0 0,0 0,0 0!important;
+ background-size:100% 4px,26px 26px,26px 26px!important;
+}
+body.live-immersive.watch-viewer #watch .deck-live-metric{max-width:205px}
+}
 </style></head>
 <body>
 <div class="app">
@@ -1232,13 +1354,26 @@ body:not(.live-immersive) #studio #createRoom{
    <span class="host-avatar" aria-hidden="true"><span>N/</span><img id="hostAvatarImage" alt="" hidden></span><span class="host-details"><b id="watchTitle">HOST</b><small id="hostIdentityHandle" hidden>PROFIL HOST</small></span><span class="onair-label">● LIVE</span>
   </button><div id="watchRoomSubtitle" class="room-subtitle"></div>
  </div></div>
+ <div class="deck-live-telemetry desktop-watch-only" aria-label="Status teknis stream">
+  <div class="deck-live-metric"><span>▣</span><div><small>VIDEO FEED</small><strong id="deckVideoStatus">MENUNGGU</strong></div></div>
+  <div class="deck-live-metric"><span>♫</span><div><small>AUDIO TRACK</small><strong id="deckAudioStatus">MENUNGGU</strong></div></div>
+  <div class="deck-live-metric"><span>⌁</span><div><small>KONEKSI</small><strong id="deckNetStatus">MENYAMBUNG</strong></div></div>
+ </div>
  <div id="guestStageGrid" aria-label="Tamu di panggung live"></div>
  <div id="hostProfilePanel" class="panel" role="dialog" aria-label="Profil host" aria-modal="true">
   <button type="button" class="sheet-close" id="closeHostProfile" aria-label="Tutup profil host">✕</button>
   <div class="host-public-header"><span class="host-public-photo"><span>N/</span><img id="hostPublicAvatarImage" alt="" hidden></span><h3 id="hostPublicName">Host</h3></div><p id="hostPublicBio"></p><div class="host-public-links" id="hostPublicLinks"></div>
   <button type="button" class="btn secondary" id="hostProfileTip">Rp SAWER HOST</button>
  </div>
-  <div class="panel live-stage"><div class="viewfinder"><video id="remote" playsinline autoplay controls></video><video id="gameRemoteFace" autoplay muted playsinline hidden aria-label="Kamera host game"></video></div><div id="watchState" class="status">CONNECTING SIGNAL...</div>
+  <div class="panel live-stage"><div class="viewfinder"><video id="remote" playsinline autoplay controls></video><video id="gameRemoteFace" autoplay muted playsinline hidden aria-label="Kamera host game"></video></div>
+   <div class="deck-player-controls desktop-watch-only" aria-label="Kontrol pemutar video">
+    <span class="deck-player-live">● LIVE</span>
+    <button id="deckMute" type="button" aria-label="Bisukan suara video">♫ SUARA ON</button>
+    <small id="deckMediaLabel">STREAM / MENUNGGU</small>
+    <span class="deck-player-spacer"></span>
+    <button id="deckRefresh" type="button" aria-label="Pulihkan stream">↻</button>
+    <button id="deckFullscreen" type="button" aria-label="Video layar penuh">⛶</button>
+   </div><div id="watchState" class="status">CONNECTING SIGNAL...</div>
   <button class="btn secondary" id="refreshVideo" type="button" aria-label="Pulihkan video" title="Pulihkan video">↻</button>
   <div class="actions" id="hostControls" hidden><button class="btn secondary" id="afkToggle">▤ KAMERA OFF</button><button class="btn secondary" id="accessQuick">◈ PRIVAT</button><button class="btn ghost" id="shareRoom" aria-label="Bagikan room" title="Bagikan room">↗</button></div>
   <div id="viewerTools" hidden><button class="btn secondary" id="tipQuick">Rp SAWER</button></div>
@@ -1310,7 +1445,7 @@ body:not(.live-immersive) #studio #createRoom{
     <button type="button" data-pc-sawer="custom">CUSTOM</button>
     <small>PREVIEW · BELUM AKTIF</small>
   </div>
-  <div class="panel live-chat"><div class="show-label"><b>BACKCHANNEL</b><small>LIVE CHAT</small></div><div class="chat" id="chat"></div><div class="row"><input class="field" id="message" placeholder="Say something..." maxlength="250"><button class="btn secondary" id="send">SEND</button><button type="button" class="live-bar-button" id="giftQuick" aria-label="Saweran rupiah" title="Sawer">🎁</button><button type="button" class="live-bar-button" id="moreQuick" aria-label="Pengaturan live" title="Pengaturan">⚙</button></div>
+  <div class="panel live-chat"><div class="show-label"><b>LIVE CHAT</b><small>NADMO / BACKCHANNEL</small></div><div class="chat" id="chat"></div><div class="row"><input class="field" id="message" placeholder="Say something..." maxlength="250"><button class="btn secondary" id="send">SEND</button><button type="button" class="live-bar-button" id="giftQuick" aria-label="Saweran rupiah" title="Sawer">🎁</button><button type="button" class="live-bar-button" id="moreQuick" aria-label="Pengaturan live" title="Pengaturan">⚙</button></div>
 <div class="room-safety">
  <div class="safety-toolbar">
     <button id="reportLive" type="button" hidden>LAPORKAN LIVE</button>
@@ -3592,7 +3727,7 @@ body:not(.live-immersive) #studio #createRoom{
  $('refreshVideo').onclick=()=>{lastForegroundRecovery=0;restoreForeground()};
  window.addEventListener('focus',restoreForeground);
  window.addEventListener('pageshow',event=>{if(event.persisted)restoreForeground()});
-  function rtc(){const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.cloudflare.com:3478'},{urls:'stun:stun.l.google.com:19302'}]});pc.oniceconnectionstatechange=()=>{if(pc.iceConnectionState==='failed')notice('Video belum tersambung. Koneksi ini mungkin membutuhkan relay TURN; uji jaringan lain atau tunggu peningkatan SFU.','watchState')};return pc}
+  function rtc(){const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.cloudflare.com:3478'},{urls:'stun:stun.l.google.com:19302'}]});pc.oniceconnectionstatechange=()=>{updateDeckUI();if(pc.iceConnectionState==='failed')notice('Video belum tersambung. Koneksi ini mungkin membutuhkan relay TURN; uji jaringan lain atau tunggu peningkatan SFU.','watchState')};return pc}
  function signal(to,data){transmit({type:'signal',to,data})}
  function guestStatus(message){
   $('guestJoinStatus').hidden=!message;
@@ -4148,8 +4283,38 @@ body:not(.live-immersive) #studio #createRoom{
  // An explicit Leave button stops media; foreground recovery reacquires camera if needed.
  // Source orientation must control the player size; GAME is landscape.
  const watchVideo=$('remote');
- const syncWatchAspect=()=>document.body.classList.toggle('watch-landscape',
-   watchVideo.videoHeight>0&&watchVideo.videoWidth>watchVideo.videoHeight*1.12);
+ function updateDeckUI(){
+  // On desktop the accessible deck controls replace the browser's duplicate
+  // native timeline; mobile retains its familiar native playback UI.
+  watchVideo.controls=!(window.innerWidth>=800&&document.body.classList.contains('watch-viewer'));
+  const media=watchVideo.srcObject;
+  const playing=watchVideo.videoWidth>0&&watchVideo.readyState>=2&&!watchVideo.paused;
+  const audio=media&&typeof media.getAudioTracks==='function'&&media.getAudioTracks().some(t=>t.readyState==='live'&&t.enabled);
+  const ice=peer?.iceConnectionState||'new';
+  const videoStatus=playing?'AKTIF':watchVideo.error?'ERROR':watchVideo.readyState>=2?'TERJEDA':'MENUNGGU';
+  $('deckVideoStatus').textContent=videoStatus;
+  $('deckAudioStatus').textContent=audio?'TERDETEKSI':'BELUM ADA';
+  $('deckNetStatus').textContent=['connected','completed'].includes(ice)?'TERHUBUNG':
+    ice==='disconnected'?'TERPUTUS':ice==='failed'?'GAGAL':ice==='checking'?'MEMERIKSA':'MENYAMBUNG';
+  $('deckMediaLabel').textContent='STREAM / '+(playing?'VIDEO DITERIMA':videoStatus);
+  $('deckMute').textContent=watchVideo.muted?'♫ SUARA OFF':'♫ SUARA ON';
+ }
+ $('deckMute').onclick=()=>{watchVideo.muted=!watchVideo.muted;updateDeckUI()};
+ $('deckRefresh').onclick=()=>$('refreshVideo').click();
+ $('deckFullscreen').onclick=()=>{
+  if(document.fullscreenElement){document.exitFullscreen?.().catch(()=>{});return}
+  if(watchVideo.requestFullscreen)watchVideo.requestFullscreen().catch(()=>{});
+  else if(watchVideo.webkitEnterFullscreen)watchVideo.webkitEnterFullscreen();
+ };
+ for(const event of ['playing','pause','waiting','stalled','error','loadedmetadata','emptied'])
+  watchVideo.addEventListener(event,updateDeckUI);
+ const syncWatchAspect=()=>{
+  const width=watchVideo.videoWidth,height=watchVideo.videoHeight;
+  const landscape=height>0&&width>height*1.12;
+  document.body.classList.toggle('watch-landscape',landscape);
+  if(width>0&&height>0)document.body.style.setProperty('--deck-video-aspect',width+' / '+height);
+  else document.body.style.removeProperty('--deck-video-aspect');
+ };
  watchVideo.addEventListener('loadedmetadata',syncWatchAspect);
  watchVideo.addEventListener('resize',syncWatchAspect);
  health();sessionRestore();show('explore');
