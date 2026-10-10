@@ -1746,19 +1746,19 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
  body.live-immersive.watch-viewer.watch-game #watch .room-safety{padding-top:2px}
 }
 
-/* MEDIA FORMAT CONTRACT: actual decoded live camera ratio, not design mockups.
-   SOCIAL photos are 1:1; linked originals retain their full uncropped image. */
+/* LIVE PC is a landscape cyberdeck for BOTH camera and games.
+   Portrait camera input fits inside the wide theater without crop or stretch.
+   SOCIAL feed photo tiles retain 1:1 shape independently. */
 @media(min-width:800px){
  body.live-immersive.watch-viewer:not(.watch-landscape) #watch .live-stage>.viewfinder{
-  position:absolute!important;left:50%!important;right:auto!important;
+  position:absolute!important;left:20px!important;right:auto!important;
   top:50%!important;bottom:auto!important;
-  width:auto!important;height:calc(100% - 185px)!important;
-  max-width:calc(100% - 42px)!important;max-height:calc(100% - 185px)!important;
-  aspect-ratio:var(--deck-video-aspect,9 / 16)!important;
-  transform:translate(-50%,-47%)!important;
-  border:2px solid var(--deck-lime)!important;
-  border-radius:2px!important;min-height:0!important;
-  background:#030704!important;overflow:hidden!important;
+  width:calc(100% - 40px)!important;height:auto!important;
+  aspect-ratio:16 / 9!important;max-width:none!important;
+  max-height:calc(100% - 200px)!important;min-height:0!important;
+  transform:translateY(-50%)!important;
+  border:2px solid var(--deck-lime,#e3fd72)!important;
+  border-radius:2px!important;background:#030704!important;overflow:hidden!important;
   box-shadow:0 0 0 3px #07170d,0 0 0 4px #719f4a7d,0 10px 26px #0008!important;
  }
  body.live-immersive.watch-viewer:not(.watch-landscape) #watch #remote{
@@ -1783,6 +1783,34 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
  #socialPublicFeed .social-photo-frame,
  #meRepostedFeed .social-photo-frame{width:100%;border-radius:5px;margin:9px auto}
 }
+
+/* SOCIAL mixed-media cyberdeck tile grid. */
+.social-media-hint{color:#b6c7ae;font:11px/1.55 Arial,sans-serif}
+.social-queued-media{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:7px;margin:10px 0}
+.social-queued-media:empty{display:none}
+.social-queued-item{min-width:0;background:#0e2012;border:1px solid #52734a;border-radius:5px;padding:5px}
+.social-queued-item img,.social-queued-item video{display:block;width:100%;height:78px;object-fit:cover}
+.social-queued-item small{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:4px 0}
+.social-queued-controls{display:flex;gap:3px}
+.social-queued-controls button{flex:1;min-width:0;min-height:28px;border:1px solid #5c874e;background:#1a3020;color:var(--neon)}
+.social-queued-controls button:disabled{opacity:.25}
+.social-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));width:min(100%,560px);aspect-ratio:1/1;margin:12px auto;gap:3px;overflow:hidden;border:1px solid #608b57;border-radius:6px;background:#08120b}
+.social-gallery[data-count="1"]{display:block}
+.social-gallery[data-count="2"] .social-gallery-tile{grid-row:span 2}
+.social-gallery[data-count="3"] .social-gallery-tile:first-child{grid-row:span 2}
+.social-gallery-tile{position:relative;display:block;width:100%;height:100%;min-width:0;min-height:0;background:#09140b;padding:0;border:0;cursor:pointer;overflow:hidden}
+.social-gallery-tile img,.social-gallery-tile video{display:block;width:100%;height:100%;object-fit:cover}
+.social-gallery-play,.social-gallery-more{position:absolute;display:grid;place-items:center;background:#041108b8;color:#e3fd72;pointer-events:none;font:900 23px Arial,sans-serif}
+.social-gallery-play{left:50%;top:50%;transform:translate(-50%,-50%);height:42px;width:42px;border:1px solid #e3fd72;border-radius:50%}
+.social-gallery-more{inset:0;color:white}
+.social-gallery-tile:focus-visible{outline:3px solid var(--neon);outline-offset:-3px}
+.social-media-lightbox{position:fixed;inset:0;z-index:350;background:#000e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px)}
+.social-media-lightbox-view{flex:1;min-height:0;width:100%;display:grid;place-items:center}
+.social-media-lightbox-view img,.social-media-lightbox-view video{max-width:100%;max-height:100%;height:auto;width:auto;object-fit:contain;display:block}
+.social-media-lightbox-bar{width:min(100%,550px);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.social-media-lightbox-bar button{min-width:44px;min-height:44px;border:1px solid #698f59;color:#e3fd72;background:#15261a}
+body.social-lightbox-open{overflow:hidden}
+@media(max-width:799px){.social-gallery{width:100%}.social-queued-media{grid-template-columns:repeat(3,minmax(0,1fr))}}
 </style></head>
 <body>
 <div class="app">
@@ -2043,7 +2071,9 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
   <label for="socialPostText">BUAT POSTINGAN</label>
   <textarea class="field profile-textarea" id="socialPostText" maxlength="2000" rows="4" placeholder="Apa yang ingin kamu bagikan?"></textarea>
   <div class="social-video-input"><label for="socialVideoUrl">VIDEO (OPSIONAL)</label><input class="field" type="url" id="socialVideoUrl" maxlength="500" placeholder="Link YouTube, Vimeo, MP4 atau WebM">
-    <div class="social-upload-row"><label for="socialVideoFile">+ UPLOAD VIDEO</label><input id="socialVideoFile" type="file" accept="video/mp4,video/webm"><span id="socialMediaStatus" class="social-media-status">Memeriksa penyimpanan video...</span></div>
+    <div class="social-upload-row"><label for="socialVideoFile">+ FOTO / VIDEO</label><input id="socialVideoFile" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" multiple><span id="socialMediaStatus" class="social-media-status" role="status">Memeriksa penyimpanan galeri...</span></div>
+    <div id="socialQueuedMedia" class="social-queued-media" aria-label="Urutan media sebelum posting"></div>
+    <small class="social-media-hint">Maksimal 10 foto/video. Foto 8 MB, video 25 MB. Atur urutan dengan panah.</small>
   </div>
   <div class="actions"><button class="btn" type="button" id="socialPublish">POSTING</button><button class="btn secondary" type="button" id="socialSaveDraft">SIMPAN DRAF</button></div>
   <p class="status" id="socialPostStatus" role="status"></p>
@@ -2992,7 +3022,24 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
    drawCaption();card.append(content);
   }
   // SOCIAL photos: square preview, but opening retains the original resolution.
-  if(entry.imageUrl){
+  if(Array.isArray(entry.media)&&entry.media.length){
+   const items=entry.media.filter(m=>m&&['image','video'].includes(m.type)&&validExternalLink(m.url)).slice(0,10);
+   if(items.length){
+    const grid=document.createElement('div');grid.className='social-gallery';grid.dataset.count=String(Math.min(5,items.length));
+    for(let i=0;i<Math.min(items.length,4);i++){
+     const item=items[i],tile=document.createElement('button');tile.type='button';tile.className='social-gallery-tile';
+     tile.setAttribute('aria-label','Buka media '+(i+1)+' dari '+items.length);
+     const media=document.createElement(item.type==='video'?'video':'img');media.src=item.url;
+     if(item.type==='video'){media.preload='metadata';media.muted=true;media.playsInline=true}
+     else{media.alt='Foto '+(i+1);media.loading='lazy'}
+     tile.append(media);
+     if(item.type==='video'){const play=document.createElement('span');play.className='social-gallery-play';play.textContent='▶';tile.append(play)}
+     if(i===3&&items.length>4){const more=document.createElement('span');more.className='social-gallery-more';more.textContent='+'+(items.length-4);tile.append(more)}
+     tile.onclick=()=>openSocialMediaLightbox(items,i);grid.append(tile);
+    }
+    card.append(grid);
+   }
+  }else if(entry.imageUrl){
    const imageSrc=validExternalLink(entry.imageUrl);
    if(imageSrc){
     const frame=document.createElement('a');
@@ -3066,6 +3113,27 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
   }
   return card;
  }
+ function openSocialMediaLightbox(items,initial){
+  const modal=document.createElement('div');modal.className='social-media-lightbox';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');
+  const display=document.createElement('div');display.className='social-media-lightbox-view';
+  const bar=document.createElement('div');bar.className='social-media-lightbox-bar';
+  const prev=document.createElement('button'),count=document.createElement('span'),next=document.createElement('button'),close=document.createElement('button');
+  prev.textContent='←';next.textContent='→';close.textContent='✕';
+  prev.setAttribute('aria-label','Sebelumnya');next.setAttribute('aria-label','Berikutnya');close.setAttribute('aria-label','Tutup galeri');
+  bar.append(prev,count,next,close);modal.append(display,bar);
+  const original=document.activeElement;let index=initial;
+  function draw(){
+   display.replaceChildren();const item=items[index],media=document.createElement(item.type==='video'?'video':'img');
+   media.src=item.url;
+   if(item.type==='video'){media.controls=true;media.playsInline=true;media.preload='metadata'}else media.alt='Foto '+(index+1);
+   display.append(media);count.textContent=(index+1)+' / '+items.length;prev.disabled=index===0;next.disabled=index===items.length-1;
+  }
+  function finish(){modal.remove();document.body.classList.remove('social-lightbox-open');document.removeEventListener('keydown',keys);original?.focus?.()}
+  function keys(e){if(e.key==='Escape')finish();else if(e.key==='ArrowLeft'&&index>0){index--;draw()}else if(e.key==='ArrowRight'&&index<items.length-1){index++;draw()}}
+  prev.onclick=()=>{if(index>0){index--;draw()}};next.onclick=()=>{if(index<items.length-1){index++;draw()}};close.onclick=finish;
+  modal.onclick=e=>{if(e.target===modal)finish()};
+  document.body.append(modal);document.body.classList.add('social-lightbox-open');document.addEventListener('keydown',keys);draw();close.focus();
+ }
  async function loadSocialFeed(){
   const feed=$('socialPublicFeed');feed.replaceChildren();
   try{
@@ -3081,13 +3149,43 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
    }
   }catch(error){$('socialFeedEmpty').hidden=false;$('socialFeedEmpty').textContent='Postingan belum bisa dimuat.'}
  }
- async function publishSocialText(text,output,videoURL=''){
+ const queuedSocialMedia=[];
+ function clearSocialQueue(){
+  for(const item of queuedSocialMedia)URL.revokeObjectURL(item.preview);
+  queuedSocialMedia.length=0;drawSocialQueue();
+ }
+ function drawSocialQueue(){
+  const root=$('socialQueuedMedia');root.replaceChildren();
+  queuedSocialMedia.forEach((item,index)=>{
+   const card=document.createElement('div');card.className='social-queued-item';
+   const preview=document.createElement(item.file.type.startsWith('video/')?'video':'img');
+   preview.src=item.preview;
+   if(preview.tagName==='VIDEO'){preview.muted=true;preview.playsInline=true;preview.preload='metadata'}
+   else preview.alt='Preview '+item.file.name;
+   const name=document.createElement('small');name.textContent=(index+1)+'. '+item.file.name;
+   const controls=document.createElement('div');controls.className='social-queued-controls';
+   for(const [label,delta] of [['←',-1],['→',1],['✕',null]]){
+    const button=document.createElement('button');button.type='button';button.textContent=label;
+    button.setAttribute('aria-label',(delta===null?'Hapus':delta<0?'Geser ke kiri':'Geser ke kanan')+' '+item.file.name);
+    button.disabled=delta!==null&&(index+delta<0||index+delta>=queuedSocialMedia.length);
+    button.onclick=()=>{
+     if(delta===null){URL.revokeObjectURL(item.preview);queuedSocialMedia.splice(index,1)}
+     else{const other=queuedSocialMedia[index+delta];queuedSocialMedia[index+delta]=item;queuedSocialMedia[index]=other}
+     drawSocialQueue();
+    };
+    controls.append(button);
+   }
+   card.append(preview,name,controls);root.append(card);
+  });
+ }
+ async function publishSocialText(text,output,videoURL='',media=[]){
   const value=String(text||'').trim(),videoUrl=String(videoURL||'').trim();
-  if((!value&&!videoUrl)||value.length>2000){output.textContent='Tulis caption atau sertakan video yang valid.';return false}
+  if((!value&&!videoUrl&&!media.length)||value.length>2000){output.textContent='Isi caption atau pilih foto/video.';return false}
+  if(videoUrl&&media.length){output.textContent='Gunakan galeri upload ATAU link video, bukan keduanya.';return false}
   if(!activeAccount){output.textContent='Masuk akun untuk memposting.';show('authPage');return false}
-  output.textContent='Memposting...';
+  output.textContent='Mempublikasikan...';
   try{
-   const result=await accountRequest('/api/account/posts/publish','POST',{text:value,videoUrl});
+   const result=await accountRequest('/api/account/posts/publish','POST',{text:value,videoUrl,media});
    syncedPosts.unshift(result.post);renderSyncedPosts();await loadSocialFeed();
    output.textContent='Postingan berhasil dipublikasikan.';
    return true;
@@ -3097,28 +3195,51 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
   if(!activeAccount){show('authPage');return}
   $('socialComposer').classList.toggle('hide');
  };
- $('socialPublish').onclick=async()=>{
-  if(await publishSocialText($('socialPostText').value,$('socialPostStatus'),$('socialVideoUrl').value)){
-   $('socialPostText').value='';$('socialVideoUrl').value='';$('socialComposer').classList.add('hide');
+ $('socialVideoFile').onchange=()=>{
+  const input=$('socialVideoFile'),files=Array.from(input.files||[]);input.value='';
+  const status=$('socialMediaStatus');
+  for(const file of files){
+   if(queuedSocialMedia.length>=10){status.textContent='Maksimal 10 foto/video dalam satu postingan.';break}
+   const kind=file.type.startsWith('image/')?'image':'video';
+   const formats=['image/jpeg','image/png','image/webp','video/mp4','video/webm'];
+   if(!formats.includes(file.type)||file.size<100||file.size>(kind==='image'?8:25)*1024*1024){
+    status.textContent='File tidak valid: '+file.name+'. Foto maksimal 8 MB, video 25 MB.';
+    continue;
+   }
+   queuedSocialMedia.push({file,preview:URL.createObjectURL(file),url:null});
   }
+  drawSocialQueue();
+  if(queuedSocialMedia.length)status.textContent=queuedSocialMedia.length+' media dipilih. Tekan POSTING untuk unggah.';
  };
- $('socialVideoFile').onchange=async()=>{
-  const input=$('socialVideoFile'),file=input.files?.[0];input.value='';
-  if(!file)return;
-  const status=$('socialMediaStatus');status.textContent='Menyiapkan video...';
+ $('socialPublish').onclick=async()=>{
+  const button=$('socialPublish'),status=$('socialMediaStatus');
+  if(button.disabled)return;
+  button.disabled=true;
   try{
-   if(!['video/mp4','video/webm'].includes(file.type)||file.size>25*1024*1024||file.size<100)
-    throw Error('Gunakan MP4/WebM maksimal 25 MB.');
-   const capability=await accountRequest('/api/social/media/status');
-   if(!capability.enabled)throw Error('Upload file menunggu penyimpanan media. Sementara gunakan link video.');
-   const response=await fetch(api('/api/social/media/upload'),{
-    method:'PUT',credentials:'include',headers:{'Content-Type':file.type},body:file,cache:'no-store'
-   });
-   const data=await response.json();
-   if(!response.ok)throw Error(data.error||'Video gagal diunggah');
-   $('socialVideoUrl').value=data.url;
-   status.textContent='Video terunggah. Tulis caption, lalu POSTING.';
-  }catch(e){status.textContent=e.message}
+   if(queuedSocialMedia.length){
+    const capability=await accountRequest('/api/social/media/status');
+    if(!capability.enabled)throw Error('Penyimpanan galeri belum aktif. Jangan hapus foto/video dari HP.');
+    if($('socialVideoUrl').value.trim())throw Error('Hapus link video jika ingin menggunakan galeri.');
+   }
+   const media=[];
+   for(let i=0;i<queuedSocialMedia.length;i++){
+    const item=queuedSocialMedia[i];status.textContent='Mengunggah '+(i+1)+' / '+queuedSocialMedia.length+'...';
+    if(!item.url){
+     const response=await fetch(api('/api/social/media/upload'),{
+      method:'PUT',credentials:'include',headers:{'Content-Type':item.file.type},body:item.file,cache:'no-store'
+     });
+     const result=await response.json();
+     if(!response.ok||!result.ok)throw Error(result.error||'Upload '+(i+1)+' gagal');
+     item.url=result.url;
+    }
+    media.push({type:item.file.type.startsWith('image/')?'image':'video',url:item.url});
+   }
+   if(await publishSocialText($('socialPostText').value,$('socialPostStatus'),$('socialVideoUrl').value,media)){
+    $('socialPostText').value='';$('socialVideoUrl').value='';clearSocialQueue();
+    $('socialComposer').classList.add('hide');status.textContent='Galeri siap.';
+   }
+  }catch(e){$('socialPostStatus').textContent=e.message;status.textContent='Belum dipublikasikan. Media tetap ada untuk dicoba lagi.'}
+  finally{button.disabled=false}
  };
  $('profilePostPublish').onclick=async()=>{
   if(await publishSocialText($('profilePostText').value,$('profilePostStatus'))){
@@ -3126,6 +3247,7 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
   }
  };
  $('socialSaveDraft').onclick=()=>{
+  if(queuedSocialMedia.length&&!confirm('Draf saat ini hanya menyimpan caption, bukan file galeri. Simpan caption saja?'))return;
   $('profilePostText').value=$('socialPostText').value;
   $('socialPostText').value='';show('draftsPage');
   $('profilePostSave').click();
@@ -3133,8 +3255,8 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
  async function refreshVideoCapability(){
   try{
    const cap=await accountRequest('/api/social/media/status');
-   $('socialMediaStatus').textContent=cap.enabled?'Video MP4/WebM maksimal 25 MB.':'Upload video belum aktif; gunakan tautan video dahulu.';
-  }catch(e){$('socialMediaStatus').textContent='Penyimpanan video belum siap.'}
+   $('socialMediaStatus').textContent=cap.enabled?'Galeri siap: sampai 10 foto/video.':'Upload galeri belum aktif; tautan video tetap dapat dipakai.';
+  }catch(e){$('socialMediaStatus').textContent='Penyimpanan galeri belum siap.'}
  }
  refreshVideoCapability();
  let activeChatHandle='',chatRefreshTimer=null,chatNotificationTimer=null,chatBusy=false,activeChatPeer=null;
@@ -4296,6 +4418,40 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
  $('refreshVideo').onclick=()=>{lastForegroundRecovery=0;restoreForeground()};
  window.addEventListener('focus',restoreForeground);
  window.addEventListener('pageshow',event=>{if(event.persisted)restoreForeground()});
+  // GAME playback PCM over a WebRTC data channel. Regular host microphone
+  // stays on its separate audio track. Never fabricate an audio-ready state.
+  let gameAudioContext=null,gameAudioNext=0,gameAudioLastFrame=0;
+  const GAME_AUDIO_RATE=24000,GAME_AUDIO_FRAME_BYTES=960;
+  function prepareGameAudio(){
+   try{
+    if(!gameAudioContext){
+     const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+     if(!AudioContextClass)return;
+     gameAudioContext=new AudioContextClass({sampleRate:GAME_AUDIO_RATE});
+    }
+    if(gameAudioContext.state==='suspended')gameAudioContext.resume().catch(()=>{});
+   }catch(error){console.warn('GAME audio playback unavailable',error)}
+  }
+  function resetGameAudio(){
+   gameAudioNext=0;gameAudioLastFrame=0;
+   if(gameAudioContext){const ctx=gameAudioContext;gameAudioContext=null;ctx.close().catch(()=>{})}
+  }
+  function onGameAudioPacket(data){
+   if(host||!currentRoom||!gameAudioContext||gameAudioContext.state!=='running'||$('remote').muted)return;
+   if(!(data instanceof ArrayBuffer)||data.byteLength!==GAME_AUDIO_FRAME_BYTES)return;
+   try{
+    const ctx=gameAudioContext,pcm=new DataView(data),count=data.byteLength/2;
+    const buffer=ctx.createBuffer(1,count,GAME_AUDIO_RATE),samples=buffer.getChannelData(0);
+    let peak=0;
+    for(let i=0;i<count;i++){const x=pcm.getInt16(i*2,true)/32768;samples[i]=x;peak=Math.max(peak,Math.abs(x))}
+    const now=ctx.currentTime;
+    // No backlog after a network stall.
+    if(!gameAudioNext||gameAudioNext<now||gameAudioNext>now+.18)gameAudioNext=now+.035;
+    const src=ctx.createBufferSource();src.buffer=buffer;src.connect(ctx.destination);
+    src.start(gameAudioNext);gameAudioNext+=count/GAME_AUDIO_RATE;
+    if(peak>.007)gameAudioLastFrame=Date.now();
+   }catch(error){console.warn('GAME audio packet rejected',error)}
+  }
   function rtc(){
   const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.cloudflare.com:3478'},{urls:'stun:stun.l.google.com:19302'}]});
   let iceRepairTimer=null,lastMediaRefreshAt=0;
@@ -4741,6 +4897,12 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
    else{
     if(!peer){
      peer=rtc();
+     peer.ondatachannel=event=>{
+      const channel=event.channel;
+      if(channel.label!=='nadmo-game-audio')return;
+      channel.binaryType='arraybuffer';
+      channel.onmessage=packet=>onGameAudioPacket(packet.data);
+     };
      // Guest media remains local until explicit request, approval and permission.
      if(guestOnStage&&guestStream){
       for(const track of guestStream.getTracks())if(track.readyState==='live')peer.addTrack(track,guestStream);
@@ -4830,7 +4992,7 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
   const category=selectedLiveMode==='talk'?'Podcast':$('category').value;
   connect(()=>transmit({type:'create',title,category,mode:'public',hostName:activeAccount?.name||draftProfile.name||'Host'}));
  };
- function join(id,title,locked){if(!adult()){pendingInvite={id,title,locked};return}pendingInvite=null;let password='';if(locked){password=prompt('Kode akses room:')||'';if(!password)return}roomPassword=password;stopRetry();
+ function join(id,title,locked){prepareGameAudio();if(!adult()){pendingInvite={id,title,locked};return}pendingInvite=null;let password='';if(locked){password=prompt('Kode akses room:')||'';if(!password)return}roomPassword=password;stopRetry();
  connect(()=>transmit({type:'join',id,password}));$('watchTitle').textContent='Host';$('watchRoomSubtitle').textContent=title||''}
  $('send').onclick=()=>{let msg=$('message').value.trim();if(!msg)return;transmit({type:'chat',text:msg});$('message').value=''};
  $('message').addEventListener('keydown',e=>{if(e.key==='Enter')$('send').click()});
@@ -4861,6 +5023,7 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
   }
   for(const pc of peers.values())pc.close();peers.clear();pendingIce.clear();
   if(peer){peer.close();peer=null}
+  resetGameAudio();
   if(afkTimer)clearInterval(afkTimer);afkTimer=null;afkTrack=null;afkMode=false;
   currentRoom='';selfId='';host=false;resumeToken='';roomPassword='';recoveringForeground=false;lastForegroundRecovery=0;lastBackgroundAt=0;
   document.body.style.removeProperty('--deck-video-aspect');
@@ -4888,14 +5051,16 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
   $('deckVideoStatus').textContent=videoStatus;
   const gameFeedState=$('mobileGameFeedState');
   if(gameFeedState)gameFeedState.textContent=playing?'● VIDEO AKTIF':watchVideo.error?'VIDEO ERROR':'MENUNGGU VIDEO';
-  $('deckAudioStatus').textContent=audio?'TERDETEKSI':'BELUM ADA';
+  $('deckAudioStatus').textContent=Date.now()-gameAudioLastFrame<2500?'MIC + GAME':audio?'MIC TERDETEKSI':'MENUNGGU AUDIO';
   $('deckNetStatus').textContent=['connected','completed'].includes(ice)?'TERHUBUNG':
     ice==='disconnected'?'TERPUTUS':ice==='failed'?'GAGAL':ice==='checking'?'MEMERIKSA':'MENYAMBUNG';
   $('deckChatStatus').textContent=socket?.readyState===WebSocket.OPEN&&currentRoom?'ROOM AKTIF':'OFFLINE';
   $('deckMediaLabel').textContent='STREAM / '+(playing?'VIDEO DITERIMA':videoStatus);
   $('deckMute').textContent=watchVideo.muted?'♫ SUARA OFF':'♫ SUARA ON';
  }
- $('deckMute').onclick=()=>{watchVideo.muted=!watchVideo.muted;updateDeckUI()};
+ $('deckMute').onclick=()=>{watchVideo.muted=!watchVideo.muted;if(!watchVideo.muted)prepareGameAudio();updateDeckUI()};
+ watchVideo.addEventListener('click',prepareGameAudio);
+ watchVideo.addEventListener('touchstart',prepareGameAudio,{passive:true});
  $('deckRefresh').onclick=()=>$('refreshVideo').click();
  $('deckFullscreen').onclick=()=>{
   if(document.fullscreenElement){document.exitFullscreen?.().catch(()=>{});return}
