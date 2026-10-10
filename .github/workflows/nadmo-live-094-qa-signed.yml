@@ -59,6 +59,22 @@ jobs:
             echo 'Unexpected text reply bridge in GAME'
             exit 1
           fi
+      - name: Verify Android 14+ entire-display consent and first real frame gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN="nadmo-live/android/app/src/main/java/id/nadmo/live/MainActivity.java"
+          SERVICE="nadmo-live/android/app/src/main/java/id/nadmo/live/GameCaptureService.java"
+          grep -Fq 'MediaProjectionConfig.createConfigForDefaultDisplay()' "$MAIN"
+          grep -Fq 'firstFrameReceived.compareAndSet(false,true)' "$SERVICE"
+          grep -Fq 'screenTrack.addSink(' "$SERVICE"
+          grep -Fq 'firstFrameTimeout' "$SERVICE"
+      - name: Check actual host-to-viewer GAME video and voice via public Worker
+        shell: bash
+        run: |
+          npm install --prefix nadmo-live/android/qa --no-save --no-audit --no-fund puppeteer-core@24
+          export CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
+          node nadmo-live/android/qa/game-native-media-e2e.cjs
       - name: Assemble signed beta APK with original certificate
         run: gradle -p nadmo-live/android :app:assembleRelease --no-daemon
       - name: Verify fixed identity, version and original signer
@@ -67,15 +83,15 @@ jobs:
           set -euo pipefail
           APK=nadmo-live/android/app/build/outputs/apk/release/app-release.apk
           test -s "$APK"
-          OUT="$RUNNER_TEMP/NADMO-LIVE-v0.9.6-beta.apk"
+          OUT="$RUNNER_TEMP/NADMO-LIVE-v0.9.7-beta.apk"
           cp "$APK" "$OUT"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           SIGN="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           META=$("$AAPT" dump badging "$OUT" | head -1)
           printf '%s\n' "$META"
           printf '%s\n' "$META" | grep -F "name='id.nadmo.live'"
-          printf '%s\n' "$META" | grep -F "versionCode='15'"
-          printf '%s\n' "$META" | grep -F "versionName='0.9.6-beta'"
+          printf '%s\n' "$META" | grep -F "versionCode='16'"
+          printf '%s\n' "$META" | grep -F "versionName='0.9.7-beta'"
           VERIFY=$("$SIGN" verify --verbose --print-certs "$OUT")
           printf '%s\n' "$VERIFY"
           printf '%s\n' "$VERIFY" | grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true'
@@ -86,12 +102,12 @@ jobs:
           if unzip -l "$OUT" | grep -q 'nadmo-release.jks';then echo 'Keystore leakage!';exit 1;fi
           unzip -t "$OUT" | tail -n 2
           mkdir -p "$GITHUB_WORKSPACE/qa-signed"
-          mv "$OUT" "$GITHUB_WORKSPACE/qa-signed/NADMO-LIVE-v0.9.6-beta.apk"
-          (cd qa-signed && sha256sum NADMO-LIVE-v0.9.6-beta.apk > SHA256SUMS.txt)
-          echo 'SIGNED BETA UPDATE VERIFIED — same original certificate, app ID id.nadmo.live, versionCode 15.'
+          mv "$OUT" "$GITHUB_WORKSPACE/qa-signed/NADMO-LIVE-v0.9.7-beta.apk"
+          (cd qa-signed && sha256sum NADMO-LIVE-v0.9.7-beta.apk > SHA256SUMS.txt)
+          echo 'SIGNED BETA UPDATE VERIFIED — same original certificate, app ID id.nadmo.live, versionCode 16.'
       - uses: actions/upload-artifact@v4
         with:
-          name: nadmo-live-v096-beta-signed
+          name: nadmo-live-v097-beta-signed
           path: qa-signed/*
           retention-days: 14
           if-no-files-found: error
