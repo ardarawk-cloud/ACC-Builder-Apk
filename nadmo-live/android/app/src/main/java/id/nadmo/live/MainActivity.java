@@ -2,6 +2,8 @@ package id.nadmo.live;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.NotificationManager;
+import android.app.NotificationChannel;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
@@ -114,6 +116,7 @@ public final class MainActivity extends Activity {
           else if("stop".equals(action))stopGame();
           else if("launch".equals(action))launchGame();
           else if("status".equals(action))requestGameStatus();
+          else if("chat-settings".equals(action))openGameChatSettings();
         }catch(Exception ignored){notifyGameStatus("error","Perintah GAME tidak valid.","");}
       });
     });
@@ -292,13 +295,30 @@ public final class MainActivity extends Activity {
     }
     Toast.makeText(this,"Buka game melalui layar utama HP. GAME LIVE tetap berjalan.",Toast.LENGTH_LONG).show();
   }
+  private boolean chatNotificationsEnabled(){
+    if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return false;
+    NotificationManager manager=getSystemService(NotificationManager.class);
+    if(manager==null||!manager.areNotificationsEnabled())return false;
+    NotificationChannel channel=manager.getNotificationChannel("nadmo_game_chat");
+    return channel==null||channel.getImportance()>=NotificationManager.IMPORTANCE_DEFAULT;
+  }
+  private void openGameChatSettings(){
+    try{
+      Intent settings=new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        .putExtra(Settings.EXTRA_APP_PACKAGE,getPackageName());
+      startActivity(settings);
+    }catch(Exception e){
+      notifyGameStatus("error","Buka Setelan Android > NADMO LIVE > Notifikasi untuk mengaktifkan chat.","");
+    }
+  }
   private void notifyGameStatus(String state,String message,String room){
     gameLiveState=state==null?"stopped":state;
     gameLiveMessage=message==null?"":message;
     gameLiveRoom=room==null?"":room;
     if(web==null)return;
     String payload="{state:"+JSONObject.quote(state==null?"":state)+",message:"+
-      JSONObject.quote(message==null?"":message)+",room:"+JSONObject.quote(room==null?"":room)+"}";
+      JSONObject.quote(message==null?"":message)+",room:"+JSONObject.quote(room==null?"":room)+
+      ",chatNotificationsEnabled:"+chatNotificationsEnabled()+"}";
     web.evaluateJavascript("window.dispatchEvent(new CustomEvent('nadmo-game-status',{detail:"+payload+"}));",null);
   }
   private void grantMedia(){
