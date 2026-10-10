@@ -67,8 +67,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Foreground screen broadcaster. GAME runs in another Android app while capture,
  * WebRTC microphone, optional front camera and NADMO signaling stay in this process.
  *
- * Does not capture internal game audio. Android's playback-capture permission and
- * game-specific opt-in require a separate tested audio path. Never imply otherwise.
+ * Captures game playback audio only if Android 10+ and the game itself allow it.
+ * Uses a separate low-latency WebRTC data channel for PCM and keeps the microphone
+ * on its original audio track. Do not report successful game audio without samples.
  */
 public final class GameCaptureService extends Service {
   static final String ACTION_START="id.nadmo.live.GAME_START";
@@ -123,6 +124,7 @@ public final class GameCaptureService extends Service {
   private VideoTrack screenTrack,faceTrack;
   private AudioSource micSource;
   private AudioTrack micTrack;
+  private GameAudioRelay gameAudio;
   private String roomId="",resumeToken="",title="",game="",cookie="";
   private JSONObject faceLayout=null;
   private boolean stopping=false,started=false,wantFace=false,webSocketOpen=false;
@@ -407,6 +409,28 @@ public final class GameCaptureService extends Service {
     screenCapturer.initialize(screenHelper,this,screenSource.getCapturerObserver());
     int[] dimensions=captureDimensions();
     screenCapturer.startCapture(dimensions[0],dimensions[1],GAME_VIDEO_FPS);
+    // Android 14 forbids reusing the projection intent for a second session.
+    // Obtain the projection already held by the current screen capturer.
+    if(Build.VERSION.SDK_INT>=29){
+      try{
+        MediaProjection projection=null;
+        try{
+          java.lang.reflect.Method method=screenCapturer.getClass().getMethod("getMediaProjection");
+          projection=(MediaProjection)method.invoke(screenCapturer);
+        }catch(NoSuchMethodException absent){
+          java.lang.reflect.Field field=screenCapturer.getClass().getDeclaredField("mediaProjection");
+          field.setAccessible(true);
+          projection=(MediaProjection)field.get(screenCapturer);
+        }
+        if(projection!=null){
+          gameAudio=new GameAudioRelay();
+          if(!gameAudio.start(projection))gameAudio=null;
+        }
+      }catch(Exception unavailable){
+        Log.w(TAG,"Internal GAME audio not capturable; microphone remains active",unavailable);
+        gameAudio=null;
+      }
+    }
     micSource=factory.createAudioSource(new MediaConstraints());
     micTrack=factory.createAudioTrack("nadmo_microphone",micSource);
     micTrack.setEnabled(true);
@@ -527,6 +551,7 @@ public final class GameCaptureService extends Service {
         PeerConnection pc=viewers.remove(id);
         pendingIce.remove(id);
         screenSenders.remove(id);
+        if(gameAudio!=null)gameAudio.detach(id);
         if(pc!=null){pc.close();pc.dispose();}
         balanceScreenUpload();
       }else if("media-refresh-request".equals(type)){
@@ -606,6 +631,7 @@ public final class GameCaptureService extends Service {
     if(id==null||id.isEmpty()||stopping||factory==null)return;
     cancelPeerRepair(id);
     screenSenders.remove(id);
+    if(gameAudio!=null)gameAudio.detach(id);
     PeerConnection old=viewers.remove(id);
     if(old!=null){old.close();old.dispose();}
     pendingIce.remove(id);
@@ -641,6 +667,15 @@ public final class GameCaptureService extends Service {
     if(pc==null){report("error","Tidak bisa menyambungkan penonton WebRTC.",roomId);return;}
     holder[0]=pc;
     viewers.put(id,pc);
+    // GAME PCM is transported over SCTP/WebRTC, never via signaling or disk.
+    // Unreliable, unordered chunks avoid seconds of delayed audio after packet loss.
+    if(gameAudio!=null&&gameAudio.isCapturing()){
+      DataChannel.Init audioOptions=new DataChannel.Init();
+      audioOptions.ordered=false;
+      audioOptions.maxRetransmits=0;
+      DataChannel channel=pc.createDataChannel("nadmo-game-audio",audioOptions);
+      gameAudio.attach(id,channel);
+    }
     RtpSender screenSender=pc.addTrack(screenTrack,Arrays.asList("NADMO_GAME_SCREEN"));
     if(screenSender!=null)screenSenders.put(id,screenSender);
     balanceScreenUpload();
@@ -686,6 +721,7 @@ public final class GameCaptureService extends Service {
   private void clearViewers(){
     for(Runnable task:peerRepairTasks.values())main.removeCallbacks(task);
     peerRepairTasks.clear();lastPeerRepairAt.clear();
+    if(gameAudio!=null)for(String id:viewers.keySet())gameAudio.detach(id);
     for(PeerConnection pc:viewers.values()){pc.close();pc.dispose();}
     viewers.clear();pendingIce.clear();screenSenders.clear();
   }
@@ -705,6 +741,7 @@ public final class GameCaptureService extends Service {
     try{send(new JSONObjectSafe().put("type","leave").json());}catch(Exception ignored){}
     if(socket!=null){socket.close(1000,"game stream ended");socket=null;}
     webSocketOpen=false;clearViewers();
+    if(gameAudio!=null){gameAudio.stop();gameAudio=null;}
     try{if(faceCapturer!=null){faceCapturer.stopCapture();faceCapturer.dispose();}}catch(Exception e){Log.w(TAG,"Stop face camera",e);}
     try{if(screenCapturer!=null){screenCapturer.stopCapture();screenCapturer.dispose();}}catch(Exception e){Log.w(TAG,"Stop projection",e);}
     if(screenTrack!=null)screenTrack.dispose();
