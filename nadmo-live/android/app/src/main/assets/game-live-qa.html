@@ -4854,9 +4854,8 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
   watchVideo.addEventListener(event,updateDeckUI);
  const syncWatchAspect=()=>{
   const width=watchVideo.videoWidth,height=watchVideo.videoHeight;
-  const landscape=height>0&&width>height*1.12;
-  document.body.classList.toggle('watch-landscape',landscape);
   if(width>0&&height>0){
+   document.body.classList.toggle('watch-landscape',width>height*1.12);
    document.body.style.setProperty('--deck-video-aspect',width+' / '+height);
    // Game broadcast sources can be wider than 16:9 (20:9 phone screens).
    // Fit the actual decoded resolution, without cropping and without letting
