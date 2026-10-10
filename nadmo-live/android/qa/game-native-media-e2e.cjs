@@ -17,9 +17,10 @@ const url='https://nadmo-live-beta-20261009.ardarawk.workers.dev/app/';
    args:['--no-sandbox','--disable-dev-shm-usage','--use-fake-device-for-media-stream',
     '--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']
  });
+ let h=null,v=null;
  try{
   const hc=await browser.createBrowserContext(),vc=await browser.createBrowserContext();
-  const h=await hc.newPage(),v=await vc.newPage();
+  h=await hc.newPage();v=await vc.newPage();
   await Promise.all([h.goto(url,{waitUntil:'domcontentloaded',timeout:30000}),v.goto(url,{waitUntil:'domcontentloaded',timeout:30000})]);
   const room=await h.evaluate(async()=>{
    // Set up the media track first; installing onopen after an async getUserMedia
