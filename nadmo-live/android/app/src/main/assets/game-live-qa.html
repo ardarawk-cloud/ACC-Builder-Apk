@@ -4010,7 +4010,28 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
  $('refreshVideo').onclick=()=>{lastForegroundRecovery=0;restoreForeground()};
  window.addEventListener('focus',restoreForeground);
  window.addEventListener('pageshow',event=>{if(event.persisted)restoreForeground()});
-  function rtc(){const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.cloudflare.com:3478'},{urls:'stun:stun.l.google.com:19302'}]});pc.oniceconnectionstatechange=()=>{updateDeckUI();if(pc.iceConnectionState==='failed')notice('Video belum tersambung. Koneksi ini mungkin membutuhkan relay TURN; uji jaringan lain atau tunggu peningkatan SFU.','watchState')};return pc}
+  function rtc(){
+  const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.cloudflare.com:3478'},{urls:'stun:stun.l.google.com:19302'}]});
+  let iceRepairTimer=null,lastMediaRefreshAt=0;
+  pc.oniceconnectionstatechange=()=>{
+   updateDeckUI();
+   const ice=pc.iceConnectionState;
+   if(iceRepairTimer&&['connected','completed','closed'].includes(ice)){clearTimeout(iceRepairTimer);iceRepairTimer=null}
+   if(!['disconnected','failed'].includes(ice)||host||peer!==pc||iceRepairTimer)return;
+   const roomAtFailure=currentRoom;
+   iceRepairTimer=setTimeout(()=>{
+    iceRepairTimer=null;
+    if(host||peer!==pc||currentRoom!==roomAtFailure||!socket||socket.readyState!==WebSocket.OPEN)return;
+    if(!['disconnected','failed'].includes(pc.iceConnectionState))return;
+    if(Date.now()-lastMediaRefreshAt<15000)return;
+    lastMediaRefreshAt=Date.now();
+    $('watchState').textContent='Video terganggu. Meminta sambung ulang otomatis...';
+    markWatchWarning($('watchState').textContent);
+    transmit({type:'refresh-media'});
+   },ice==='failed'?2500:10000);
+  };
+  return pc;
+ }
  function signal(to,data){transmit({type:'signal',to,data})}
  function guestStatus(message){
   $('guestJoinStatus').hidden=!message;
