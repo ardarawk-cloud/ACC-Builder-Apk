@@ -40,6 +40,8 @@ public final class MainActivity extends Activity {
   private static final int PICK_AVATAR=43;
   private static final int ASK_GAME_PERMISSION=44;
   private static final int ASK_SCREEN_CAPTURE=45;
+  private static final int ASK_CHAT_NOTIFICATIONS=46;
+  private boolean askedChatNotifications=false;
   private String gameTitle="",gameName="";
   private boolean gameFace=false;
   private String gameFaceLayout="";
@@ -222,6 +224,15 @@ public final class MainActivity extends Activity {
     gameName=command.optString("game","Gaming");
     gameFace=command.optBoolean("face",false);
     gameFaceLayout=gameFace&&command.optJSONObject("facecam")!=null?command.optJSONObject("facecam").toString():"";
+    if(Build.VERSION.SDK_INT>=33&&!askedChatNotifications&&
+       checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){
+      askedChatNotifications=true;
+      requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},ASK_CHAT_NOTIFICATIONS);
+      return;
+    }
+    continueGamePermissions();
+  }
+  private void continueGamePermissions(){
     if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED||
        (gameFace&&checkSelfPermission(Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED)){
       requestPermissions(gameFace?new String[]{Manifest.permission.RECORD_AUDIO,Manifest.permission.CAMERA}:
@@ -306,6 +317,11 @@ public final class MainActivity extends Activity {
   }
   @Override public void onRequestPermissionsResult(int code,String[] names,int[] results){
     super.onRequestPermissionsResult(code,names,results);
+    if(code==ASK_CHAT_NOTIFICATIONS){
+      if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
+        notifyGameStatus("starting","Notifikasi chat dimatikan. Aktifkan izin notifikasi NADMO di Setelan HP.","");
+      continueGamePermissions();return;
+    }
     if(code==ASK_GAME_PERMISSION){
       if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){
         notifyGameStatus("error","Izin mikrofon diperlukan untuk GAME LIVE.","");return;
