@@ -2,7 +2,7 @@ name: NADMO LIVE v0.9.4 QA signed APK
 on:
   push:
     branches: ['feat/nadmo-native-game-live-20261010']
-    paths: ['.github/workflows/nadmo-live-094-qa-signed.yml']
+    paths: ['.github/workflows/nadmo-live-094-qa-signed.yml', 'nadmo-live/android/qa/offgrid-local-contract.mjs']
   workflow_dispatch:
 permissions:
   contents: read
@@ -44,7 +44,7 @@ jobs:
       - name: Preflight GAME UI and OFFGRID fallback
         run: |
           node nadmo-live/android/qa/offgrid-local-contract.mjs
-          node -e "const fs=require('fs'),vm=require('vm');const html=fs.readFileSync('nadmo-live/android/app/src/main/assets/game-live-qa.html','utf8');const js=html.match(/<script>([\\s\\S]*?)<\\/script>/);if(!js||!html.includes('gameLaunchGame'))process.exit(1);new vm.Script(js[1]);console.log('GAME HTML UI SYNTAX PASS')"
+          node -e "const fs=require('fs'),vm=require('vm');const html=fs.readFileSync('nadmo-live/android/app/src/main/assets/game-live-qa.html','utf8');const i=html.indexOf('<script>'),j=html.indexOf('</script>',i);if(i<0||j<i||!html.includes('gameLaunchGame'))process.exit(1);new vm.Script(html.slice(i+8,j));console.log('GAME HTML UI SYNTAX PASS')"
       - name: Assemble signed QA APK with original certificate
         run: gradle -p nadmo-live/android :app:assembleRelease --no-daemon
       - name: Verify fixed identity, version and old signer
