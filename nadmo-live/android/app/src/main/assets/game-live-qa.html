@@ -1540,6 +1540,211 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
 @media(max-width:370px){
  body:not(.live-immersive) #explore .explore-head h2{font-size:20px}
 }
+
+/* Mobile GAMECAST cyberdeck: a real responsive watchroom rather than a
+   landscape video suspended in a black portrait canvas. Scoped to viewer
+   game streams only; host and non-game broadcasts keep their own layouts. */
+.mobile-game-ambience,.mobile-game-brand,.mobile-game-feedline{display:none}
+@media(max-width:799px){
+ body.live-immersive.watch-viewer.watch-game #watch{
+  --game-stage-top:clamp(135px,20dvh,181px);
+  --game-stage-height:calc((100vw - 30px) * .5625);
+  background:
+   radial-gradient(ellipse 130% 34% at 50% 31%,#24472a70,transparent 72%),
+   repeating-linear-gradient(90deg,#6eaa7420 0 1px,transparent 1px 26px),
+   repeating-linear-gradient(0deg,#6eaa7420 0 1px,transparent 1px 26px),
+   linear-gradient(180deg,#08150d,#030b08 55%,#08170c)!important;
+  background-size:auto,26px 26px,26px 26px,auto;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch::after{display:none!important}
+ body.live-immersive.watch-viewer.watch-game #watch .mobile-game-ambience{
+  display:block;position:absolute;inset:0;z-index:1;pointer-events:none;
+  border-inline:5px solid #4e8c3942;
+  background:
+   linear-gradient(90deg,#aeef5619,transparent 10% 90%,#aeef5619),
+   linear-gradient(180deg,#a7ee4f2c 0 1px,transparent 1px);
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .mobile-game-ambience::before{
+  content:"";position:absolute;top:110px;left:10px;right:10px;height:1px;
+  background:linear-gradient(90deg,#d8ff70,transparent 72%,#88dca8);
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .mobile-game-ambience::after{
+  content:"";position:absolute;left:10px;right:10px;bottom:7px;height:3px;
+  background:linear-gradient(90deg,#d8ff73 0 24%,transparent 24% 69%,#74cf9d 69% 100%);
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .mobile-game-brand{
+  position:absolute;display:flex;align-items:center;gap:8px;top:7px;left:14px;right:78px;
+  height:29px;z-index:10;color:#a9d7aa;font:800 9px/1 Arial,sans-serif;
+  letter-spacing:1.65px;pointer-events:none;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .mobile-game-brand b{
+  color:#e3fd72;font:900 25px/1 Impact,Arial,sans-serif;letter-spacing:-1px;
+  text-shadow:0 0 13px #b4fc4780;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .mobile-game-brand i{font-style:normal;color:#7de1b6}
+ body.live-immersive.watch-viewer.watch-game #watch .mobile-game-brand em{
+  flex:1;height:1px;background:linear-gradient(90deg,#93bd57,transparent);min-width:8px
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .page-top{
+  top:40px!important;left:14px!important;right:69px!important;
+  width:auto;max-width:none;z-index:9;
+  padding:0!important;margin:0;background:none!important;
+  pointer-events:none;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch #hostProfileCard{
+  pointer-events:auto;max-width:100%;min-height:45px;padding:5px 12px 5px 6px!important;
+  border:1px solid #97c85a!important;border-radius:3px!important;
+  background:linear-gradient(110deg,#183123ee,#0b1a11ec)!important;
+  box-shadow:inset 0 1px #d3fd5861,0 4px 17px #0008!important;
+  clip-path:polygon(0 0,calc(100% - 11px) 0,100% 11px,100% 100%,0 100%);
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .room-subtitle{
+  max-width:calc(100vw - 100px);margin-top:4px;padding-left:3px;
+  font-size:11px;color:#c5d9bd;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis
+ }
+ body.live-immersive.watch-viewer.watch-game #watch #leave{
+  top:39px!important;right:14px!important;
+  width:41px;height:41px;border:1px solid #a7cb69!important;
+  border-radius:4px!important;background:#0b1e14ed!important;
+  box-shadow:inset 0 0 0 2px #203823,0 4px 15px #0008
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .mobile-game-feedline{
+  display:flex;position:absolute;z-index:9;
+  left:17px;right:17px;top:calc(var(--game-stage-top) - 30px);
+  align-items:center;justify-content:space-between;gap:5px;
+  color:#b5d7b1;font:800 9px/1.2 Arial,sans-serif;letter-spacing:1.1px;
+  pointer-events:none;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .mobile-game-feedline strong{
+  color:#deff7d;font-size:9px;letter-spacing:.35px;text-align:right
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .live-stage{
+  position:absolute!important;z-index:3;
+  inset:var(--game-stage-top) 14px auto!important;
+  width:auto!important;height:var(--game-stage-height)!important;
+  margin:0!important;padding:5px!important;
+  border:1px solid #c4f46d!important;border-radius:1px!important;
+  background:#08170e!important;
+  box-shadow:0 0 0 3px #0a180d,0 0 0 4px #598841b5,0 12px 28px #0009!important;
+  overflow:visible;pointer-events:none;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .live-stage::before{
+  display:block!important;position:absolute;inset:-4px;z-index:5;content:"";
+  pointer-events:none;opacity:1!important;border:0!important;
+  background:
+   linear-gradient(90deg,#e1ff7a 0 26%,transparent 26% 75%,#a4fa7e 75% 100%) top / 100% 3px no-repeat,
+   linear-gradient(90deg,#8bd9ab 0 16%,transparent 16% 90%,#b3e756 90%) bottom / 100% 2px no-repeat,
+   linear-gradient(#e0ff7a 0 22%,transparent 22% 78%,#b4ef6c 78%) left / 2px 100% no-repeat,
+   linear-gradient(#83e1ae 0 15%,transparent 15% 85%,#e0ff7a 85%) right / 2px 100% no-repeat!important;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .live-stage::after{display:none!important}
+ body.live-immersive.watch-viewer.watch-game #watch .live-stage>.viewfinder{
+  position:relative!important;inset:auto!important;display:block;
+  width:100%!important;height:100%!important;min-height:0!important;
+  max-width:none!important;max-height:none!important;margin:0!important;
+  padding:0!important;transform:none!important;overflow:hidden;
+  border:0!important;border-radius:0!important;background:#020502!important;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch #remote{
+  display:block;width:100%!important;height:100%!important;
+  position:absolute;inset:0;min-height:0!important;max-height:none!important;
+  object-fit:contain!important;background:#030704!important;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch #gameRemoteFace{
+  top:8px;right:8px;width:min(19vw,76px);height:min(19vw,76px);
+  border:2px solid #d8ff72;box-shadow:0 0 0 2px #142719,0 3px 12px #0008
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .live-chat{
+  position:absolute!important;display:flex!important;flex-direction:column;z-index:7;
+  left:12px!important;right:12px!important;width:auto!important;
+  top:calc(var(--game-stage-top) + var(--game-stage-height) + 18px)!important;
+  bottom:9px!important;height:auto!important;margin:0!important;
+  padding:0 11px 10px!important;
+  border:1px solid #638d4c!important;border-radius:3px!important;
+  background:linear-gradient(155deg,#13291bdc,#06130beF 76%)!important;
+  box-shadow:inset 0 0 0 1px #a8dc4d22,0 5px 22px #0007!important;
+  pointer-events:none;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .live-chat::before{
+  content:"";height:3px;position:absolute;left:0;top:0;width:100%;
+  background:linear-gradient(90deg,#d0fc5b 0 29%,transparent 29% 78%,#7ed5ab 78%);
+  pointer-events:none;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .live-chat .show-label{
+  display:flex!important;flex:0 0 auto;align-items:center;justify-content:space-between;
+  min-height:35px;margin:0;padding:9px 2px 6px;
+  border-bottom:1px solid #4e7651;gap:6px;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .live-chat .show-label b{
+  font:900 15px/1 Impact,Arial,sans-serif;color:#eaffb2;letter-spacing:.8px
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .live-chat .show-label small{
+  font:700 8px Arial,sans-serif;color:#86bda3;letter-spacing:.7px;text-align:right
+ }
+ body.live-immersive.watch-viewer.watch-game #watch #chat{
+  flex:1 1 auto;min-height:0!important;max-height:none!important;
+  height:auto!important;margin:0!important;
+  padding:10px 3px 6px!important;border:0!important;
+  background:transparent!important;pointer-events:auto;
+  overflow-y:auto;overscroll-behavior:contain;
+  mask-image:linear-gradient(180deg,transparent 0%,black 12%,black 100%);
+ }
+ body.live-immersive.watch-viewer.watch-game #watch #chat div{
+  border-left:2px solid #c7f26a!important;border-radius:2px 7px 7px 2px!important;
+  padding:7px 9px!important;margin:0 0 7px!important;
+  max-width:98%;background:#1c3725d9!important;
+  box-shadow:0 1px 4px #0003;font-size:12px!important;line-height:1.4;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .live-chat .row{
+  display:flex;flex:0 0 auto;gap:5px;align-items:center;
+  padding:8px 0 6px;margin:0;border-top:1px solid #4b7750;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch #message{
+  flex:1;min-width:0;width:auto;height:40px;min-height:40px;
+  margin:0;padding:7px 10px;border-radius:4px;
+  background:#091911f5;border:1px solid #73975c;font-size:12px;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch #send{
+  flex:0 0 auto;min-width:48px;height:40px;min-height:40px;
+  padding:0 8px;border:1px solid #d1f975;
+  border-radius:4px;background:#c9f36a;color:#0a1c0d;
+  font:900 11px Arial,sans-serif
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .live-bar-button{
+  flex:0 0 36px;min-width:36px;height:40px;border-radius:4px;
+  border:1px solid #6e9a64;background:#152b1b;color:#e0ff93;
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .room-safety{
+  flex:0 0 auto;margin:0;padding:4px 0 0;pointer-events:auto
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .room-safety .safety-toolbar{
+  display:flex;flex-wrap:nowrap;gap:5px;overflow-x:auto;scrollbar-width:none
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .room-safety .safety-toolbar::-webkit-scrollbar{display:none}
+ body.live-immersive.watch-viewer.watch-game #watch .room-safety .safety-toolbar button{
+  flex:1 0 auto;min-height:31px;padding:5px 8px;
+  border:1px solid #526e4f;background:#112519;
+  color:#d6e6cb;border-radius:3px;font-size:9px;white-space:nowrap
+ }
+ body.live-immersive.watch-viewer.watch-game #watch .room-safety .safety-panel{
+  max-height:30dvh;overflow:auto
+ }
+ body.live-immersive.watch-viewer.watch-game #watch #watchState.connection-warning{
+  z-index:12;display:block!important;top:calc(var(--game-stage-top) + 8px);
+  left:20px;right:20px;max-width:none
+ }
+}
+@media(max-width:799px) and (max-height:610px){
+ body.live-immersive.watch-viewer.watch-game #watch{--game-stage-top:116px}
+ body.live-immersive.watch-viewer.watch-game #watch .mobile-game-brand{height:23px}
+ body.live-immersive.watch-viewer.watch-game #watch .page-top{top:30px!important}
+ body.live-immersive.watch-viewer.watch-game #watch #leave{top:31px!important}
+ body.live-immersive.watch-viewer.watch-game #watch .mobile-game-ambience::before{top:99px}
+ body.live-immersive.watch-viewer.watch-game #watch .live-chat .show-label{min-height:29px;padding:5px 2px}
+ body.live-immersive.watch-viewer.watch-game #watch .live-chat .row{padding:4px 0}
+ body.live-immersive.watch-viewer.watch-game #watch .room-safety{padding-top:2px}
+}
 </style></head>
 <body>
 <div class="app">
@@ -1636,6 +1841,9 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
     </svg>
     <span class="deck-shell-bottom"><b>NADMO LIVE</b><i></i><span>CYBERDECK / ACTIVE BROADCAST UI</span><i></i><b>STAY CONNECTED</b></span>
   </div>
+  <div class="mobile-game-ambience" aria-hidden="true"><span class="mobile-game-scan"></span></div>
+  <div class="mobile-game-brand" aria-hidden="true"><b>N/</b><span>GAMECAST <i> / </i> NADMO LIVE</span><em></em></div>
+  <div class="mobile-game-feedline"><span>▣ &nbsp; GAME / SCREEN FEED</span><strong id="mobileGameFeedState">MENUNGGU VIDEO</strong></div>
   <aside id="pcWatchRail" class="desktop-watch-only" aria-label="Navigasi menonton PC">
     <div class="pc-logo">N/</div>
     <button type="button" id="pcBack" title="Kembali ke daftar LIVE" aria-label="Kembali ke daftar LIVE">←</button>
@@ -4624,6 +4832,8 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
   const videoStatus=playing?'AKTIF':watchVideo.error?'ERROR':watchVideo.readyState>=2?'TERJEDA':'MENUNGGU';
   watchVideo.closest('.viewfinder')?.classList.toggle('deck-has-video',playing);
   $('deckVideoStatus').textContent=videoStatus;
+  const gameFeedState=$('mobileGameFeedState');
+  if(gameFeedState)gameFeedState.textContent=playing?'● VIDEO AKTIF':watchVideo.error?'VIDEO ERROR':'MENUNGGU VIDEO';
   $('deckAudioStatus').textContent=audio?'TERDETEKSI':'BELUM ADA';
   $('deckNetStatus').textContent=['connected','completed'].includes(ice)?'TERHUBUNG':
     ice==='disconnected'?'TERPUTUS':ice==='failed'?'GAGAL':ice==='checking'?'MEMERIKSA':'MENYAMBUNG';
