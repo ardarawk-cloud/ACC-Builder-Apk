@@ -4,6 +4,7 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA"/>
   <uses-permission android:name="android.permission.CAMERA"/>
   <uses-permission android:name="android.permission.RECORD_AUDIO"/>
   <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
@@ -11,10 +12,18 @@
   <uses-feature android:name="android.hardware.microphone" android:required="false"/>
   <queries>
     <package android:name="com.offgrid.mesh.dev"/>
+    <package android:name="com.mobile.legends"/>
+    <package android:name="com.dts.freefireth"/>
+    <package android:name="com.dts.freefiremax"/>
+    <package android:name="com.tencent.ig"/>
+    <package android:name="com.pubg.krmobile"/>
+    <package android:name="com.levelinfinite.sgameGlobal"/>
+    <package android:name="com.roblox.client"/>
+    <package android:name="com.mojang.minecraftpe"/>
   </queries>
   <application android:label="NADMO LIVE" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:theme="@android:style/Theme.Material.NoActionBar"
     android:usesCleartextTraffic="false" android:allowBackup="false">
-    <service android:name=".GameCaptureService" android:exported="false" android:foregroundServiceType="mediaProjection|microphone" />
+    <service android:name=".GameCaptureService" android:exported="false" android:foregroundServiceType="mediaProjection|microphone|camera" />
     <activity android:name=".MainActivity" android:exported="true"
       android:configChanges="orientation|screenSize|keyboardHidden">
       <intent-filter>
