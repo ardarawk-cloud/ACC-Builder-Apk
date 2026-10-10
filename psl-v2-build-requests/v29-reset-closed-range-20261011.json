@@ -1,0 +1,7 @@
+{
+  "request_id": "papa-sauce-lab-v2-v29-reset-closed-range",
+  "project_id": "papa-sauce-lab",
+  "version": 29,
+  "mode": "stable_signed_update",
+  "reason": "Reset erroneous closed day range while keeping prior day balance and audit archive"
+}

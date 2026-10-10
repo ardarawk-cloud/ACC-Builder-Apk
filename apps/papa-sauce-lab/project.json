@@ -1,13 +1,13 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 27,
+  "version": 29,
   "provider": "manual-hotfix",
   "model": "none",
   "qc": "passed",
-  "last_request_id": "papa-sauce-lab-v27-sticky-date-and-batch-move",
-  "last_prompt": "Keep operational date sticky until Tutup Hari advances it. Add owner-only audited move for the latest OCR photo expense batch to a corrected open date. Do not alter HB formulas, snapshots, package ID, signer, or deployment path.",
+  "last_request_id": "papa-sauce-lab-v29-reset-closed-range",
+  "last_prompt": "Owner-only audited reset of a closed date range so incorrect days can be re-entered from the prior valid closing balance.",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
-  "updated_at": "2026-09-28T18:27:35.188325+00:00"
+  "updated_at": "2026-10-10T16:18:23.218850+00:00"
 }
