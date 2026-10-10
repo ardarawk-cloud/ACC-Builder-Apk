@@ -4158,13 +4158,19 @@ body.social-lightbox-open{overflow:hidden}
   target.addEventListener('pointercancel',finish,{once:true});
  });
 
+ function liveCameraConstraints(){
+  // PC camera stays landscape. Handsets prefer portrait; ideals may fall back.
+  return window.innerWidth>=800
+   ? {width:{ideal:1280},height:{ideal:720},aspectRatio:{ideal:16/9}}
+   : {facingMode:'user',width:{ideal:720},height:{ideal:1280}};
+ }
  async function preview(){
   try{
    if(!navigator.mediaDevices?.getUserMedia)throw Error('Browser tidak mendukung media capture');
    if(!['camera','talk'].includes(selectedLiveMode))throw Error('Sumber video mode ini belum didukung');
    if(localStream)localStream.getTracks().forEach(t=>t.stop());stopTalkVisual();
-   if(selectedLiveMode==='camera'){
-    localStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720}},audio:{echoCancellation:true}});
+    if(selectedLiveMode==='camera'){
+    localStream=await navigator.mediaDevices.getUserMedia({video:liveCameraConstraints(),audio:{echoCancellation:true}});
     notice('Kamera dan mikrofon siap.','camState');
    }else{
     const mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true},video:false});
@@ -4325,7 +4331,7 @@ body.social-lightbox-open{overflow:hidden}
     $('afkToggle').textContent='◉ RETURN CAMERA';
     $('watchState').textContent='Kamera OFF. Mikrofon masih aktif. Ini bukan siaran radio otomatis.';
    }else{
-    const media=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720}},audio:false});
+    const media=await navigator.mediaDevices.getUserMedia({video:liveCameraConstraints(),audio:false});
     await swapVideo(media.getVideoTracks()[0]);
     if(afkTimer)clearInterval(afkTimer);afkTimer=null;afkTrack=null;afkMode=false;
     $('afkToggle').textContent='▤ KAMERA OFF';$('watchState').textContent='Kamera kembali. Room tetap aktif.';
@@ -4349,7 +4355,7 @@ body.social-lightbox-open{overflow:hidden}
   let fresh;
   try{
     fresh=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'user',width:{ideal:720}},
+      video:liveCameraConstraints(),
       audio:{echoCancellation:true}
     });
   }catch(error){
