@@ -1745,6 +1745,44 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
  body.live-immersive.watch-viewer.watch-game #watch .live-chat .row{padding:4px 0}
  body.live-immersive.watch-viewer.watch-game #watch .room-safety{padding-top:2px}
 }
+
+/* MEDIA FORMAT CONTRACT: actual decoded live camera ratio, not design mockups.
+   SOCIAL photos are 1:1; linked originals retain their full uncropped image. */
+@media(min-width:800px){
+ body.live-immersive.watch-viewer:not(.watch-landscape) #watch .live-stage>.viewfinder{
+  position:absolute!important;left:50%!important;right:auto!important;
+  top:50%!important;bottom:auto!important;
+  width:auto!important;height:calc(100% - 185px)!important;
+  max-width:calc(100% - 42px)!important;max-height:calc(100% - 185px)!important;
+  aspect-ratio:var(--deck-video-aspect,9 / 16)!important;
+  transform:translate(-50%,-47%)!important;
+  border:2px solid var(--deck-lime)!important;
+  border-radius:2px!important;min-height:0!important;
+  background:#030704!important;overflow:hidden!important;
+  box-shadow:0 0 0 3px #07170d,0 0 0 4px #719f4a7d,0 10px 26px #0008!important;
+ }
+ body.live-immersive.watch-viewer:not(.watch-landscape) #watch #remote{
+  width:100%!important;height:100%!important;object-fit:contain!important;
+  background:#020604!important;
+ }
+}
+#socialPublicFeed .social-photo-frame,
+#meRepostedFeed .social-photo-frame{
+ display:block;position:relative;width:min(100%,560px);max-width:100%;
+ aspect-ratio:1 / 1;margin:12px auto 11px;overflow:hidden;
+ border:1px solid var(--deck-rim,#446349);border-radius:8px;
+ background:#08100b;box-shadow:inset 0 0 0 2px #0d1b10;
+}
+.social-photo-frame img.social-post-photo{
+ display:block;width:100%;height:100%;max-width:none;
+ aspect-ratio:1 / 1;object-fit:cover;object-position:center;
+ border:0;border-radius:0;
+}
+.social-photo-frame:focus-visible{outline:2px solid var(--deck-lime);outline-offset:3px}
+@media(max-width:799px){
+ #socialPublicFeed .social-photo-frame,
+ #meRepostedFeed .social-photo-frame{width:100%;border-radius:5px;margin:9px auto}
+}
 </style></head>
 <body>
 <div class="app">
@@ -2952,6 +2990,20 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
     }
    };
    drawCaption();card.append(content);
+  }
+  // SOCIAL photos: square preview, but opening retains the original resolution.
+  if(entry.imageUrl){
+   const imageSrc=validExternalLink(entry.imageUrl);
+   if(imageSrc){
+    const frame=document.createElement('a');
+    frame.className='social-photo-frame';frame.href=imageSrc;
+    frame.target='_blank';frame.rel='noopener noreferrer';
+    frame.setAttribute('aria-label','Buka foto asli postingan');
+    const img=document.createElement('img');img.className='social-post-photo';
+    img.alt='Foto postingan '+displayName;img.loading='lazy';img.decoding='async';
+    img.onerror=()=>frame.remove();
+    img.src=imageSrc;frame.append(img);card.append(frame);
+   }
   }
   if(entry.videoUrl){const video=playableSocialVideo(entry.videoUrl);if(video)card.append(video)}
   const stats=document.createElement('div');stats.className='social-stats';
