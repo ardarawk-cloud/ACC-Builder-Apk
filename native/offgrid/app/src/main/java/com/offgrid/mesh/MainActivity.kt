@@ -147,7 +147,7 @@ class MainActivity : Activity() {
                 // A failed scan is no longer active. Unblock SCAN so the user can retry.
                 if (!running) return@runOnUiThread
                 stopDiscovery()
-                setStatus("Nearby scan failed ($errorCode). Tap SCAN to retry.")
+                setStatus("Nearby scan failed ($errorCode). Tap START to retry.")
             }
         }
     }
