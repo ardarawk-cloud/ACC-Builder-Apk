@@ -108,6 +108,7 @@ public final class GameCaptureService extends Service {
   private final Handler main=new Handler(Looper.getMainLooper());
   private final Map<String,PeerConnection> viewers=new HashMap<>();
   private final Map<String,List<IceCandidate>> pendingIce=new HashMap<>();
+  private final Map<String,RtpSender> screenSenders=new HashMap<>();
   // Repair a failed viewer route without interrupting MediaProjection or microphone.
   private final Map<String,Runnable> peerRepairTasks=new HashMap<>();
   private final Map<String,Long> lastPeerRepairAt=new HashMap<>();
@@ -145,6 +146,9 @@ public final class GameCaptureService extends Service {
   private static final int GAME_VIDEO_MAX_EDGE=960;
   private static final int GAME_VIDEO_FPS=20;
   private static final int GAME_VIDEO_BITRATE_BPS=850000;
+  // Without an SFU the phone uploads one screen encode per viewer. Keep that
+  // combined screen-video budget bounded so the game retains network headroom.
+  private static final int GAME_TOTAL_SCREEN_UPLOAD_BPS=2000000;
   private static final long SOCKET_STALE_MS=65000L;
   private static final long SOCKET_CONNECT_STALE_MS=25000L;
   private String diagnostic="Belum ada koneksi";
@@ -522,7 +526,9 @@ public final class GameCaptureService extends Service {
         cancelPeerRepair(id);lastPeerRepairAt.remove(id);
         PeerConnection pc=viewers.remove(id);
         pendingIce.remove(id);
+        screenSenders.remove(id);
         if(pc!=null){pc.close();pc.dispose();}
+        balanceScreenUpload();
       }else if("media-refresh-request".equals(type)){
         offerTo(m.optString("id"));
       }else if("signal".equals(type)){
@@ -582,9 +588,24 @@ public final class GameCaptureService extends Service {
       main.postDelayed(repair,delay);
     });
   }
+  private void balanceScreenUpload(){
+    int count=Math.max(1,screenSenders.size());
+    int perViewer=Math.min(GAME_VIDEO_BITRATE_BPS,GAME_TOTAL_SCREEN_UPLOAD_BPS/count);
+    for(RtpSender sender:screenSenders.values()){
+      try{
+        RtpParameters params=sender.getParameters();
+        for(RtpParameters.Encoding encoding:params.encodings){
+          encoding.maxBitrateBps=perViewer;
+          encoding.maxFramerate=GAME_VIDEO_FPS;
+        }
+        if(!sender.setParameters(params))Log.w(TAG,"Encoder rejected shared upload cap");
+      }catch(Exception error){Log.w(TAG,"Cannot tune GAME viewer bitrate",error);}
+    }
+  }
   private void offerTo(String id){
     if(id==null||id.isEmpty()||stopping||factory==null)return;
     cancelPeerRepair(id);
+    screenSenders.remove(id);
     PeerConnection old=viewers.remove(id);
     if(old!=null){old.close();old.dispose();}
     pendingIce.remove(id);
@@ -621,16 +642,8 @@ public final class GameCaptureService extends Service {
     holder[0]=pc;
     viewers.put(id,pc);
     RtpSender screenSender=pc.addTrack(screenTrack,Arrays.asList("NADMO_GAME_SCREEN"));
-    if(screenSender!=null){
-      try{
-        RtpParameters params=screenSender.getParameters();
-        for(RtpParameters.Encoding encoding:params.encodings){
-          encoding.maxBitrateBps=GAME_VIDEO_BITRATE_BPS;
-          encoding.maxFramerate=GAME_VIDEO_FPS;
-        }
-        if(!screenSender.setParameters(params))Log.w(TAG,"GAME bitrate cap rejected by encoder");
-      }catch(Exception error){Log.w(TAG,"GAME encoder limits unavailable",error);}
-    }
+    if(screenSender!=null)screenSenders.put(id,screenSender);
+    balanceScreenUpload();
     pc.addTrack(micTrack,Arrays.asList("NADMO_GAME_SCREEN"));
     if(faceTrack!=null)pc.addTrack(faceTrack,Arrays.asList("NADMO_GAME_FACE"));
     pc.createOffer(new SdpAdapter(){
@@ -674,7 +687,7 @@ public final class GameCaptureService extends Service {
     for(Runnable task:peerRepairTasks.values())main.removeCallbacks(task);
     peerRepairTasks.clear();lastPeerRepairAt.clear();
     for(PeerConnection pc:viewers.values()){pc.close();pc.dispose();}
-    viewers.clear();pendingIce.clear();
+    viewers.clear();pendingIce.clear();screenSenders.clear();
   }
   private void stopGame(String reason){
     if(stopping)return;stopping=true;
