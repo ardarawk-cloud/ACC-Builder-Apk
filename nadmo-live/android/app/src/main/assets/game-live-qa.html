@@ -4412,7 +4412,7 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
   // PC camera stays landscape. Handsets prefer portrait; ideals may fall back.
   return window.innerWidth>=800
    ? {width:{ideal:1280},height:{ideal:720},aspectRatio:{ideal:16/9}}
-   : {facingMode:'user',width:{ideal:720},height:{ideal:1280}};
+   : {facingMode:'user',width:{ideal:720},height:{ideal:1280},aspectRatio:{ideal:9/16},frameRate:{ideal:24}};
  }
  async function preview(){
   try{
