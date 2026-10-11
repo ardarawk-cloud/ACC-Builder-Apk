@@ -116,7 +116,7 @@ jobs:
           printf '%s\n' "$META"
           printf '%s\n' "$META" | grep -F "name='id.nadmo.live'"
           printf '%s\n' "$META" | grep -F "versionCode='21'"
-          printf '%s\n' "$META" | grep -F "versionName='0.10.1-beta'"
+          printf '%s\n' "$META" | grep -F "versionName='0.10.2-beta'"
           VERIFY=$("$SIGN" verify --verbose --print-certs "$OUT")
           printf '%s\n' "$VERIFY"
           printf '%s\n' "$VERIFY" | grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true'
