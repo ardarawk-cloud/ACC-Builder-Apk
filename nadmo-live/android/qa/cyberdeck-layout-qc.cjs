@@ -117,6 +117,49 @@ const path=require('node:path');
   assert.equal(stillGame.bgDisplay,'none','Game must not receive a camera backdrop');
   await page.evaluate(()=>{document.body.classList.remove('live-immersive','watch-host','watch-viewer','watch-game','watch-camera-wide','watch-landscape');document.querySelector('#watch').classList.add('hide');});
   console.log('CAMERA_MOBILE_FULL_PORTRAIT_QC_PASS');
+  // Anti-zoom QA: emulate an Android 640x360 front camera using a real
+  // MediaStream and verify that both side markers survive the composed 9:16
+  // stream. The old center crop threw away >60% of horizontal sensor pixels.
+  const antiZoom=await page.evaluate(async()=>{
+   const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;
+   const context=canvas.getContext('2d');
+   context.fillStyle='#191919';context.fillRect(0,0,640,360);
+   context.fillStyle='#ff1900';context.fillRect(100,0,26,360);
+   context.fillStyle='#00eaff';context.fillRect(514,0,26,360);
+   const fake=canvas.captureStream(20);
+   const md=navigator.mediaDevices;
+   if(!md||!md.getUserMedia)throw new Error('Browser MediaDevices unsupported in QC environment');
+   const real=md.getUserMedia.bind(md);
+   Object.defineProperty(md,'getUserMedia',{configurable:true,value:async()=>fake});
+   let result;
+   try{
+    result=await openLiveCamera(false);
+    await new Promise(r=>setTimeout(r,450));
+    const frame=result?.controller?.canvas;
+    if(!frame)throw new Error('Expected landscape safe-frame compositor');
+    const ctx=frame.getContext('2d'),left=Array.from(ctx.getImageData(25,320,1,1).data),
+     right=Array.from(ctx.getImageData(330,320,1,1).data);
+    return {width:frame.width,height:frame.height,left,right,
+      sourceWidth:result.controller.video.videoWidth,sourceHeight:result.controller.video.videoHeight};
+   }finally{
+    Object.defineProperty(md,'getUserMedia',{configurable:true,value:real});
+    if(result?.controller){
+     clearInterval(result.controller.timer);
+     result.controller.video.pause();
+     result.controller.video.srcObject=null;
+     result.controller.video.remove();
+    }
+    result?.stream?.getTracks().forEach(t=>t.stop());
+    fake.getTracks().forEach(t=>t.stop());
+   }
+  });
+  assert.equal(antiZoom.width,360);
+  assert.equal(antiZoom.height,640);
+  assert.equal(antiZoom.sourceWidth,640);
+  assert.equal(antiZoom.sourceHeight,360);
+  assert.ok(antiZoom.left[0]>150&&antiZoom.left[1]<110,'Left side of original camera lost due to zoom: '+JSON.stringify(antiZoom));
+  assert.ok(antiZoom.right[2]>120&&antiZoom.right[0]<110,'Right side of original camera lost due to zoom: '+JSON.stringify(antiZoom));
+  console.log('CAMERA_ANTIZOOM_MEDIA_QC_PASS '+JSON.stringify(antiZoom));
   console.log('PASS real Chromium cyberdeck layout '+JSON.stringify({desktop,mobile}));
  }finally{await browser.close()}
 })().catch(e=>{console.error('CYBERDECK_LAYOUT_QC_FAIL',e);process.exit(1)});
