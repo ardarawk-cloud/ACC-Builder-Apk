@@ -101,7 +101,7 @@ jobs:
           grep -Fq 'gameChatSettings' "$HTML"
           grep -Fq 'id="gameChatOverlaySettings"' "$HTML"
           grep -Fq 'id="gameStreamQuality"' "$HTML"
-          grep -Fq 'id="cameraBackdrop"' "$HTML"
+          grep -Fq 'async function openLiveCamera(audio=true)' "$HTML"
           grep -Fq 'canvas.width=360;canvas.height=640' "$HTML"
           grep -Fq 'CAMERA_MOBILE_FULL_PORTRAIT_QC_PASS' nadmo-live/android/qa/cyberdeck-layout-qc.cjs
           if grep -Fq 'watch-camera-wide' "$HTML";then echo 'Legacy camera letterbox must not ship';exit 1;fi
