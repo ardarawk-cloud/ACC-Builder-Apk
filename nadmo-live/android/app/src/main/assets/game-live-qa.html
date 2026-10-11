@@ -707,6 +707,8 @@ nav button{touch-action:manipulation}
 .nadmo-profile[data-theme="noir"],.public-me-skin[data-theme="noir"]{--skin-accent:#e8d8c9;--skin-bg:#201c1b;--skin-ink:#fff3ed}
 .nadmo-profile[data-theme="retro"],.public-me-skin[data-theme="retro"]{--skin-accent:#ffb9d8;--skin-bg:#30233c;--skin-ink:#f8edff}
 .nadmo-profile[data-theme="electric"],.public-me-skin[data-theme="electric"]{--skin-accent:#71f3fc;--skin-bg:#0b2133;--skin-ink:#ddfbff}
+.nadmo-profile[data-theme="cyberbw"],.public-me-skin[data-theme="cyberbw"]{--skin-accent:#f9fafb;--skin-bg:#090b0e;--skin-ink:#fff}
+.nadmo-profile[data-theme="cyberbw"] .profile-hero,.public-me-skin[data-theme="cyberbw"] .profile-hero{box-shadow:inset 0 0 0 1px #ddd,0 0 16px rgba(255,255,255,.15)}
 .nadmo-profile[data-font="mono"],.public-me-skin[data-font="mono"]{--skin-font:"Courier New",monospace}
 .nadmo-profile[data-font="editorial"],.public-me-skin[data-font="editorial"]{--skin-font:Georgia,serif}
 .nadmo-profile[data-font="system"],.public-me-skin[data-font="system"]{--skin-font:Arial,sans-serif}
@@ -1811,6 +1813,17 @@ body.live-immersive.watch-viewer #watch .live-chat .show-label small{font-size:8
 .social-media-lightbox-bar button{min-width:44px;min-height:44px;border:1px solid #698f59;color:#e3fd72;background:#15261a}
 body.social-lightbox-open{overflow:hidden}
 @media(max-width:799px){.social-gallery{width:100%}.social-queued-media{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Global color-only theme: never recolor, filter or obscure uploaded media. */
+html[data-nadmo-ui-theme="cyberbw"]{--bg:#08090a;--panel:#111316;--paper:#fafafa;--ink:#c8cbd0;--line:#5a6063;--neon:#f9fafb;--cyan:#dde2e6;--dim:#8e969b;color-scheme:dark}
+html[data-nadmo-ui-theme="noir"]{--bg:#0c0a0b;--panel:#1a1516;--paper:#fff7ef;--ink:#cfc0bd;--line:#594a49;--neon:#ead0b9;--cyan:#ead0b9}
+html[data-nadmo-ui-theme="retro"]{--bg:#140e1b;--panel:#24192d;--paper:#fff1fd;--ink:#e4d1e8;--line:#6f4f6d;--neon:#ffb4db;--cyan:#ffb4db}
+html[data-nadmo-ui-theme="electric"]{--bg:#04121b;--panel:#092537;--paper:#eaffff;--ink:#b7e2ed;--line:#306273;--neon:#6df4ff;--cyan:#6df4ff}
+html[data-nadmo-ui-theme="cyberbw"] :is(.nadmo-profile,.public-me-skin)[data-theme="cyberbw"]{--skin-accent:#f8f9fa;--skin-bg:#101112;--skin-ink:#fafafa}
+html[data-nadmo-ui-theme="cyberbw"] :is(.app,nav,.panel,.mast,.ticker,.no-signal,.deck-system-bar,.profile-edit-box,.profile-hero){border-color:var(--line)}
+html[data-nadmo-ui-theme="cyberbw"] :is(.field,input,textarea,select){accent-color:var(--neon)}
+html[data-nadmo-ui-theme="cyberbw"] :is(.btn,.logo-mark,.eyebrow,.profile-business-link){border-color:var(--neon)}
+
 </style></head>
 <body>
 <div class="app">
@@ -2216,18 +2229,18 @@ body.social-lightbox-open{overflow:hidden}
       <input class="field" id="profileHandle" maxlength="24" placeholder="contoh: ardamoron">
       <label for="profileBio">BIO</label>
       <textarea class="field profile-textarea" id="profileBio" rows="3" maxlength="300" placeholder="Bisnis, karya, dan aktivitasmu"></textarea>
-      <div class="show-label"><b>PERSONALISASI ME</b><small>HANYA PROFIL — DASHBOARD TETAP</small></div>
+      <div class="show-label"><b>PERSONALISASI ME</b><small>WARNA APLIKASI + PROFIL</small></div>
       <div class="theme-choices">
-       <label>TEMA <select class="field" id="profileTheme"><option value="nadmo">NADMO ORIGINAL</option><option value="noir">NOIR</option><option value="retro">RETRO</option><option value="electric">ELECTRIC</option></select></label>
+       <label>TEMA <select class="field" id="profileTheme"><option value="nadmo">NADMO ORIGINAL</option><option value="cyberbw">CYBERPUNK BW</option><option value="noir">NOIR</option><option value="retro">RETRO</option><option value="electric">ELECTRIC</option></select></label>
        <label>FONT <select class="field" id="profileFont"><option value="system">ORIGINAL</option><option value="mono">MONOSPACE</option><option value="editorial">EDITORIAL</option></select></label>
        <label>COVER / THUMBNAIL <select class="field" id="profileCover"><option value="grid">GRID</option><option value="waves">WAVES</option><option value="dots">DOTS</option></select></label>
       </div>
-      <p class="profile-note">Tampilan personal untuk ME, tanpa mengubah LIVE, SOSIAL atau navigasi. Tema kreator/marketplace menyusul setelah pembayaran siap.</p>
+      <p class="profile-note">Pilihan warna berlaku untuk seluruh aplikasi, tanpa mengubah tata letak atau fitur. Tema kreator/marketplace menyusul setelah pembayaran siap.</p>
       <div class="show-label"><b>LINK PIHAK KETIGA</b><small>MAKS. 12 LINK</small></div>
       <div class="profile-edit-row"><input class="field" id="profileLinkLabel" maxlength="40" placeholder="Nama link: Website, WhatsApp, Booking">
       <input class="field" id="profileLinkUrl" type="url" inputmode="url" maxlength="500" placeholder="https://..."></div>
       <div class="actions"><button class="btn secondary" type="button" id="profileAddLink">+ LINK</button><button class="btn" type="button" id="profileSave">SIMPAN PROFIL</button></div>
-      <p class="profile-note">+ LINK langsung tersimpan di akun dan tampil di ME. SIMPAN PROFIL untuk nama, bio, dan tampilan.</p>
+      <p class="profile-note">Tekan + LINK atau langsung SIMPAN PROFIL untuk menyimpan nama, bio, tema, dan URL sekaligus.</p>
       <div id="profileEditLinks" class="profile-edit-links"></div>
       <div class="status" id="profileEditStatus" role="status"></div>
     </div>
@@ -3706,10 +3719,13 @@ body.social-lightbox-open{overflow:hidden}
   bio:typeof safeProfile.bio==='string'?safeProfile.bio.slice(0,300):'',
   links:Array.isArray(safeProfile.links)?safeProfile.links.filter(l=>l&&validExternalLink(l.url)&&typeof l.label==='string')
        .slice(0,12).map(l=>({label:l.label.slice(0,40),url:validExternalLink(l.url)})):[],
-  themeId:['nadmo','noir','retro','electric'].includes(safeProfile.themeId)?safeProfile.themeId:'nadmo',
+  themeId:['nadmo','cyberbw','noir','retro','electric'].includes(safeProfile.themeId)?safeProfile.themeId:'nadmo',
   fontId:['system','mono','editorial'].includes(safeProfile.fontId)?safeProfile.fontId:'system',
   coverId:['grid','waves','dots'].includes(safeProfile.coverId)?safeProfile.coverId:'grid'
  };
+ function applyGlobalTheme(themeId){
+  document.documentElement.dataset.nadmoUiTheme=['nadmo','cyberbw','noir','retro','electric'].includes(themeId)?themeId:'nadmo';
+ }
  let draftPosts=readDraft(POST_KEY,[]);
  draftPosts=Array.isArray(draftPosts)?draftPosts.filter(x=>x&&typeof x.text==='string')
   .slice(0,30).map(p=>({id:typeof p.id==='string'?p.id:'',text:p.text.slice(0,2000),at:Number(p.at)||0})):[];
@@ -3779,11 +3795,12 @@ body.social-lightbox-open{overflow:hidden}
   }
  }
  function applyProfileVisual(element,profile){
-  element.dataset.theme=['nadmo','noir','retro','electric'].includes(profile.themeId)?profile.themeId:'nadmo';
+  element.dataset.theme=['nadmo','cyberbw','noir','retro','electric'].includes(profile.themeId)?profile.themeId:'nadmo';
   element.dataset.font=['system','mono','editorial'].includes(profile.fontId)?profile.fontId:'system';
   element.dataset.cover=['grid','waves','dots'].includes(profile.coverId)?profile.coverId:'grid';
  }
  function renderProfileDraft(){
+  applyGlobalTheme(draftProfile.themeId);
   applyProfileVisual($('betaSocialProfile'),draftProfile);
   $('profileTheme').value=draftProfile.themeId;
   $('profileFont').value=draftProfile.fontId;
@@ -3795,7 +3812,7 @@ body.social-lightbox-open{overflow:hidden}
   renderProfileLinks();
  }
  for(const [id,key] of [['profileTheme','themeId'],['profileFont','fontId'],['profileCover','coverId']]){
-  $(id).onchange=()=>{draftProfile[key]=$(id).value;saveProfileDraft();applyProfileVisual($('betaSocialProfile'),draftProfile)};
+  $(id).onchange=()=>{draftProfile[key]=$(id).value;saveProfileDraft();applyProfileVisual($('betaSocialProfile'),draftProfile);applyGlobalTheme(draftProfile.themeId)};
  }
  $('editProfileBtn').onclick=()=>{
   $('profileEditBox').classList.remove('hide');show('accountPage');
@@ -3824,6 +3841,16 @@ body.social-lightbox-open{overflow:hidden}
   if(profileLinkBusy){$('profileEditStatus').textContent='Tunggu penyimpanan link selesai.';return}
   const handle=$('profileHandle').value.trim().toLowerCase().replace(/^@/,'');
   if(handle&&!/^[a-z0-9_]{3,24}$/.test(handle)){$('profileEditStatus').textContent='Username 3–24 karakter: huruf kecil, angka, atau garis bawah.';return}
+  // Treat the URL currently in the editor as part of SIMPAN PROFIL.
+  const pendingRaw=$('profileLinkUrl').value.trim(),pendingLabel=$('profileLinkLabel').value.trim().slice(0,40);
+  if(pendingRaw||pendingLabel){
+   const candidate=/^[a-z][a-z0-9+.-]*:/i.test(pendingRaw)?pendingRaw:'https://'+(pendingRaw.startsWith('//')?pendingRaw.slice(2):pendingRaw);
+   const url=validExternalLink(candidate);
+   const label=pendingLabel||(url?new URL(url).hostname.replace('www.','').slice(0,40):'');
+   if(!url||!label||isForbiddenExternalLink(label,url)){$('profileEditStatus').textContent='Masukkan URL HTTPS yang valid sebelum menyimpan profil.';return}
+   if(draftProfile.links.length>=12&&!draftProfile.links.some(l=>l.url===url)){$('profileEditStatus').textContent='Maksimal 12 link.';return}
+   if(!draftProfile.links.some(l=>l.url===url))draftProfile.links=[...draftProfile.links,{label,url}];
+  }
   draftProfile.name=$('profileName').value.trim().slice(0,60);
   draftProfile.handle=handle;
   draftProfile.bio=$('profileBio').value.trim().slice(0,300);
@@ -3837,8 +3864,8 @@ body.social-lightbox-open{overflow:hidden}
      {name:draftProfile.name||activeAccount.name,bio:draftProfile.bio,links:draftProfile.links,
        themeId:draftProfile.themeId,fontId:draftProfile.fontId,coverId:draftProfile.coverId});
     activeAccount=result.account;displayAccount();
-    $('profileEditStatus').textContent='Profil tersimpan dan tersinkron di perangkatmu.';
-   }catch(e){$('profileEditStatus').textContent='Tersimpan di perangkat saja, gagal sync: '+e.message;return}
+    $('profileLinkLabel').value='';$('profileLinkUrl').value='';$('profileEditStatus').textContent='Profil, tema dan link tersimpan di akun.';
+   }catch(e){$('profileEditStatus').textContent='Gagal menyimpan ke akun: '+e.message+' · Form tetap terbuka.';return}
   }else{
    renderProfileDraft();
    $('profileEditStatus').textContent='Draf tersimpan di HP ini. Masuk akun agar profil tersinkron.';
