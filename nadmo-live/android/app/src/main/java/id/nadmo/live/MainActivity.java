@@ -119,6 +119,7 @@ public final class MainActivity extends Activity {
           else if("launch".equals(action))launchGame();
           else if("status".equals(action))requestGameStatus();
           else if("chat-settings".equals(action))openGameChatSettings();
+          else if("chat-overlay-settings".equals(action))openGameOverlaySettings();
         }catch(Exception ignored){notifyGameStatus("error","Perintah GAME tidak valid.","");}
       });
     });
@@ -313,6 +314,18 @@ public final class MainActivity extends Activity {
     // Do not show CHAT READY until its actual heads-up channel is enabled.
     return channel!=null&&channel.getImportance()>=NotificationManager.IMPORTANCE_HIGH;
   }
+  private void openGameOverlaySettings(){
+    if(Settings.canDrawOverlays(this)){
+      notifyGameStatus(gameLiveState,"Chat melayang sudah diizinkan. Buka game untuk mencoba.",gameLiveRoom);
+      return;
+    }
+    try{
+      Intent intent=new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+getPackageName()));
+      startActivity(intent);
+    }catch(Exception error){
+      Toast.makeText(this,"Aktifkan Tampilkan di atas aplikasi lain untuk NADMO LIVE.",Toast.LENGTH_LONG).show();
+    }
+  }
   private void openGameChatSettings(){
     try{
       Intent settings=new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
@@ -329,7 +342,7 @@ public final class MainActivity extends Activity {
     if(web==null)return;
     String payload="{state:"+JSONObject.quote(state==null?"":state)+",message:"+
       JSONObject.quote(message==null?"":message)+",room:"+JSONObject.quote(room==null?"":room)+
-      ",chatNotificationsEnabled:"+chatNotificationsEnabled()+"}";
+      ",chatNotificationsEnabled:"+chatNotificationsEnabled()+",chatOverlayEnabled:"+Settings.canDrawOverlays(this)+"}";
     web.evaluateJavascript("window.dispatchEvent(new CustomEvent('nadmo-game-status',{detail:"+payload+"}));",null);
   }
   private void grantMedia(){
