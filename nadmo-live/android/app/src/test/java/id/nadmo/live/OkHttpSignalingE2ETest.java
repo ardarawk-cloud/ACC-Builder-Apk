@@ -102,7 +102,14 @@ public final class OkHttpSignalingE2ETest {
       host.until("viewer-joined",20);
       String proof="CHAT_PING_"+System.nanoTime();
       assertTrue(viewer.socket.send(new JSONObject().put("type","chat").put("text",proof).toString()));
+      // The server also sends a trusted JOIN system chat after viewer-joined.
+      // Its arrival must not be mistaken for the viewer's actual chat message.
       JSONObject received=host.until("chat",20);
+      if("viewer-joined".equals(received.optString("system"))){
+        assertEquals("sudah bergabung",received.optString("text"));
+        assertTrue("JOIN must name the viewer",received.optString("name").length()>0);
+        received=host.until("chat",20);
+      }
       assertEquals("Native GAME host must get viewer chat for popup notification",proof,received.optString("text"));
       assertTrue("Sender identifier needed to suppress host's own message",received.optString("from").length()>0);
       assertTrue(host.socket.send(new JSONObject().put("type","leave").toString()));
