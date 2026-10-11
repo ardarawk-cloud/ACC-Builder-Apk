@@ -104,18 +104,19 @@ const path=require('node:path');
    assert.equal(layout.bgDisplay,'none','A portrait camera should not incur duplicate video rendering');
    assert.ok(layout.height>=layout.screenHeight*.90,'Portrait video must fill screen height: '+JSON.stringify(layout));
   }
+  // Same portrait framing even when the Android sensor returns horizontal frames:
+  // the capture composer, not a CSS letterbox, converts the remote track to 9:16.
   for(const mode of ['host-wide','viewer-wide']){
    const layout=await testCameraLayout(mode);
-   assert.equal(layout.fit,'contain','Wide camera must keep the face uncropped: '+JSON.stringify(layout));
-   assert.notEqual(layout.bgDisplay,'none','Wide camera must not sit in a blank black phone screen');
-   assert.ok(layout.top>100&&layout.top<250&&layout.height<layout.screenHeight*.55,
-    'Wide camera frame should sit beneath the LIVE header, with chat below: '+JSON.stringify(layout));
+   assert.equal(layout.fit,'cover','Camera must fill phone portrait in every source orientation: '+JSON.stringify(layout));
+   assert.equal(layout.bgDisplay,'none','No blurred backdrop or horizontal camera strip');
+   assert.ok(layout.height>=layout.screenHeight*.90,'Wide source cannot shrink the LIVE viewport: '+JSON.stringify(layout));
   }
   const stillGame=await testCameraLayout('viewer-game-wide');
   assert.equal(stillGame.fit,'contain','Game must remain wide and uncropped');
-  assert.equal(stillGame.bgDisplay,'none','Game must not receive the camera backdrop');
+  assert.equal(stillGame.bgDisplay,'none','Game must not receive a camera backdrop');
   await page.evaluate(()=>{document.body.classList.remove('live-immersive','watch-host','watch-viewer','watch-game','watch-camera-wide','watch-landscape');document.querySelector('#watch').classList.add('hide');});
-  console.log('CAMERA_MOBILE_PORTRAIT_AND_WIDE_QC_PASS');
+  console.log('CAMERA_MOBILE_FULL_PORTRAIT_QC_PASS');
   console.log('PASS real Chromium cyberdeck layout '+JSON.stringify({desktop,mobile}));
  }finally{await browser.close()}
 })().catch(e=>{console.error('CYBERDECK_LAYOUT_QC_FAIL',e);process.exit(1)});
