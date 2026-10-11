@@ -4412,14 +4412,33 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
    });
    video.srcObject=raw;await video.play();await metadata;
    if(!video.videoWidth||!video.videoHeight)throw Error('Frame kamera belum siap');
+   // A real portrait feed is already correctly oriented: publish it directly,
+   // preserving camera pixels, resolution and field of view without any crop.
+   if(video.videoHeight>video.videoWidth*1.1){
+    video.pause();video.srcObject=null;video.remove();
+    return {stream:raw,controller:null};
+   }
+   // Android WebView sometimes supplies a horizontal front-camera feed.
+   // A full 9:16 cover crop discarded most of the picture and looked zoomed.
+   // Preserve >=86% of the horizontal sensor view instead. Fill the remaining
+   // vertical canvas using an ambient copy of the same frame, not black bars.
    const canvas=document.createElement('canvas');canvas.width=360;canvas.height=640;
    const ctx=canvas.getContext('2d',{alpha:false});
    if(!ctx||!canvas.captureStream)throw Error('Perangkat tidak mendukung LIVE portrait');
    const draw=()=>{
     if(video.readyState<2||!video.videoWidth||!video.videoHeight)return;
-    const w=video.videoWidth,h=video.videoHeight,ratio=w/h,target=360/640;
-    const sw=ratio>target?h*target:w,sh=ratio>target?h:w/target;
-    ctx.drawImage(video,(w-sw)/2,(h-sh)/2,sw,sh,0,0,360,640);
+    const w=video.videoWidth,h=video.videoHeight,ratio=w/h;
+    // Only the soft ambient layer fills the screen; it is never the subject.
+    const bgRatio=360/640;
+    const bgW=ratio>bgRatio?h*bgRatio:w,bgH=ratio>bgRatio?h:w/bgRatio;
+    ctx.save();ctx.filter='blur(22px) brightness(0.55)';
+    ctx.drawImage(video,(w-bgW)/2,(h-bgH)/2,bgW,bgH,0,0,360,640);
+    ctx.restore();
+    // Limit apparent subject magnification: at most 1.55x versus old ~3x.
+    const safeRatio=Math.max(1.15,Math.min(1.35,ratio));
+    const sw=Math.min(w,h*safeRatio),sh=Math.min(h,w/safeRatio);
+    const drawnHeight=360*sh/sw,top=(640-drawnHeight)/2;
+    ctx.drawImage(video,(w-sw)/2,(h-sh)/2,sw,sh,0,top,360,drawnHeight);
    };
    draw();const out=canvas.captureStream(20),track=out.getVideoTracks()[0];
    if(!track)throw Error('LIVE portrait gagal dibentuk');
