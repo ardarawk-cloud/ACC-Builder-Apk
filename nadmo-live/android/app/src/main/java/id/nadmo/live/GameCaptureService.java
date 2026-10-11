@@ -23,6 +23,14 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.provider.Settings;
+import android.graphics.Color;
+import android.graphics.PixelFormat;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.view.Gravity;
+import android.view.WindowManager;
+import android.widget.TextView;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -101,6 +109,11 @@ public final class GameCaptureService extends Service {
   private long lastChatPopupAt=0L;
   private int nextChatNotificationId=CHAT_NOTIFICATION_ID;
   private final List<Integer> shownChatNotifications=new ArrayList<>();
+  // Optional, user-granted display overlay. Notifications cannot guarantee a heads-up
+  // banner over full-screen games; this short, non-touchable banner can.
+  private WindowManager chatOverlayWindow=null;
+  private TextView chatOverlayView=null;
+  private Runnable chatOverlayHide=null;
   private JSONObject queuedChat=null;
   private Runnable queuedChatTask=null;
   private String hostSocketId="";
@@ -318,6 +331,53 @@ public final class GameCaptureService extends Service {
       .setContentIntent(go).setOngoing(ongoing).setOnlyAlertOnce(true)
       .addAction(android.R.drawable.ic_menu_close_clear_cancel,"AKHIRI LIVE",cancel).build();
   }
+  private void hideGameChatOverlay(){
+    if(chatOverlayHide!=null){main.removeCallbacks(chatOverlayHide);chatOverlayHide=null;}
+    if(chatOverlayWindow!=null&&chatOverlayView!=null){
+      try{chatOverlayWindow.removeViewImmediate(chatOverlayView);}catch(Exception ignored){}
+    }
+    chatOverlayView=null;chatOverlayWindow=null;
+  }
+  private void showGameChatOverlay(String name,String message){
+    if(!Settings.canDrawOverlays(this))return;
+    main.post(()->{
+      if(stopping||!started||!Settings.canDrawOverlays(this))return;
+      try{
+        hideGameChatOverlay();
+        WindowManager window=(WindowManager)getSystemService(Context.WINDOW_SERVICE);
+        if(window==null)return;
+        TextView text=new TextView(this);
+        text.setText(name+" · "+message);
+        text.setTextSize(14);
+        text.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        text.setTextColor(Color.WHITE);
+        text.setMaxLines(3);
+        text.setPadding(dp(16),dp(12),dp(16),dp(12));
+        GradientDrawable background=new GradientDrawable();
+        background.setColor(0xF2121714);
+        background.setCornerRadius(dp(9));
+        background.setStroke(dp(1),0xFFE3FD72);
+        text.setBackground(background);
+        WindowManager.LayoutParams params=new WindowManager.LayoutParams(
+          -2,-2,WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+          WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
+          WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE |
+          WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,PixelFormat.TRANSLUCENT);
+        params.gravity=Gravity.TOP|Gravity.CENTER_HORIZONTAL;
+        params.y=dp(57);
+        params.width=Math.max(dp(230),getResources().getDisplayMetrics().widthPixels-dp(50));
+        params.windowAnimations=0;
+        window.addView(text,params);
+        chatOverlayWindow=window;chatOverlayView=text;
+        chatOverlayHide=this::hideGameChatOverlay;
+        main.postDelayed(chatOverlayHide,6000);
+      }catch(Exception error){
+        hideGameChatOverlay();
+        Log.w(TAG,"In-game chat overlay unavailable on this device",error);
+      }
+    });
+  }
+  private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
   private void onIncomingRoomChat(JSONObject message){
     if(!started||stopping||roomId.isEmpty())return;
     String senderId=message.optString("from","");
@@ -325,6 +385,7 @@ public final class GameCaptureService extends Service {
     String name=limit(message.optString("name","Penonton"),35,"Penonton");
     String body=limit(message.optString("text",""),250,"");
     if(body.isEmpty())return;
+    showGameChatOverlay(name,body);
     long now=android.os.SystemClock.elapsedRealtime();
     if(now-lastChatPopupAt<CHAT_POPUP_MIN_INTERVAL_MS){
       // During chat bursts retain the latest message rather than discard it.
@@ -757,6 +818,7 @@ public final class GameCaptureService extends Service {
       if(manager!=null)for(Integer id:shownChatNotifications)manager.cancel(id);
     }catch(Exception ignored){}
     shownChatNotifications.clear();
+    hideGameChatOverlay();
     state="stopped";status=reason;
     if("Siaran game diakhiri.".equals(reason))rememberFailure("LIVE_DIAKHIRI_HOST");
     else rememberFailure(reason);
