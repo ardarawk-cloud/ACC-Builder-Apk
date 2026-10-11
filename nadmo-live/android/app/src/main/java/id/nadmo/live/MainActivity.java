@@ -36,7 +36,7 @@ import androidx.webkit.WebViewAssetLoader;
 public final class MainActivity extends Activity {
   private static final String FALLBACK_URL="https://appassets.androidplatform.net/assets/index.html";
   private static final String APP_HOST="appassets.androidplatform.net";
-  private static final String LIVE_HOST="nadmo-live-beta-20261009.ardarawk.workers.dev";
+  private static final String LIVE_HOST="live.nadmo.id";
   private static final String ONLINE_URL="https://"+LIVE_HOST+"/app/";
   private static final String OFFGRID_APP="com.offgrid.mesh.dev";
   private static final int ASK_MEDIA=42;
@@ -97,6 +97,7 @@ public final class MainActivity extends Activity {
     WebSettings settings=web.getSettings();
     settings.setJavaScriptEnabled(true);
     settings.setDomStorageEnabled(true);
+    settings.setCacheMode(WebSettings.LOAD_NO_CACHE); // Always retrieve current host cyberdeck themes and live stage.
     settings.setMediaPlaybackRequiresUserGesture(false);
     settings.setAllowFileAccess(false);
     // User-selected Android gallery files are content:// URIs. Disabling this blocks

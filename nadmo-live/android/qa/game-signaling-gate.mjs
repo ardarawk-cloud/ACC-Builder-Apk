@@ -6,7 +6,7 @@ import {randomBytes} from 'node:crypto';
 // Validate actual public Worker handshake. No rooms are created and no
 // account data is sent. This catches Android OkHttp's missing Origin problem.
 const source=readFileSync(new URL('../app/src/main/java/id/nadmo/live/GameCaptureService.java',import.meta.url),'utf8');
-const server='nadmo-live-beta-20261009.ardarawk.workers.dev';
+const server='live.nadmo.id';
 const origin='https://'+server;
 assert.ok(source.includes('new Request.Builder().url(WS_URL).header("Origin",WS_ORIGIN)'),'Native Android must send accepted Origin');
 assert.ok(source.includes('private static final String WS_ORIGIN="'+origin+'"'),'Native Origin must match Worker host');
