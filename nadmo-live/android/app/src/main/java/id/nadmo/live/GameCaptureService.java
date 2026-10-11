@@ -95,6 +95,7 @@ public final class GameCaptureService extends Service {
   static final String EXTRA_RESULT="result";
   static final String EXTRA_TITLE="title";
   static final String EXTRA_GAME="game";
+  static final String EXTRA_QUALITY="quality";
   static final String EXTRA_FACE="face";
   static final String EXTRA_COOKIE="cookie";
   static final String EXTRA_FACE_LAYOUT="facecam";
@@ -164,6 +165,9 @@ public final class GameCaptureService extends Service {
   // Without an SFU the phone uploads one screen encode per viewer. Keep that
   // combined screen-video budget bounded so the game retains network headroom.
   private static final int GAME_TOTAL_SCREEN_UPLOAD_BPS=2000000;
+  // Default STABIL leaves headroom for a running game and separate playback audio.
+  // User can explicitly select HEMAT or DETAIL before recording the full display.
+  private int activeVideoMaxEdge=720,activeVideoFps=18,activeVideoBitrateBps=620000,activeTotalUploadBps=1600000;
   private static final long SOCKET_STALE_MS=65000L;
   private static final long SOCKET_CONNECT_STALE_MS=25000L;
   private String diagnostic="Belum ada koneksi";
@@ -231,6 +235,15 @@ public final class GameCaptureService extends Service {
       .putString(DIAG_LAST,"GAME LIVE mulai; menunggu perekaman layar.").commit();
     title=limit(intent.getStringExtra(EXTRA_TITLE),60,"NADMO GAME LIVE");
     game=limit(intent.getStringExtra(EXTRA_GAME),35,"Gaming");
+    String quality=intent.getStringExtra(EXTRA_QUALITY);
+    if("low".equals(quality)){
+      activeVideoMaxEdge=640;activeVideoFps=15;activeVideoBitrateBps=420000;activeTotalUploadBps=1100000;
+    }else if("quality".equals(quality)){
+      activeVideoMaxEdge=GAME_VIDEO_MAX_EDGE;activeVideoFps=GAME_VIDEO_FPS;
+      activeVideoBitrateBps=GAME_VIDEO_BITRATE_BPS;activeTotalUploadBps=GAME_TOTAL_SCREEN_UPLOAD_BPS;
+    }else{
+      activeVideoMaxEdge=720;activeVideoFps=18;activeVideoBitrateBps=620000;activeTotalUploadBps=1600000;
+    }
     cookie=intent.getStringExtra(EXTRA_COOKIE);
     if(cookie==null)cookie="";
     wantFace=intent.getBooleanExtra(EXTRA_FACE,false);
@@ -469,7 +482,7 @@ public final class GameCaptureService extends Service {
     });
     screenCapturer.initialize(screenHelper,this,screenSource.getCapturerObserver());
     int[] dimensions=captureDimensions();
-    screenCapturer.startCapture(dimensions[0],dimensions[1],GAME_VIDEO_FPS);
+    screenCapturer.startCapture(dimensions[0],dimensions[1],activeVideoFps);
     // Android 14 forbids reusing the projection intent for a second session.
     // Obtain the projection already held by the current screen capturer.
     if(Build.VERSION.SDK_INT>=29){
@@ -494,7 +507,7 @@ public final class GameCaptureService extends Service {
   private int[] captureDimensions(){
     DisplayMetrics m=getResources().getDisplayMetrics();
     int width=Math.max(1,m.widthPixels),height=Math.max(1,m.heightPixels);
-    float scale=Math.min(1f,(float)GAME_VIDEO_MAX_EDGE/Math.max(width,height));
+    float scale=Math.min(1f,(float)activeVideoMaxEdge/Math.max(width,height));
     int w=Math.max(2,Math.round(width*scale)/2*2);
     int h=Math.max(2,Math.round(height*scale)/2*2);
     return new int[]{w,h};
@@ -503,7 +516,7 @@ public final class GameCaptureService extends Service {
     super.onConfigurationChanged(configuration);
     if(screenCapturer!=null&&!stopping){
       int[] d=captureDimensions();
-      try{screenCapturer.changeCaptureFormat(d[0],d[1],GAME_VIDEO_FPS);}
+      try{screenCapturer.changeCaptureFormat(d[0],d[1],activeVideoFps);}
       catch(Exception e){Log.w(TAG,"Screen format rotation update failed",e);}
     }
   }
@@ -670,13 +683,13 @@ public final class GameCaptureService extends Service {
   }
   private void balanceScreenUpload(){
     int count=Math.max(1,screenSenders.size());
-    int perViewer=Math.min(GAME_VIDEO_BITRATE_BPS,GAME_TOTAL_SCREEN_UPLOAD_BPS/count);
+    int perViewer=Math.min(activeVideoBitrateBps,activeTotalUploadBps/count);
     for(RtpSender sender:screenSenders.values()){
       try{
         RtpParameters params=sender.getParameters();
         for(RtpParameters.Encoding encoding:params.encodings){
           encoding.maxBitrateBps=perViewer;
-          encoding.maxFramerate=GAME_VIDEO_FPS;
+          encoding.maxFramerate=activeVideoFps;
         }
         if(!sender.setParameters(params))Log.w(TAG,"Encoder rejected shared upload cap");
       }catch(Exception error){Log.w(TAG,"Cannot tune GAME viewer bitrate",error);}
