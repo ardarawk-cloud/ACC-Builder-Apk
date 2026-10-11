@@ -35,11 +35,12 @@ const path=require('node:path');
    const app=document.querySelector('.app').getBoundingClientRect();
    const brand=getComputedStyle(document.querySelector('.deck-system-bar')).borderLeftWidth;
    const button=getComputedStyle(document.querySelector('#createRoom'));
-   return {barWidth:bar.width,appWidth:app.width,brand,buttonHeight:button.minHeight,
+   return {barWidth:bar.width,appWidth:app.width,brand,borderLeftStyle:getComputedStyle(document.querySelector('.deck-system-bar')).borderLeftStyle,borderLeftColor:getComputedStyle(document.querySelector('.deck-system-bar')).borderLeftColor,display:getComputedStyle(document.querySelector('.deck-system-bar')).display,accent:getComputedStyle(document.documentElement).getPropertyValue('--neon'),htmlTheme:document.documentElement.dataset.nadmoUiTheme,buttonHeight:button.minHeight,
     topText:document.querySelector('.deck-system-bar').textContent,
     hasVoiceOnlyMessage:document.querySelector('#gameDeckAudio').textContent};
   });
   assert.ok(mobile.barWidth>250&&mobile.barWidth<=390,JSON.stringify(mobile));
+  console.log('CYBERDECK_MOBILE_DIAG '+JSON.stringify(mobile));
   assert.equal(mobile.brand,'4px');
   assert.equal(mobile.buttonHeight,'57px');
   assert.match(mobile.topText,/CYBERDECK/);
