@@ -1914,7 +1914,7 @@ html[data-nadmo-ui-theme="cyberbw"] :is(.signal-stage,.stage-core .circle,.deck-
   <span id="gameDeckAudio" title="Android belum mengirim audio internal game. Mikrofon masih berfungsi.">AUDIO GAME / BELUM TERSEDIA</span>
   <span id="gameDeckChat">CHAT / PERIKSA IZIN</span>
  </div>
- <button type="button" class="btn ghost" id="gameChatSettings" hidden>AKTIFKAN NOTIFIKASI CHAT</button>
+ <button type="button" class="btn ghost" id="gameChatSettings" hidden>AKTIFKAN NOTIFIKASI CHAT</button><button type="button" class="btn secondary" id="gameChatOverlaySettings" hidden>IZINKAN CHAT MELAYANG DI ATAS GAME</button>
  <div class="game-live-actions"><button type="button" class="btn secondary" id="gameLaunchGame" hidden>↗ BUKA GAME</button><button type="button" class="btn ghost" id="gameShareRoom" hidden>BAGIKAN</button><button type="button" class="btn ghost" id="gameStopLive" hidden>■ AKHIRI LIVE</button></div></div>
 <div id="studioPcSetup" class="panel hide"><b>STUDIO KHUSUS PC</b><p>Sumber siaran dari PC/OBS melalui RTMP belum terhubung. Tidak menggunakan kamera HP sebagai pengganti Studio.</p></div>
   <div class="viewfinder"><video id="camera" class="local" playsinline autoplay muted></video></div>
@@ -1979,7 +1979,7 @@ html[data-nadmo-ui-theme="cyberbw"] :is(.signal-stage,.stage-core .circle,.deck-
     <span class="deck-player-spacer"></span>
     <button id="deckRefresh" type="button" aria-label="Pulihkan stream">↻</button>
     <button id="deckFullscreen" type="button" aria-label="Video layar penuh">⛶</button>
-   </div><div id="watchState" class="status">CONNECTING SIGNAL...</div>
+   </div><div id="watchState" class="status">CONNECTING SIGNAL...</div><div id="watchStreamQuality" class="status" aria-live="off" style="font-size:10px;opacity:.85" hidden></div>
   <button class="btn secondary" id="refreshVideo" type="button" aria-label="Pulihkan video" title="Pulihkan video">↻</button>
   <div class="actions" id="hostControls" hidden><button class="btn secondary" id="afkToggle">▤ KAMERA OFF</button><button class="btn secondary" id="accessQuick">◈ PRIVAT</button><button class="btn ghost" id="shareRoom" aria-label="Bagikan room" title="Bagikan room">↗</button></div>
   <div id="viewerTools" hidden><button class="btn secondary" id="tipQuick">Rp SAWER</button></div>
@@ -2437,6 +2437,8 @@ html[data-nadmo-ui-theme="cyberbw"] :is(.signal-stage,.stage-core .circle,.deck-
   $('gameDeckScreen').textContent='LAYAR / '+(nativeGameState==='live'?'AKTIF':nativeGameState==='reconnecting'?'MENYAMBUNG ULANG':nativeGameState==='starting'?'MENYIAPKAN':'BERHENTI');
   $('gameDeckChat').textContent=d.chatNotificationsEnabled===true?'CHAT / NOTIFIKASI AKTIF':'CHAT / NOTIFIKASI PERLU IZIN';
   $('gameChatSettings').hidden=d.chatNotificationsEnabled===true;
+  $('gameChatOverlaySettings').hidden=!nativeGame||d.chatOverlayEnabled===true;
+  if(d.chatOverlayEnabled===true)$('gameDeckChat').textContent='CHAT / OVERLAY GAME AKTIF';
   $('gameLaunchGame').hidden=nativeGameState!=='live';
   $('gameShareRoom').hidden=nativeGameState!=='live'||!nativeGameRoom;
   $('gameStopLive').hidden=!['live','starting','reconnecting'].includes(nativeGameState);
@@ -4284,6 +4286,7 @@ html[data-nadmo-ui-theme="cyberbw"] :is(.signal-stage,.stage-core .circle,.deck-
  $('gameLaunchGame').onclick=()=>gameCommand('launch');
  $('gameStopLive').onclick=()=>{if(confirm('Akhiri GAME LIVE?'))gameCommand('stop')};
  $('gameChatSettings').onclick=()=>gameCommand('chat-settings');
+ $('gameChatOverlaySettings').onclick=()=>gameCommand('chat-overlay-settings');
  $('gameShareRoom').onclick=async()=>{
   if(!nativeGameRoom)return;
   const link=DEFAULT_BACKEND+'/app/?room='+encodeURIComponent(nativeGameRoom);
@@ -4632,6 +4635,39 @@ html[data-nadmo-ui-theme="cyberbw"] :is(.signal-stage,.stage-core .circle,.deck-
   };
   return pc;
  }
+
+ // Viewers measure actual received video data instead of guessing that lag is
+ // a phone/network problem. Stats are local and never uploaded to the backend.
+ let streamMetricPeer=null,streamMetricPrevious=null;
+ setInterval(async()=>{
+  const label=$('watchStreamQuality'),p=peer;
+  if(!label)return;
+  if(!p||host||!currentRoom||document.visibilityState==='hidden'||p.connectionState==='closed'){
+   label.hidden=true;streamMetricPeer=null;streamMetricPrevious=null;return;
+  }
+  if(p!==streamMetricPeer){streamMetricPeer=p;streamMetricPrevious=null;}
+  try{
+   const reports=await p.getStats();
+   if(peer!==p)return;
+   let video=null,rtt=null;
+   reports.forEach(stat=>{
+    if(stat.type==='inbound-rtp'&&(stat.kind==='video'||stat.mediaType==='video')&&!stat.isRemote)video=stat;
+    if(stat.type==='candidate-pair'&&stat.state==='succeeded'&&stat.nominated&&Number.isFinite(stat.currentRoundTripTime))rtt=stat.currentRoundTripTime;
+   });
+   if(!video){label.hidden=true;return}
+   const now={time:video.timestamp,bytes:video.bytesReceived||0,frames:video.framesDecoded||0,lost:video.packetsLost||0,received:video.packetsReceived||0};
+   if(streamMetricPrevious&&now.time>streamMetricPrevious.time){
+    const dt=(now.time-streamMetricPrevious.time)/1000,frames=Math.max(0,now.frames-streamMetricPrevious.frames);
+    const bitrate=Math.max(0,(now.bytes-streamMetricPrevious.bytes)*8/dt/1000);
+    const lost=Math.max(0,now.lost-streamMetricPrevious.lost),got=Math.max(0,now.received-streamMetricPrevious.received);
+    const fps=Number.isFinite(video.framesPerSecond)?video.framesPerSecond:frames/dt;
+    label.textContent='VIDEO TERIMA: '+Math.round(fps)+' FPS · '+Math.round(bitrate)+' kbps · PAKET HILANG '+Math.round(100*lost/Math.max(1,lost+got))+'%'+(rtt!==null?' · RTT '+Math.round(rtt*1000)+' ms':'');
+    label.hidden=false;
+   }
+   streamMetricPrevious=now;
+  }catch(error){label.hidden=true}
+ },7000);
+
  function signal(to,data){transmit({type:'signal',to,data})}
  function guestStatus(message){
   $('guestJoinStatus').hidden=!message;
