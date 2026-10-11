@@ -1893,6 +1893,46 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
 /* Personal color palettes must never turn uploaded photos monochrome. */
 .nadmo-profile[data-cover-photo="true"] .profile-hero,
 .public-me-skin[data-cover-photo="true"] .profile-hero{filter:none!important}
+
+/* LIVE CAMERA mobile portrait compositing. Never touch GAME, SOCIAL or PC. */
+#watch #cameraBackdrop{display:none}
+@media(max-width:799px){
+ body.live-immersive:not(.watch-game) #watch .live-stage,
+ body.live-immersive:not(.watch-game) #watch .live-stage>.viewfinder{
+  position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+  min-height:0!important;max-height:none!important;margin:0!important;padding:0!important;
+  transform:none!important;border:0!important;box-shadow:none!important;
+  border-radius:0!important;background:#090c0c!important;overflow:hidden!important;
+ }
+ body.live-immersive:not(.watch-game) #watch #remote{
+  position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+  max-height:none!important;object-fit:cover!important;object-position:center 45%!important;
+  border:0!important;background:#090c0c!important;z-index:1;
+ }
+ /* The device supplied horizontal frames even though portrait was requested.
+    Do not crop a face to fill a narrow 9:16 screen. Fill surrounding space
+    with a softly blurred duplicate; present the complete original above chat. */
+ body.live-immersive.watch-camera-wide:not(.watch-game) #watch #cameraBackdrop{
+  display:block!important;position:absolute!important;inset:-38px!important;
+  width:calc(100% + 76px)!important;height:calc(100% + 76px)!important;
+  object-fit:cover!important;object-position:center!important;
+  z-index:0!important;pointer-events:none!important;
+  filter:blur(24px) brightness(.54) saturate(.8)!important;
+  transform:scale(1.04);background:#121515;
+ }
+ body.live-immersive.watch-camera-wide:not(.watch-game) #watch #remote{
+  top:clamp(142px,19dvh,205px)!important;bottom:auto!important;
+  left:0!important;right:0!important;inset-inline:0!important;
+  width:100%!important;height:min(42dvh,56.25vw)!important;
+  max-height:none!important;object-fit:contain!important;object-position:center!important;
+  border-top:1px solid var(--line)!important;border-bottom:1px solid var(--line)!important;
+  background:rgba(4,7,8,.38)!important;
+ }
+ body.live-immersive.watch-camera-wide:not(.watch-game) #watch::after{
+  inset:48% 0 0!important;
+ }
+}
+
 </style></head>
 <body>
 <div class="app">
@@ -2014,7 +2054,7 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
   <div class="host-public-header"><span class="host-public-photo"><span>N/</span><img id="hostPublicAvatarImage" alt="" hidden></span><h3 id="hostPublicName">Host</h3></div><p id="hostPublicBio"></p><div class="host-public-links" id="hostPublicLinks"></div>
   <button type="button" class="btn secondary" id="hostProfileTip">Rp SAWER HOST</button>
  </div>
-  <div class="panel live-stage"><div class="viewfinder"><div class="deck-video-idle" aria-hidden="true"><span class="deck-idle-target">N/</span><strong>MENUNGGU SINYAL LIVE</strong><small>STREAM BELUM MENGIRIM FRAME VIDEO</small></div><video id="remote" playsinline autoplay controls></video><video id="gameRemoteFace" autoplay muted playsinline hidden aria-label="Kamera host game"></video></div>
+  <div class="panel live-stage"><div class="viewfinder"><div class="deck-video-idle" aria-hidden="true"><span class="deck-idle-target">N/</span><strong>MENUNGGU SINYAL LIVE</strong><small>STREAM BELUM MENGIRIM FRAME VIDEO</small></div><video id="cameraBackdrop" muted playsinline autoplay aria-hidden="true"></video><video id="remote" playsinline autoplay controls></video><video id="gameRemoteFace" autoplay muted playsinline hidden aria-label="Kamera host game"></video></div>
    <div class="deck-player-controls desktop-watch-only" aria-label="Kontrol pemutar video">
     <span class="deck-player-live">● LIVE</span>
     <button id="deckMute" type="button" aria-label="Bisukan suara video">♫ SUARA ON</button>
@@ -5314,6 +5354,28 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
  };
  for(const event of ['playing','pause','waiting','stalled','error','loadedmetadata','emptied'])
   watchVideo.addEventListener(event,updateDeckUI);
+  // A camera on some Android devices ignores portrait getUserMedia ideals and
+  // produces 16:9. Host and viewers get identical camera-specific presentation.
+  // Never create a second capture, stream, connection or audio track.
+  const cameraBackdrop=$('cameraBackdrop');
+  const syncCameraFraming=()=>{
+   const wide=!!(watchVideo.srcObject && watchVideo.videoWidth>0 && watchVideo.videoHeight>0 &&
+                  watchVideo.videoWidth>watchVideo.videoHeight*1.12);
+   const enabled=window.innerWidth<800&&document.body.classList.contains('live-immersive')&&
+                 !document.body.classList.contains('watch-game')&&wide;
+   document.body.classList.toggle('watch-camera-wide',enabled);
+   if(!cameraBackdrop)return;
+   if(enabled){
+    if(cameraBackdrop.srcObject!==watchVideo.srcObject)cameraBackdrop.srcObject=watchVideo.srcObject;
+    cameraBackdrop.play().catch(()=>{});
+   }else{
+    cameraBackdrop.pause();
+    if(cameraBackdrop.srcObject)cameraBackdrop.srcObject=null;
+   }
+  };
+  for(const event of ['loadedmetadata','resize','playing','emptied'])watchVideo.addEventListener(event,syncCameraFraming);
+  window.addEventListener('resize',syncCameraFraming);
+
  const syncWatchAspect=()=>{
   const width=watchVideo.videoWidth,height=watchVideo.videoHeight;
   if(width>0&&height>0){
