@@ -13,6 +13,10 @@ assert.ok(html.includes("location.href='nadmolive://offgrid'"),'user action rout
 assert.ok(html.includes('© 2026 PT NADMO Studio Indonesia'),'legal owner footer present');
 assert.ok(html.indexOf('id="offgridEntry"') < html.indexOf('<section id="home">'),'OFFGRID does not depend on auth');
 assert.ok(html.includes("offgridEntry.onclick=()=>{offgridModal.classList.remove('hide')"),'dialog opens without API');
+assert.ok(activity.includes('private static final String LIVE_HOST="live.nadmo.id"'),'APK must use same official host as web');
+assert.ok(activity.includes('settings.setCacheMode(WebSettings.LOAD_NO_CACHE)'),'stale WebView HTML must not survive updates');
+assert.ok(!activity.includes('nadmo-live-beta-20261009.ardarawk.workers.dev'),'old beta origin must not be launched');
+assert.ok(activity.includes('web.loadUrl(ONLINE_URL)'),'official app launches first');
 assert.ok(activity.includes('FALLBACK_URL="https://appassets.androidplatform.net/assets/index.html"'),'local fallback exists');
 assert.ok(activity.includes('if(req.isForMainFrame() && LIVE_HOST.equalsIgnoreCase(req.getUrl().getHost()))'),'online error triggers local fallback');
 assert.ok(activity.includes('view.loadUrl(FALLBACK_URL)'),'local fallback activates during outage');
