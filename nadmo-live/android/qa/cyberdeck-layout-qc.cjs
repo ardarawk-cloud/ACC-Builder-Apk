@@ -93,7 +93,7 @@ const path=require('node:path');
     body.classList.toggle('watch-landscape',kind.includes('wide')||kind.includes('game'));
     const bg=document.querySelector('#cameraBackdrop'),stage=document.querySelector('#watch .live-stage');
     const r=video.getBoundingClientRect(),rs=stage.getBoundingClientRect();
-    return {kind,fit:getComputedStyle(video).objectFit,bgDisplay:getComputedStyle(bg).display,
+    return {kind,fit:getComputedStyle(video).objectFit,bgDisplay:bg?getComputedStyle(bg).display:'none',
       top:r.top,width:r.width,height:r.height,stageWidth:rs.width,stageHeight:rs.height,
       screenWidth:innerWidth,screenHeight:innerHeight};
    },kind);
