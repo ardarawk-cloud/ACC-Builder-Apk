@@ -133,7 +133,7 @@ const path=require('node:path');
    Object.defineProperty(md,'getUserMedia',{configurable:true,value:async()=>fake});
    let result;
    try{
-    result=await openLiveCamera(false);
+    result=await window.__nadmoCameraQATest.openLiveCamera(false);
     await new Promise(r=>setTimeout(r,450));
     const frame=result?.controller?.canvas;
     if(!frame)throw new Error('Expected landscape safe-frame compositor');
