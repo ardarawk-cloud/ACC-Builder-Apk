@@ -77,6 +77,45 @@ const path=require('node:path');
   assert.ok(cover.matching,'ME and editor preview must display the same source image');
   await page.screenshot({path:'/tmp/nadmo-me-cover-mobile-uncropped-qc.png'});
   console.log('BUNDLED_ME_COVER_16_9_QC_PASS '+JSON.stringify(cover));
+
+  // Camera-specific regression: Android wide sensor must not become a giant
+  // blank black portrait page. Portrait source must be full bleed. The game
+  // landscape visual contract is intentionally unchanged.
+  const testCameraLayout=async(kind)=>{
+   return page.evaluate((kind)=>{
+    const body=document.body,watch=document.querySelector('#watch'),video=document.querySelector('#remote');
+    watch.classList.remove('hide');
+    body.classList.add('live-immersive');
+    body.classList.toggle('watch-host',kind.includes('host'));
+    body.classList.toggle('watch-viewer',kind.includes('viewer')||kind.includes('game'));
+    body.classList.toggle('watch-game',kind.includes('game'));
+    body.classList.toggle('watch-camera-wide',kind.includes('wide'));
+    body.classList.toggle('watch-landscape',kind.includes('wide')||kind.includes('game'));
+    const bg=document.querySelector('#cameraBackdrop'),stage=document.querySelector('#watch .live-stage');
+    const r=video.getBoundingClientRect(),rs=stage.getBoundingClientRect();
+    return {kind,fit:getComputedStyle(video).objectFit,bgDisplay:getComputedStyle(bg).display,
+      top:r.top,width:r.width,height:r.height,stageWidth:rs.width,stageHeight:rs.height,
+      screenWidth:innerWidth,screenHeight:innerHeight};
+   },kind);
+  };
+  for(const mode of ['host-portrait','viewer-portrait']){
+   const layout=await testCameraLayout(mode);
+   assert.equal(layout.fit,'cover','Portrait LIVE camera must cover the phone: '+JSON.stringify(layout));
+   assert.equal(layout.bgDisplay,'none','A portrait camera should not incur duplicate video rendering');
+   assert.ok(layout.height>=layout.screenHeight*.90,'Portrait video must fill screen height: '+JSON.stringify(layout));
+  }
+  for(const mode of ['host-wide','viewer-wide']){
+   const layout=await testCameraLayout(mode);
+   assert.equal(layout.fit,'contain','Wide camera must keep the face uncropped: '+JSON.stringify(layout));
+   assert.notEqual(layout.bgDisplay,'none','Wide camera must not sit in a blank black phone screen');
+   assert.ok(layout.top>100&&layout.top<250&&layout.height<layout.screenHeight*.55,
+    'Wide camera frame should sit beneath the LIVE header, with chat below: '+JSON.stringify(layout));
+  }
+  const stillGame=await testCameraLayout('viewer-game-wide');
+  assert.equal(stillGame.fit,'contain','Game must remain wide and uncropped');
+  assert.equal(stillGame.bgDisplay,'none','Game must not receive the camera backdrop');
+  await page.evaluate(()=>{document.body.classList.remove('live-immersive','watch-host','watch-viewer','watch-game','watch-camera-wide','watch-landscape');document.querySelector('#watch').classList.add('hide');});
+  console.log('CAMERA_MOBILE_PORTRAIT_AND_WIDE_QC_PASS');
   console.log('PASS real Chromium cyberdeck layout '+JSON.stringify({desktop,mobile}));
  }finally{await browser.close()}
 })().catch(e=>{console.error('CYBERDECK_LAYOUT_QC_FAIL',e);process.exit(1)});
