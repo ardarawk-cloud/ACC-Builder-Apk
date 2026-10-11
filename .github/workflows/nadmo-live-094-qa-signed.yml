@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: nadmo-v0103-beta-signed
+  group: nadmo-v0104-beta-signed
   cancel-in-progress: true
 jobs:
   qa-signed:
@@ -99,6 +99,11 @@ jobs:
           grep -Fq 'deck-system-bar' "$HTML"
           grep -Fq 'AUDIO GAME / BELUM TERSEDIA' "$HTML"
           grep -Fq 'gameChatSettings' "$HTML"
+          grep -Fq 'id="gameChatOverlaySettings"' "$HTML"
+          grep -Fq 'id="gameStreamQuality"' "$HTML"
+          grep -Fq 'id="coverChoose"' "$HTML"
+          grep -Fq 'html[data-nadmo-ui-theme="cyberbw"]' "$HTML"
+          grep -Fq 'Settings.canDrawOverlays' nadmo-live/android/app/src/main/java/id/nadmo/live/GameCaptureService.java
           grep -Fq 'GAME_VIDEO_MAX_EDGE=960' nadmo-live/android/app/src/main/java/id/nadmo/live/GameCaptureService.java
       - name: Assemble signed beta APK with original certificate
         run: gradle -p nadmo-live/android :app:assembleRelease --no-daemon
@@ -108,15 +113,15 @@ jobs:
           set -euo pipefail
           APK=nadmo-live/android/app/build/outputs/apk/release/app-release.apk
           test -s "$APK"
-          OUT="$RUNNER_TEMP/NADMO-LIVE-v0.10.3-beta.apk"
+          OUT="$RUNNER_TEMP/NADMO-LIVE-v0.10.4-beta.apk"
           cp "$APK" "$OUT"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           SIGN="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           META=$("$AAPT" dump badging "$OUT" | head -1)
           printf '%s\n' "$META"
           printf '%s\n' "$META" | grep -F "name='id.nadmo.live'"
-          printf '%s\n' "$META" | grep -F "versionCode='22'"
-          printf '%s\n' "$META" | grep -F "versionName='0.10.3-beta'"
+          printf '%s\n' "$META" | grep -F "versionCode='23'"
+          printf '%s\n' "$META" | grep -F "versionName='0.10.4-beta'"
           VERIFY=$("$SIGN" verify --verbose --print-certs "$OUT")
           printf '%s\n' "$VERIFY"
           printf '%s\n' "$VERIFY" | grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true'
@@ -127,12 +132,12 @@ jobs:
           if unzip -l "$OUT" | grep -q 'nadmo-release.jks';then echo 'Keystore leakage!';exit 1;fi
           unzip -t "$OUT" | tail -n 2
           mkdir -p "$GITHUB_WORKSPACE/qa-signed"
-          mv "$OUT" "$GITHUB_WORKSPACE/qa-signed/NADMO-LIVE-v0.10.3-beta.apk"
-          (cd qa-signed && sha256sum NADMO-LIVE-v0.10.3-beta.apk > SHA256SUMS.txt)
-          echo 'SIGNED BETA UPDATE VERIFIED — same original certificate, app ID id.nadmo.live, versionCode 22.'
+          mv "$OUT" "$GITHUB_WORKSPACE/qa-signed/NADMO-LIVE-v0.10.4-beta.apk"
+          (cd qa-signed && sha256sum NADMO-LIVE-v0.10.4-beta.apk > SHA256SUMS.txt)
+          echo 'SIGNED BETA UPDATE VERIFIED — same original certificate, app ID id.nadmo.live, versionCode 23.'
       - uses: actions/upload-artifact@v4
         with:
-          name: nadmo-live-v0103-beta-signed
+          name: nadmo-live-v0104-beta-signed
           path: qa-signed/*
           retention-days: 14
           if-no-files-found: error
@@ -142,8 +147,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="nadmo-live-v0.10.3-beta"
-          APK="qa-signed/NADMO-LIVE-v0.10.3-beta.apk"
+          TAG="nadmo-live-v0.10.4-beta"
+          APK="qa-signed/NADMO-LIVE-v0.10.4-beta.apk"
           test -s "$APK"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::error::Tag $TAG already exists. Never overwrite a signed build."
@@ -151,10 +156,10 @@ jobs:
           fi
           gh release create "$TAG" "$APK" "qa-signed/SHA256SUMS.txt" \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "NADMO LIVE v0.10.3-beta — GAME AUDIO device QA" \
-            --notes "Owner-only Android beta test APK. Same id.nadmo.live package and verified original signing certificate, versionCode 22: install directly OVER v0.10.2 without uninstalling or clearing data. Includes GAME playback capture candidate, SOSIAL multi-media upload and cyberdeck fixes. The Mobile Legends internal-audio capture is not yet verified on physical devices; Android and game policies can disallow it. Please test on 2 devices. Do not consider this production validated." \
+            --title "NADMO LIVE v0.10.4-beta — GAME AUDIO device QA" \
+            --notes "Owner-only Android beta test APK. Same id.nadmo.live package and verified original signing certificate, versionCode 23: install directly OVER v0.10.2 without uninstalling or clearing data. Includes GAME playback capture candidate, SOSIAL multi-media upload and cyberdeck fixes. The Mobile Legends internal-audio capture is not yet verified on physical devices; Android and game policies can disallow it. Please test on 2 devices. Do not consider this production validated." \
             --prerelease --latest=false
-          echo "Owner QA APK: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/NADMO-LIVE-v0.10.3-beta.apk" >> "$GITHUB_STEP_SUMMARY"
+          echo "Owner QA APK: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/NADMO-LIVE-v0.10.4-beta.apk" >> "$GITHUB_STEP_SUMMARY"
       - name: Wipe private keystore
         if: always()
         run: rm -f "$RUNNER_TEMP/nadmo-release.jks"
