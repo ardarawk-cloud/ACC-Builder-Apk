@@ -1895,7 +1895,7 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
 .public-me-skin[data-cover-photo="true"] .profile-hero{filter:none!important}
 
 
-/* Normal phone LIVE camera: one portrait canvas, edge-to-edge, no letterbox. */
+/* LIVE CAMERA — prioritize a native portrait sensor, otherwise protect face framing. */
 #watch #cameraBackdrop,#watch #cameraFitToggle{display:none!important}
 @media(max-width:799px){
  body.live-immersive:not(.watch-game) #watch .live-stage,
@@ -1905,6 +1905,12 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
   margin:0!important;padding:0!important;transform:none!important;overflow:hidden!important;
   border:0!important;border-radius:0!important;box-shadow:none!important;background:#050708!important;
  }
+ body.live-immersive:not(.watch-game) #watch .live-chat,
+ body.live-immersive:not(.watch-game) #watch #chat{
+  background:transparent!important;background-color:transparent!important;
+  border:0!important;box-shadow:none!important;
+ }
+ body.live-immersive:not(.watch-game) #watch #chat:empty::before{content:none!important;display:none!important}
  body.live-immersive:not(.watch-game) #watch #remote{
   position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
   max-height:none!important;object-fit:cover!important;object-position:center!important;
@@ -4420,7 +4426,7 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
    }
    // Android WebView sometimes supplies a horizontal front-camera feed.
    // A full 9:16 cover crop discarded most of the picture and looked zoomed.
-   // Preserve >=86% of the horizontal sensor view instead. Fill the remaining
+   // Limit horizontal sensor cropping to reduce subject magnification instead. Fill the remaining
    // vertical canvas using an ambient copy of the same frame, not black bars.
    const canvas=document.createElement('canvas');canvas.width=360;canvas.height=640;
    const ctx=canvas.getContext('2d',{alpha:false});
