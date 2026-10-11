@@ -99,9 +99,9 @@ public final class GameCaptureService extends Service {
   static final String EXTRA_FACE="face";
   static final String EXTRA_COOKIE="cookie";
   static final String EXTRA_FACE_LAYOUT="facecam";
-  private static final String WS_URL="wss://nadmo-live-beta-20261009.ardarawk.workers.dev/ws";
+  private static final String WS_URL="wss://live.nadmo.id/ws";
   // Server checks Origin for CSWSH defense. OkHttp (unlike browser WebSocket) does not set it.
-  private static final String WS_ORIGIN="https://nadmo-live-beta-20261009.ardarawk.workers.dev";
+  private static final String WS_ORIGIN="https://live.nadmo.id";
   private static final int NOTIFICATION_ID=7701;
   static final int CHAT_NOTIFICATION_ID=7702;
   private static final String CHAT_CHANNEL="nadmo_game_chat";
