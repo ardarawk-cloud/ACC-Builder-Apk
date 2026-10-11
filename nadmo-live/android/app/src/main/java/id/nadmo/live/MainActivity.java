@@ -45,7 +45,7 @@ public final class MainActivity extends Activity {
   private static final int ASK_SCREEN_CAPTURE=45;
   private static final int ASK_CHAT_NOTIFICATIONS=46;
   private boolean askedChatNotifications=false;
-  private String gameTitle="",gameName="";
+  private String gameTitle="",gameName="",gameQuality="stable";
   private boolean gameFace=false;
   private String gameFaceLayout="";
   private boolean gameReceiverRegistered=false;
@@ -251,6 +251,7 @@ public final class MainActivity extends Activity {
     }
     gameTitle=command.optString("title","NADMO GAME LIVE");
     gameName=command.optString("game","Gaming");
+    gameQuality=command.optString("quality","stable");
     gameFace=command.optBoolean("face",false);
     gameFaceLayout=gameFace&&command.optJSONObject("facecam")!=null?command.optJSONObject("facecam").toString():"";
     if(Build.VERSION.SDK_INT>=33&&!askedChatNotifications&&
@@ -360,6 +361,7 @@ public final class MainActivity extends Activity {
         .putExtra(GameCaptureService.EXTRA_PROJECTION,data)
         .putExtra(GameCaptureService.EXTRA_TITLE,gameTitle)
         .putExtra(GameCaptureService.EXTRA_GAME,gameName)
+        .putExtra(GameCaptureService.EXTRA_QUALITY,gameQuality)
         .putExtra(GameCaptureService.EXTRA_FACE,gameFace)
         .putExtra(GameCaptureService.EXTRA_FACE_LAYOUT,gameFaceLayout)
         .putExtra(GameCaptureService.EXTRA_COOKIE,CookieManager.getInstance().getCookie(ONLINE_URL));
