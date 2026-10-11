@@ -4449,7 +4449,7 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
    draw();const out=canvas.captureStream(20),track=out.getVideoTracks()[0];
    if(!track)throw Error('LIVE portrait gagal dibentuk');
    timer=setInterval(draw,50);
-   return {stream:new MediaStream([...raw.getAudioTracks(),track]),controller:{raw,video,timer}};
+   return {stream:new MediaStream([...raw.getAudioTracks(),track]),controller:{raw,video,timer,canvas}};
   }catch(e){
    if(timer)clearInterval(timer);
    if(video){video.pause();video.srcObject=null;video.remove();}
