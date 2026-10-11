@@ -19,8 +19,8 @@ import org.junit.Test;
  * Create -> server heartbeats -> force disconnect -> resume -> leave.
  */
 public final class OkHttpSignalingE2ETest {
-  private static final String ORIGIN="https://nadmo-live-beta-20261009.ardarawk.workers.dev";
-  private static final String WSS="wss://nadmo-live-beta-20261009.ardarawk.workers.dev/ws";
+  private static final String ORIGIN="https://live.nadmo.id";
+  private static final String WSS="wss://live.nadmo.id/ws";
   private static class Session extends WebSocketListener {
     final LinkedBlockingQueue<String> events=new LinkedBlockingQueue<>();
     final CountDownLatch opened=new CountDownLatch(1);

@@ -9,7 +9,7 @@
 const assert=require('node:assert/strict');
 const puppeteer=require('puppeteer-core');
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
-const url='https://nadmo-live-beta-20261009.ardarawk.workers.dev/app/';
+const url='https://live.nadmo.id/app/';
 (async function main(){
  const browser=await puppeteer.launch({
    executablePath:process.env.CHROME_BIN||'/usr/bin/google-chrome',
