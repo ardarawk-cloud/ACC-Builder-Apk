@@ -2,7 +2,7 @@ name: NADMO LIVE signed beta update
 on:
   push:
     branches: ['feat/nadmo-native-game-live-20261010']
-    paths: ['.github/workflows/nadmo-live-094-qa-signed.yml', 'nadmo-live/android/qa/game-background-contract.mjs']
+    paths: ['.github/workflows/nadmo-live-094-qa-signed.yml', 'nadmo-live/android/qa/game-background-contract.mjs', 'nadmo-live/android/qa/offgrid-local-contract.mjs']
   workflow_dispatch:
 permissions:
   contents: write
