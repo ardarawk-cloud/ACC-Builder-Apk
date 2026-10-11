@@ -1,0 +1,8 @@
+NADMO LIVE v0.9.4-beta signed release request
+Date: 2026-10-11
+Reason: installed v0.9.3 and older Android WebViews still load obsolete workers.dev beta, leading to mixed Electric/Noir themes and outdated LIVE controls while https://live.nadmo.id/app/ is current.
+Required: MainActivity must use official live.nadmo.id host, WebView no-cache for HTML, preserve OFFGRID packaged fallback.
+Package: id.nadmo.live
+Version code: 13 (must exceed existing 12)
+Signing certificate: owner-protected existing certificate ONLY, verify against release-identity.json.
+Publish direct signed APK and SHA256; no debug APKs and no uninstall requirement.
