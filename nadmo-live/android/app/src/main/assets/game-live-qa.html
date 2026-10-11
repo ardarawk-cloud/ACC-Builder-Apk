@@ -4461,6 +4461,7 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
   portraitCameraCapture=result.controller;
   return result.stream;
  }
+ if(location.protocol==='file:')window.__nadmoCameraQATest={openLiveCamera};
 
  function liveCameraConstraints(){
   // PC camera stays landscape. Handsets prefer portrait; ideals may fall back.
