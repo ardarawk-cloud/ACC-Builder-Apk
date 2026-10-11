@@ -1894,74 +1894,23 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
 .nadmo-profile[data-cover-photo="true"] .profile-hero,
 .public-me-skin[data-cover-photo="true"] .profile-hero{filter:none!important}
 
-/* LIVE CAMERA mobile portrait compositing. Never touch GAME, SOCIAL or PC. */
-#watch #cameraBackdrop{display:none}
+
+/* Normal phone LIVE camera: one portrait canvas, edge-to-edge, no letterbox. */
+#watch #cameraBackdrop,#watch #cameraFitToggle{display:none!important}
 @media(max-width:799px){
  body.live-immersive:not(.watch-game) #watch .live-stage,
  body.live-immersive:not(.watch-game) #watch .live-stage>.viewfinder{
   position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
-  min-height:0!important;max-height:none!important;margin:0!important;padding:0!important;
-  transform:none!important;border:0!important;box-shadow:none!important;
-  border-radius:0!important;background:#090c0c!important;overflow:hidden!important;
+  min-height:0!important;max-height:none!important;max-width:none!important;
+  margin:0!important;padding:0!important;transform:none!important;overflow:hidden!important;
+  border:0!important;border-radius:0!important;box-shadow:none!important;background:#050708!important;
  }
- body.live-immersive.watch-viewer:not(.watch-game) #watch #remote,
- body.live-immersive.watch-host:not(.watch-game) #watch #remote,
- body.live-immersive:not(.watch-game):not(.watch-host):not(.watch-viewer) #watch #remote{
+ body.live-immersive:not(.watch-game) #watch #remote{
   position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
-  max-height:none!important;object-fit:cover!important;object-position:center 45%!important;
-  border:0!important;background:#090c0c!important;z-index:1;
- }
- /* The device supplied horizontal frames even though portrait was requested.
-    Do not crop a face to fill a narrow 9:16 screen. Fill surrounding space
-    with a softly blurred duplicate; present the complete original above chat. */
- body.live-immersive.watch-camera-wide:not(.watch-game) #watch #cameraBackdrop{
-  display:block!important;position:absolute!important;inset:-38px!important;
-  width:calc(100% + 76px)!important;height:calc(100% + 76px)!important;
-  object-fit:cover!important;object-position:center!important;
-  z-index:0!important;pointer-events:none!important;
-  filter:blur(24px) brightness(.54) saturate(.8)!important;
-  transform:scale(1.04);background:#121515;
- }
- body.live-immersive.watch-viewer.watch-camera-wide:not(.watch-game) #watch #remote,
- body.live-immersive.watch-host.watch-camera-wide:not(.watch-game) #watch #remote,
- body.live-immersive.watch-camera-wide:not(.watch-game):not(.watch-host):not(.watch-viewer) #watch #remote{
-  top:clamp(142px,19dvh,205px)!important;bottom:auto!important;
-  left:0!important;right:0!important;inset-inline:0!important;
-  width:100%!important;height:min(42dvh,56.25vw)!important;
-  max-height:none!important;object-fit:contain!important;object-position:center!important;
-  border-top:1px solid var(--line)!important;border-bottom:1px solid var(--line)!important;
-  background:rgba(4,7,8,.38)!important;
- }
- body.live-immersive.watch-camera-wide:not(.watch-game) #watch::after{
-  inset:48% 0 0!important;
+  max-height:none!important;object-fit:cover!important;object-position:center!important;
+  border:0!important;background:#050708!important
  }
 }
-
-
-/* v0.10.7: default camera to a true full-height LIVE viewport. No horizontal
-   picture strip or artificial blurred letterbox. If sensor sends landscape,
-   full-bleed necessarily crops its sides; user can explicitly toggle FIT. */
-#watch #cameraFitToggle[hidden]{display:none!important}
-@media(max-width:799px){
- body.live-immersive.watch-camera-wide:not(.watch-game) #watch #cameraFitToggle{
-  display:block;position:absolute;z-index:11;right:12px;
-  top:calc(env(safe-area-inset-top) + 83px);width:auto;max-width:100px;
-  min-height:35px;padding:6px 9px;
-  background:#111719e0;color:var(--neon);border:1px solid var(--line);
-  border-radius:8px;font:800 10px/1.2 Arial,sans-serif;
-  box-shadow:0 2px 12px #0008;pointer-events:auto
- }
- body.live-immersive.watch-camera-wide:not(.watch-camera-original):not(.watch-game) #watch #cameraBackdrop{display:none!important}
- body.live-immersive.watch-host.watch-camera-wide:not(.watch-camera-original):not(.watch-game) #watch #remote,
- body.live-immersive.watch-viewer.watch-camera-wide:not(.watch-camera-original):not(.watch-game) #watch #remote,
- body.live-immersive.watch-camera-wide:not(.watch-camera-original):not(.watch-game):not(.watch-host):not(.watch-viewer) #watch #remote{
-   position:absolute!important;inset:0!important;top:0!important;bottom:0!important;
-   width:100%!important;height:100%!important;max-height:none!important;
-   object-fit:cover!important;object-position:center 45%!important;
-   background:#0b0d0e!important;border:0!important;border-radius:0!important
- }
-}
-
 </style></head>
 <body>
 <div class="app">
@@ -2083,7 +2032,7 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
   <div class="host-public-header"><span class="host-public-photo"><span>N/</span><img id="hostPublicAvatarImage" alt="" hidden></span><h3 id="hostPublicName">Host</h3></div><p id="hostPublicBio"></p><div class="host-public-links" id="hostPublicLinks"></div>
   <button type="button" class="btn secondary" id="hostProfileTip">Rp SAWER HOST</button>
  </div>
-  <div class="panel live-stage"><div class="viewfinder"><div class="deck-video-idle" aria-hidden="true"><span class="deck-idle-target">N/</span><strong>MENUNGGU SINYAL LIVE</strong><small>STREAM BELUM MENGIRIM FRAME VIDEO</small></div><video id="cameraBackdrop" muted playsinline autoplay aria-hidden="true"></video><video id="remote" playsinline autoplay controls></video><video id="gameRemoteFace" autoplay muted playsinline hidden aria-label="Kamera host game"></video></div>
+  <div class="panel live-stage"><div class="viewfinder"><div class="deck-video-idle" aria-hidden="true"><span class="deck-idle-target">N/</span><strong>MENUNGGU SINYAL LIVE</strong><small>STREAM BELUM MENGIRIM FRAME VIDEO</small></div><video id="remote" playsinline autoplay controls></video><video id="gameRemoteFace" autoplay muted playsinline hidden aria-label="Kamera host game"></video></div>
    <div class="deck-player-controls desktop-watch-only" aria-label="Kontrol pemutar video">
     <span class="deck-player-live">● LIVE</span>
     <button id="deckMute" type="button" aria-label="Bisukan suara video">♫ SUARA ON</button>
@@ -2092,7 +2041,7 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
     <button id="deckRefresh" type="button" aria-label="Pulihkan stream">↻</button>
     <button id="deckFullscreen" type="button" aria-label="Video layar penuh">⛶</button>
    </div><div id="watchState" class="status">CONNECTING SIGNAL...</div><div id="watchStreamQuality" class="status" aria-live="off" style="font-size:10px;opacity:.85" hidden></div>
-  <button class="btn secondary" id="cameraFitToggle" type="button" hidden aria-label="Ganti ukuran kamera live">TAMPIL UTUH</button><button class="btn secondary" id="refreshVideo" type="button" aria-label="Pulihkan video" title="Pulihkan video">↻</button>
+  <button class="btn secondary" id="refreshVideo" type="button" aria-label="Pulihkan video" title="Pulihkan video">↻</button>
   <div class="actions" id="hostControls" hidden><button class="btn secondary" id="afkToggle">▤ KAMERA OFF</button><button class="btn secondary" id="accessQuick">◈ PRIVAT</button><button class="btn ghost" id="shareRoom" aria-label="Bagikan room" title="Bagikan room">↗</button></div>
   <div id="viewerTools" hidden><button class="btn secondary" id="tipQuick">Rp SAWER</button></div>
   <div class="panel" id="hostAccessPanel" hidden>
@@ -4378,7 +4327,7 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
   if(mode==='gaming')$('category').value='Gaming';
   if(mode==='talk')$('category').value='Podcast';
   if(mode==='studio')$('category').value='DJ & Music';
-  if(localStream&&!host){localStream.getTracks().forEach(t=>t.stop());localStream=null;stopTalkVisual();$('camera').srcObject=null}
+  if(localStream&&!host){localStream.getTracks().forEach(t=>t.stop());stopPortraitCameraCapture();localStream=null;stopTalkVisual();$('camera').srcObject=null}
  }
  document.querySelectorAll('#liveModeGrid button').forEach(b=>b.onclick=()=>{chooseMode(b.dataset.liveMode);if(b.dataset.liveMode==='gaming')gameCommand('status')});
 
@@ -4433,6 +4382,61 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
   target.addEventListener('pointercancel',finish,{once:true});
  });
 
+
+ // Android WebView sometimes ignores portrait camera constraints. Compose
+ // the actual broadcast VIDEO as portrait 360x640 instead of faking the UI.
+ let portraitCameraCapture=null;
+ function stopPortraitCameraCapture(){
+  const old=portraitCameraCapture;portraitCameraCapture=null;
+  if(!old)return;
+  clearInterval(old.timer);
+  old.video.pause();old.video.srcObject=null;old.video.remove();
+  old.raw.getVideoTracks().forEach(t=>t.stop());
+ }
+ async function openLiveCamera(audio=true){
+  const raw=await navigator.mediaDevices.getUserMedia({
+   video:liveCameraConstraints(),audio:audio?{echoCancellation:true}:false
+  });
+  if(window.innerWidth>=800)return {stream:raw,controller:null};
+  let video=null,timer=null;
+  try{
+   video=document.createElement('video');
+   video.autoplay=true;video.muted=true;video.playsInline=true;
+   video.style.cssText='position:fixed;left:-5px;top:-5px;width:1px;height:1px;opacity:0;pointer-events:none';
+   video.setAttribute('playsinline','');
+   document.body.append(video);
+   const metadata=new Promise((resolve,reject)=>{
+    const timeout=setTimeout(()=>reject(new Error('Kamera tidak memberikan resolusi')),7000);
+    if(video.readyState>=1&&video.videoWidth){clearTimeout(timeout);resolve();return;}
+    video.addEventListener('loadedmetadata',()=>{clearTimeout(timeout);resolve();},{once:true});
+   });
+   video.srcObject=raw;await video.play();await metadata;
+   if(!video.videoWidth||!video.videoHeight)throw Error('Frame kamera belum siap');
+   const canvas=document.createElement('canvas');canvas.width=360;canvas.height=640;
+   const ctx=canvas.getContext('2d',{alpha:false});
+   if(!ctx||!canvas.captureStream)throw Error('Perangkat tidak mendukung LIVE portrait');
+   const draw=()=>{
+    if(video.readyState<2||!video.videoWidth||!video.videoHeight)return;
+    const w=video.videoWidth,h=video.videoHeight,ratio=w/h,target=360/640;
+    const sw=ratio>target?h*target:w,sh=ratio>target?h:w/target;
+    ctx.drawImage(video,(w-sw)/2,(h-sh)/2,sw,sh,0,0,360,640);
+   };
+   draw();const out=canvas.captureStream(20),track=out.getVideoTracks()[0];
+   if(!track)throw Error('LIVE portrait gagal dibentuk');
+   timer=setInterval(draw,50);
+   return {stream:new MediaStream([...raw.getAudioTracks(),track]),controller:{raw,video,timer}};
+  }catch(e){
+   if(timer)clearInterval(timer);
+   if(video){video.pause();video.srcObject=null;video.remove();}
+   raw.getTracks().forEach(t=>t.stop());throw e;
+  }
+ }
+ function useLiveCamera(result){
+  stopPortraitCameraCapture();
+  portraitCameraCapture=result.controller;
+  return result.stream;
+ }
+
  function liveCameraConstraints(){
   // PC camera stays landscape. Handsets prefer portrait; ideals may fall back.
   return window.innerWidth>=800
@@ -4443,9 +4447,9 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
   try{
    if(!navigator.mediaDevices?.getUserMedia)throw Error('Browser tidak mendukung media capture');
    if(!['camera','talk'].includes(selectedLiveMode))throw Error('Sumber video mode ini belum didukung');
-   if(localStream)localStream.getTracks().forEach(t=>t.stop());stopTalkVisual();
+   if(localStream)localStream.getTracks().forEach(t=>t.stop());stopPortraitCameraCapture();stopTalkVisual();
     if(selectedLiveMode==='camera'){
-    localStream=await navigator.mediaDevices.getUserMedia({video:liveCameraConstraints(),audio:{echoCancellation:true}});
+    localStream=useLiveCamera(await openLiveCamera(true));
     notice('Kamera dan mikrofon siap.','camState');
    }else{
     const mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true},video:false});
@@ -4468,7 +4472,7 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
   }catch(e){stopTalkVisual();notice('Gagal menyiapkan siaran: '+e.message,'camState')}
  }
  $('preview').onclick=preview;
- $('stopCamera').onclick=()=>{if(host&&currentRoom){notice('Sedang LIVE. Gunakan KAMERA OFF untuk menyembunyikan gambar sementara tanpa mengakhiri siaran.','camState');return}if(localStream)localStream.getTracks().forEach(t=>t.stop());localStream=null;stopTalkVisual();$('camera').srcObject=null;notice('Sumber siaran dimatikan.','camState')};
+ $('stopCamera').onclick=()=>{if(host&&currentRoom){notice('Sedang LIVE. Gunakan KAMERA OFF untuk menyembunyikan gambar sementara tanpa mengakhiri siaran.','camState');return}if(localStream)localStream.getTracks().forEach(t=>t.stop());stopPortraitCameraCapture();localStream=null;stopTalkVisual();$('camera').srcObject=null;notice('Sumber siaran dimatikan.','camState')};
  function emptyMessage(message){const box=document.createElement('div');box.className='no-signal';const h=document.createElement('strong');h.textContent='NO SIGNAL';const d=document.createElement('small');d.textContent=message;box.append(h,d);return box}
  function setStreamerName(node,name){
   const label=String(name||'Host').trim()||'Host';
@@ -4602,12 +4606,13 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
     draw();
     const track=canvas.captureStream(5).getVideoTracks()[0];
     if(!track)throw Error('Tidak bisa membuat visual standby');
-    await swapVideo(track);afkTrack=track;afkTimer=setInterval(draw,1000);afkMode=true;
+    await swapVideo(track);stopPortraitCameraCapture();afkTrack=track;afkTimer=setInterval(draw,1000);afkMode=true;
     $('afkToggle').textContent='◉ RETURN CAMERA';
     $('watchState').textContent='Kamera OFF. Mikrofon masih aktif. Ini bukan siaran radio otomatis.';
    }else{
-    const media=await navigator.mediaDevices.getUserMedia({video:liveCameraConstraints(),audio:false});
-    await swapVideo(media.getVideoTracks()[0]);
+    const media=await openLiveCamera(false);
+    await swapVideo(media.stream.getVideoTracks()[0]);
+    useLiveCamera(media);
     if(afkTimer)clearInterval(afkTimer);afkTimer=null;afkTrack=null;afkMode=false;
     $('afkToggle').textContent='▤ KAMERA OFF';$('watchState').textContent='Kamera kembali. Room tetap aktif.';
    }
@@ -4627,19 +4632,21 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
   const previous=localStream;
   // WebView/Android may leave a live-but-paused camera after app backgrounding.
   // A fresh getUserMedia request reopens the camera without changing the room.
-  let fresh;
+  let freshResult,fresh;
   try{
-    fresh=await navigator.mediaDevices.getUserMedia({
-      video:liveCameraConstraints(),
-      audio:{echoCancellation:true}
-    });
+    stopPortraitCameraCapture();
+    freshResult=await openLiveCamera(true);
+    fresh=freshResult.stream;
   }catch(error){
     $('watchState').textContent='Kamera dijeda Android. Ketuk ENABLE CAMERA jika tidak pulih: '+error.message;
     throw error;
   }
   if(!host||!currentRoom){
-    fresh.getTracks().forEach(t=>t.stop());return;
+    fresh.getTracks().forEach(t=>t.stop());
+    if(freshResult.controller){clearInterval(freshResult.controller.timer);freshResult.controller.video.pause();freshResult.controller.video.srcObject=null;freshResult.controller.video.remove();freshResult.controller.raw.getTracks().forEach(t=>t.stop())}
+    return;
   }
+  useLiveCamera(freshResult);
   localStream=fresh;
   $('camera').srcObject=fresh;applyMirroring();
   $('remote').muted=true;$('remote').srcObject=fresh;
@@ -5383,37 +5390,6 @@ html[data-nadmo-ui-theme="cyberbw"]{--cbw-e3fd72:#ededed;--cbw-d5f37b:#e4e4e4;--
  };
  for(const event of ['playing','pause','waiting','stalled','error','loadedmetadata','emptied'])
   watchVideo.addEventListener(event,updateDeckUI);
-  // A camera on some Android devices ignores portrait getUserMedia ideals and
-  // produces 16:9. Host and viewers get identical camera-specific presentation.
-  // Never create a second capture, stream, connection or audio track.
-  const cameraBackdrop=$('cameraBackdrop');
-  const cameraFitToggle=$('cameraFitToggle');
-  let cameraFitPreference='full'; // Fullscreen is the default on every install.
-  cameraFitToggle.onclick=()=>{
-   cameraFitPreference=cameraFitPreference==='full'?'original':'full';
-   syncCameraFraming();
-  };
-  const syncCameraFraming=()=>{
-   const wide=!!(watchVideo.srcObject && watchVideo.videoWidth>0 && watchVideo.videoHeight>0 &&
-                  watchVideo.videoWidth>watchVideo.videoHeight*1.12);
-   const enabled=window.innerWidth<800&&document.body.classList.contains('live-immersive')&&
-                 !document.body.classList.contains('watch-game')&&wide;
-   document.body.classList.toggle('watch-camera-wide',enabled);
-   document.body.classList.toggle('watch-camera-original',enabled&&cameraFitPreference==='original');
-   cameraFitToggle.hidden=!enabled;
-   cameraFitToggle.textContent=cameraFitPreference==='full'?'TAMPIL UTUH':'LAYAR PENUH';
-   if(!cameraBackdrop)return;
-   if(enabled&&cameraFitPreference==='original'){
-    if(cameraBackdrop.srcObject!==watchVideo.srcObject)cameraBackdrop.srcObject=watchVideo.srcObject;
-    cameraBackdrop.play().catch(()=>{});
-   }else{
-    cameraBackdrop.pause();
-    if(cameraBackdrop.srcObject)cameraBackdrop.srcObject=null;
-   }
-  };
-  for(const event of ['loadedmetadata','resize','playing','emptied'])watchVideo.addEventListener(event,syncCameraFraming);
-  window.addEventListener('resize',syncCameraFraming);
-
  const syncWatchAspect=()=>{
   const width=watchVideo.videoWidth,height=watchVideo.videoHeight;
   if(width>0&&height>0){
