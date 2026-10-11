@@ -1,11 +1,11 @@
-# NADMO LIVE Android — isolated beta v0.8
+# NADMO LIVE Android — isolated beta v0.9.4
 
 Private beta only. This branch `feat/nadmo-live-android-beta-20261009` does not modify any other NADMO application or the default branch.
 
-- Package: `id.nadmo.live`. Android versionCode **8**, versionName **0.8.0-beta**.
+- Package: `id.nadmo.live`. Android versionCode **13**, versionName **0.9.4-beta**.
 - Source: `nadmo-live/android/`.
-- Hosted web beta: https://nadmo-live-beta-20261009.ardarawk.workers.dev/app/
-- Android shell opens the hosted beta first, with the embedded offline fallback as a retry path. Offline mode does not offer live streaming.
+- Hosted web beta: https://live.nadmo.id/app/
+- Android shell opens the official live.nadmo.id origin first, with the embedded offline fallback as a retry path. Offline mode does not offer live streaming.
 - Launcher uses the NADMO lime `N/` adaptive icon resources and `NADMO LIVE` app label. Icon changes are visible only in a newly built/installed APK; they are not remotely updatable through the hosted web client.
 - Debug CI: `.github/workflows/nadmo-live-build-beta.yml`, for QA only.
 - Signed update CI: `.github/workflows/nadmo-live-signed-release.yml`. Uses the already pinned SHA-256 release certificate from `nadmo-live/android/release-identity.json`. It will fail if the protected keystore is absent or certificate differs; no unsafe key rotation.
