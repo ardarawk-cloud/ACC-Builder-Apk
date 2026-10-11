@@ -2,7 +2,7 @@ name: NADMO LIVE signed beta update
 on:
   push:
     branches: ['feat/nadmo-native-game-live-20261010']
-    paths: ['.github/workflows/nadmo-live-094-qa-signed.yml', 'nadmo-live/android/app/src/main/assets/game-live-qa.html', 'nadmo-live/android/qa/cyberdeck-layout-qc.cjs', 'nadmo-live/android/qa/game-background-contract.mjs', 'nadmo-live/android/qa/offgrid-local-contract.mjs', 'nadmo-live/android/qa/webview-document-contract.mjs', 'nadmo-live/android/qa/production-native-ui-e2e.cjs', 'nadmo-live/android/qa/game-signaling-gate.mjs', 'nadmo-live/android/app/src/main/java/id/nadmo/live/MainActivity.java', 'nadmo-live/android/app/src/main/java/id/nadmo/live/GameCaptureService.java', 'nadmo-live/android/app/build.gradle']
+    paths: ['.github/workflows/nadmo-live-094-qa-signed.yml', 'nadmo-live/android/app/src/main/assets/game-live-qa.html', 'nadmo-live/android/qa/cyberdeck-layout-qc.cjs', 'nadmo-live/android/qa/game-background-contract.mjs', 'nadmo-live/android/qa/offgrid-local-contract.mjs', 'nadmo-live/android/qa/webview-document-contract.mjs', 'nadmo-live/android/qa/production-native-ui-e2e.cjs', 'nadmo-live/android/qa/game-signaling-gate.mjs', 'nadmo-live/android/app/src/main/java/id/nadmo/live/MainActivity.java', 'nadmo-live/android/app/src/main/java/id/nadmo/live/GameCaptureService.java', 'nadmo-live/android/app/build.gradle', 'nadmo-live/android/app/src/test/java/id/nadmo/live/OkHttpSignalingE2ETest.java']
   workflow_dispatch:
 permissions:
   contents: write
