@@ -1902,7 +1902,7 @@ html[data-nadmo-ui-theme="cyberbw"] :is(.signal-stage,.stage-core .circle,.deck-
 <button type="button" data-live-mode="studio"><span class="mode-icon">⌘</span>STUDIO PC</button></div>
 <div class="mode-details" id="modeDetails" hidden></div>
 <div id="gameSetup" class="panel hide"><label for="gameName">PILIH GAME</label><select class="field" id="gameName"><option>Mobile Legends</option><option>Free Fire</option><option>PUBG Mobile</option><option>Honor of Kings</option><option>Roblox</option><option>Minecraft</option><option>Lainnya</option></select>
- <div id="gameOverlayPreview" aria-label="Pratinjau posisi kamera saat bermain">
+ <label for="gameStreamQuality">KUALITAS VIDEO GAME</label><select class="field" id="gameStreamQuality"><option value="stable" selected>STABIL — 720p / 18 FPS (disarankan)</option><option value="low">HEMAT DATA — 640p / 15 FPS</option><option value="quality">DETAIL — 960p / 20 FPS (internet cepat)</option></select><p class="profile-note">Jika video dan suara tersendat, coba HEMAT DATA pada LIVE berikutnya. Kualitas bisa dipilih sebelum mulai siaran.</p><div id="gameOverlayPreview" aria-label="Pratinjau posisi kamera saat bermain">
   <div class="game-canvas-note">LAYAR GAME<br><small>Android meminta izin sebelum siaran</small></div>
   <div class="game-face-frame" id="gameFaceFrame"><video id="gameFaceCam" autoplay muted playsinline></video></div>
  </div>
@@ -5176,7 +5176,7 @@ html[data-nadmo-ui-theme="cyberbw"] :is(.signal-stage,.stage-core .circle,.deck-
     y:Math.max(.02,Math.min(.85,frame.offsetTop/Math.max(1,preview.clientHeight))),
     size:gameFaceDiameter
    }:null;
-   gameCommand('start',{title:($('title').value.trim()||$('gameName').value+' LIVE').slice(0,60),game:$('gameName').value,face,facecam});
+   gameCommand('start',{title:($('title').value.trim()||$('gameName').value+' LIVE').slice(0,60),game:$('gameName').value,quality:$('gameStreamQuality').value,face,facecam});
    return;
   }
   if(!['camera','talk'].includes(selectedLiveMode)){notice('Mode '+selectedLiveMode+' belum memiliki source live resmi.','liveState');return}
