@@ -228,8 +228,7 @@ public final class GameCaptureService extends Service {
           // any actual socket failure. Reconnect only if transport fails or
           // the heartbeat watchdog confirms a stalled connection.
           diagnostic="NETWORK_SWITCH";
-          Log.i(TAG,"Default network changed; preserving any healthy signaling socket");
-          if(!webSocketOpen&&socket==null)lostConnection();
+          Log.i(TAG,"Default network changed; awaiting actual socket failure or heartbeat timeout");
         }
       });}
       @Override public void onLost(Network network){main.post(()->{
