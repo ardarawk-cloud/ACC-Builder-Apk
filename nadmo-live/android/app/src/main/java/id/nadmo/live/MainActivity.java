@@ -430,8 +430,17 @@ public final class MainActivity extends Activity {
         .putExtra(GameCaptureService.EXTRA_FACE,gameFace)
         .putExtra(GameCaptureService.EXTRA_FACE_LAYOUT,gameFaceLayout)
         .putExtra(GameCaptureService.EXTRA_COOKIE,CookieManager.getInstance().getCookie(ONLINE_URL));
-      try{if(Build.VERSION.SDK_INT>=26)startForegroundService(run);else startService(run);}
-      catch(Exception e){notifyGameStatus("error","Android tidak mengizinkan layanan GAME LIVE.","");}
+      try{
+        if(Build.VERSION.SDK_INT>=26)startForegroundService(run);else startService(run);
+        // A broadcast may arrive before the WebView finishes resuming after
+        // MediaProjection consent. A few bounded queries recover the actual
+        // server-created status instead of leaving BUKA GAME disabled forever.
+        if(web!=null){
+          web.postDelayed(()->{if(activityVisible&&"starting".equals(gameLiveState))requestGameStatus();},2500);
+          web.postDelayed(()->{if(activityVisible&&"starting".equals(gameLiveState))requestGameStatus();},6500);
+          web.postDelayed(()->{if(activityVisible&&"starting".equals(gameLiveState))requestGameStatus();},11000);
+        }
+      }catch(Exception e){notifyGameStatus("error","Android tidak mengizinkan layanan LIVE.","");}
       return;
     }
     if(request!=PICK_AVATAR)return;
