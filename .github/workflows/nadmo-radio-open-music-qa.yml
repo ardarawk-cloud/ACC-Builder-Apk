@@ -1,0 +1,30 @@
+name: NADMO RADIO open-music native development QA
+on:
+  push:
+    branches: ['feat/nadmo-radio-open-music-camera-stage-20261012']
+    paths:
+      - 'nadmo-live/android/app/src/main/java/id/nadmo/live/MainActivity.java'
+      - 'nadmo-live/android/app/src/main/java/id/nadmo/live/GameCaptureService.java'
+      - 'nadmo-live/android/qa/radio-open-music-contract.mjs'
+      - '.github/workflows/nadmo-radio-open-music-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: android-actions/setup-android@v3
+        with: {packages: ''}
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.10.2'}
+      - name: Check radio privacy and external player selection
+        run: node nadmo-live/android/qa/radio-open-music-contract.mjs
+      - name: Compile unsigned Android debug candidate
+        working-directory: nadmo-live/android
+        run: gradle --no-daemon :app:assembleDebug
