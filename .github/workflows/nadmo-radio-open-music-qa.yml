@@ -5,6 +5,8 @@ on:
     paths:
       - 'nadmo-live/android/app/src/main/java/id/nadmo/live/MainActivity.java'
       - 'nadmo-live/android/app/src/main/java/id/nadmo/live/GameCaptureService.java'
+      - 'nadmo-live/android/app/src/main/java/id/nadmo/live/PrivacyFrameOwnership.java'
+      - 'nadmo-live/android/app/src/test/java/id/nadmo/live/PrivacyFrameOwnershipTest.java'
       - 'nadmo-live/android/qa/radio-open-music-contract.mjs'
       - '.github/workflows/nadmo-radio-open-music-qa.yml'
   workflow_dispatch:
@@ -25,6 +27,9 @@ jobs:
         with: {gradle-version: '8.10.2'}
       - name: Check radio privacy and external player selection
         run: node nadmo-live/android/qa/radio-open-music-contract.mjs
+      - name: Regression reproduce and fix 50k privacy frames without use-after-free
+        working-directory: nadmo-live/android
+        run: gradle --no-daemon :app:testDebugUnitTest --tests id.nadmo.live.PrivacyFrameOwnershipTest
       - name: Compile unsigned Android debug candidate
         working-directory: nadmo-live/android
         run: gradle --no-daemon :app:assembleDebug
