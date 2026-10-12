@@ -1,7 +1,7 @@
 name: NADMO GAME native development QC
 on:
   push:
-    branches: ['feat/nadmo-native-game-live-20261010']
+    branches: ['feat/nadmo-native-game-live-20261010', 'feat/nadmo-game-floating-privacy-controls-v0111-20261012']
     paths:
       - 'nadmo-live/android/**'
       - '.github/workflows/nadmo-game-development-qc.yml'
@@ -27,6 +27,8 @@ jobs:
           gradle-version: '8.10.2'
       - name: Verify standalone offline OFFGRID launcher remains bundled
         run: node nadmo-live/android/qa/offgrid-local-contract.mjs
+      - name: Assert secure in-game floating pause and black-frame privacy gate
+        run: node nadmo-live/android/qa/game-floating-privacy-contract.mjs
       - name: Compile native MediaProjection/Game WebRTC candidate
         run: gradle -p nadmo-live/android :app:assembleDebug --no-daemon --stacktrace
       - name: Test real Android OkHttp host connection, heartbeat and 90s recovery
