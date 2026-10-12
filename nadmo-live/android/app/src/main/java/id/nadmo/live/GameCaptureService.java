@@ -842,6 +842,15 @@ public final class GameCaptureService extends Service {
               send(new JSONObjectSafe().put("type","resume").put("id",roomId).put("token",resumeToken).json());
             else send(new JSONObjectSafe().put("type","create").put("title",title)
               .put("category",radioMode?"DJ & Music":"Gaming").put("broadcastKind",radioMode?"radio":"gaming").put("mode","public").put("hostName","Host").put("facecam",faceLayout).json());
+            // Do not leave beta users stuck on MENYAMBUNG forever when
+            // WebSocket is open but the server never acknowledges CREATE.
+            main.postDelayed(()->{
+              if(started&&!stopping&&ws==socket&&roomId.isEmpty()&&webSocketOpen){
+                rememberFailure("ROOM_ACK_TIMEOUT");
+                report("error","Room tidak tersambung. Coba lagi.","");
+                stopGame("ROOM_ACK_TIMEOUT");
+              }
+            },12000);
           });
         }
         @Override public void onMessage(WebSocket ws,String body){main.post(()->{
