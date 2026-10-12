@@ -22,7 +22,9 @@ assert.match(service,/micTrack\.setEnabled\(!paused\)/);
 assert.match(service,/faceTrack\.setEnabled\(!paused\)/);
 assert.match(service,/gameAudio\.setPaused\(paused\)/);
 assert.match(gameAudio,/if\(privacyPaused\)continue;/,'Internal GAME PCM must not leak while paused');
-assert.match(service,/WindowManager\.LayoutParams\.FLAG_SECURE/,'Native controls should be excluded from screenshots');
+assert.doesNotMatch(service,/WindowManager\\.LayoutParams\\.FLAG_SECURE\\s*\\|/,'Android FLAG_SECURE renders the floating overlay as a black rectangle in MediaProjection');
+assert.match(service,/new LinearLayout\\.LayoutParams\\(dp\\(108\\),dp\\(39\\)\\)/,'Floating controls should be a compact status pill');
+assert.match(service,/WindowManager\\.LayoutParams\\.TYPE_APPLICATION_OVERLAY/,'Keep functional floating PAUSE/RESUME control');
 assert.match(service,/Settings\.canDrawOverlays\(this\)/,'Permission must be checked before overlay');
 assert.match(service,/TextView back=floatingButton\("⌂ BUKA NADMO"\)/);
 assert.match(service,/setPrivacyPaused\(true\); \/\/ shield BEFORE starting NADMO Activity/);
@@ -51,4 +53,4 @@ assert.match(activity,/"paused"\.equals\(gameLiveState\)/,'A paused room cannot 
 assert.match(service,/roomId\.isEmpty\(\)\)report\("starting"/,'Never report LIVE before room creation');
 assert.match(service,/else if\(!webSocketOpen\)report\("reconnecting"/,'Reconnect state cannot be disguised as PAUSED');
 assert.match(service,/if\(roomId\.isEmpty\(\)\|\|!webSocketOpen\)/,'Resume forbidden while disconnected');
-console.log('PASS GAME PRIVACY CONTRACT: secure native floating control, fail-closed YUV black frames, pause audio and app return, signing identity preserved');
+console.log('PASS GAME PRIVACY CONTRACT: compact visible non-sensitive control, no FLAG_SECURE black rectangle, fail-closed YUV frames, pause audio, signer preserved');
