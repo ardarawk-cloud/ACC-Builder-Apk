@@ -29,7 +29,10 @@ import android.graphics.PixelFormat;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.WindowManager;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.json.JSONArray;
@@ -38,11 +41,13 @@ import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
 import org.webrtc.Camera2Enumerator;
 import org.webrtc.CameraVideoCapturer;
+import org.webrtc.CapturerObserver;
 import org.webrtc.DataChannel;
 import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
 import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
+import org.webrtc.JavaI420Buffer;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStream;
 import org.webrtc.PeerConnection;
@@ -55,6 +60,7 @@ import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.VideoSource;
+import org.webrtc.VideoFrame;
 import org.webrtc.VideoTrack;
 
 import okhttp3.OkHttpClient;
@@ -70,6 +76,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.nio.ByteBuffer;
 
 /**
  * Foreground screen broadcaster. GAME runs in another Android app while capture,
@@ -82,6 +89,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class GameCaptureService extends Service {
   static final String ACTION_START="id.nadmo.live.GAME_START";
   static final String ACTION_STOP="id.nadmo.live.GAME_STOP";
+  static final String ACTION_PAUSE="id.nadmo.live.GAME_PAUSE";
+  static final String ACTION_RESUME="id.nadmo.live.GAME_RESUME";
+  static final String ACTION_SHOW_FLOAT="id.nadmo.live.GAME_SHOW_FLOAT";
+  static final String ACTION_HIDE_FLOAT="id.nadmo.live.GAME_HIDE_FLOAT";
   static final String ACTION_STATUS="id.nadmo.live.GAME_STATUS";
   static final String ACTION_QUERY="id.nadmo.live.GAME_QUERY";
   // Failure codes are strictly device-local: never store session cookies,
@@ -117,6 +128,17 @@ public final class GameCaptureService extends Service {
   private Runnable chatOverlayHide=null;
   private JSONObject queuedChat=null;
   private Runnable queuedChatTask=null;
+  // SYSTEM_ALERT_WINDOW is user-approved. This compact secure control stays
+  // outside the game, can be dragged, and never captures game touches elsewhere.
+  private WindowManager gameFloatingWindow;
+  private LinearLayout gameFloatingRoot,gameFloatingMenu;
+  private WindowManager.LayoutParams gameFloatingParams;
+  private TextView gameFloatingBubble,gameFloatingPause,gameFloatingStop;
+  private long endConfirmAt=0L;
+  // Fail closed. No Android/NADMO system screen is ever broadcast before the
+  // creator intentionally resumes from INSIDE the running game.
+  private volatile boolean privacyPaused=true;
+  private JavaI420Buffer privacyBlackBuffer=null;
   private String hostSocketId="";
   private static final String CHANNEL="nadmo_game_live";
   private static final String TAG="NadmoGameLive";
@@ -229,8 +251,29 @@ public final class GameCaptureService extends Service {
       return START_NOT_STICKY;
     }
     if(ACTION_STOP.equals(intent.getAction())){stopGame("Siaran game diakhiri.");return START_NOT_STICKY;}
+    if(ACTION_PAUSE.equals(intent.getAction())){
+      if(started)setPrivacyPaused(true);
+      else stopSelf(startId);
+      return START_NOT_STICKY;
+    }
+    if(ACTION_RESUME.equals(intent.getAction())){
+      // Only the in-game floating button may resume capture. No notification,
+      // WebView IPC, or incoming intent is allowed to expose the NADMO app.
+      if(!started)stopSelf(startId);
+      return START_NOT_STICKY;
+    }
+    if(ACTION_SHOW_FLOAT.equals(intent.getAction())){
+      if(started)showGameFloatingControl();
+      else stopSelf(startId);
+      return START_NOT_STICKY;
+    }
+    if(ACTION_HIDE_FLOAT.equals(intent.getAction())){
+      if(started)hideGameFloatingControl();
+      else stopSelf(startId);
+      return START_NOT_STICKY;
+    }
     if(!ACTION_START.equals(intent.getAction())||started)return START_NOT_STICKY;
-    stopping=false;started=true;
+    stopping=false;started=true;privacyPaused=true;
     diagnosticPrefs().edit().putBoolean(DIAG_ARMED,true)
       .putString(DIAG_LAST,"GAME LIVE mulai; menunggu perekaman layar.").commit();
     title=limit(intent.getStringExtra(EXTRA_TITLE),60,"NADMO GAME LIVE");
@@ -265,6 +308,7 @@ public final class GameCaptureService extends Service {
       report("starting","Menghubungkan GAME LIVE...","");
       holdCaptureCpu();
       initCapture(grant);
+      showGameFloatingControl();
       watchNetwork();
       startSocketWatchdog();
       // Never publish a room before MediaProjection delivers actual video frames.
@@ -344,6 +388,149 @@ public final class GameCaptureService extends Service {
       .setContentIntent(go).setOngoing(ongoing).setOnlyAlertOnce(true)
       .addAction(android.R.drawable.ic_menu_close_clear_cancel,"AKHIRI LIVE",cancel).build();
   }
+
+  private static void fill(ByteBuffer buffer,byte value){
+    for(int i=0;i<buffer.capacity();i++)buffer.put(i,value);
+  }
+  // Reuse an immutable BLACK YUV source for the current encoder dimensions.
+  // We do NOT stop/restart MediaProjection (Android 14 grants are one-shot).
+  // Even if the source captures Settings, passwords, notifications or NADMO,
+  // its frames are replaced BEFORE they reach any viewer encoder.
+  private synchronized VideoFrame blackPrivacyFrame(VideoFrame captured){
+    int w=captured.getBuffer().getWidth(),h=captured.getBuffer().getHeight();
+    if(privacyBlackBuffer==null||privacyBlackBuffer.getWidth()!=w||privacyBlackBuffer.getHeight()!=h){
+      if(privacyBlackBuffer!=null)privacyBlackBuffer.release();
+      privacyBlackBuffer=JavaI420Buffer.allocate(w,h);
+      fill(privacyBlackBuffer.getDataY(),(byte)16);
+      fill(privacyBlackBuffer.getDataU(),(byte)128);
+      fill(privacyBlackBuffer.getDataV(),(byte)128);
+    }
+    return new VideoFrame(privacyBlackBuffer,captured.getRotation(),captured.getTimestampNs());
+  }
+
+  private void setPrivacyPaused(boolean paused){
+    if(!started||stopping)return;
+    privacyPaused=paused; // FIRST, before launching another Activity or touching UI.
+    if(micTrack!=null)micTrack.setEnabled(!paused);
+    if(faceTrack!=null)faceTrack.setEnabled(!paused);
+    if(gameAudio!=null)gameAudio.setPaused(paused);
+    report(paused?"paused":"live",
+      paused?"SIARAN DIJEDA — penonton melihat layar hitam. Kembali ke game untuk RESUME.":
+             "GAME LIVE berjalan — layar dan audio sedang disiarkan.",roomId);
+    updateGameFloatingControl();
+  }
+  private TextView floatingButton(String title){
+    TextView v=new TextView(this);
+    v.setText(title);v.setTextColor(Color.WHITE);v.setTextSize(12);
+    v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+    v.setGravity(Gravity.CENTER);v.setMinHeight(dp(43));
+    v.setPadding(dp(11),dp(7),dp(11),dp(7));
+    GradientDrawable bg=new GradientDrawable();
+    bg.setColor(0xF5111719);bg.setCornerRadius(dp(10));
+    bg.setStroke(dp(1),0xFFB3D962);v.setBackground(bg);
+    return v;
+  }
+  private void updateGameFloatingControl(){
+    if(gameFloatingBubble!=null)gameFloatingBubble.setText(privacyPaused?"N/ JEDA":"N/ LIVE");
+    if(gameFloatingPause!=null)gameFloatingPause.setText(privacyPaused?"▶ RESUME GAME":"Ⅱ JEDA SIARAN");
+  }
+  private void hideGameFloatingControl(){
+    if(gameFloatingWindow!=null&&gameFloatingRoot!=null)
+      try{gameFloatingWindow.removeViewImmediate(gameFloatingRoot);}catch(Exception ignored){}
+    gameFloatingWindow=null;gameFloatingRoot=null;gameFloatingMenu=null;
+    gameFloatingParams=null;gameFloatingPause=null;gameFloatingBubble=null;
+    gameFloatingStop=null;endConfirmAt=0L;
+  }
+  private void showGameFloatingControl(){
+    if(stopping||!started||!Settings.canDrawOverlays(this)||gameFloatingRoot!=null)return;
+    try{
+      WindowManager wm=(WindowManager)getSystemService(Context.WINDOW_SERVICE);
+      if(wm==null)return;
+      LinearLayout column=new LinearLayout(this);
+      column.setOrientation(LinearLayout.VERTICAL);
+      column.setGravity(Gravity.END);
+      column.setPadding(dp(3),dp(3),dp(3),dp(3));
+      TextView bubble=floatingButton("N/ JEDA");
+      bubble.setTextColor(0xFFE0FF76);
+      LinearLayout menu=new LinearLayout(this);menu.setOrientation(LinearLayout.VERTICAL);
+      menu.setVisibility(View.GONE);
+      TextView pause=floatingButton("▶ RESUME GAME");
+      TextView back=floatingButton("⌂ BUKA NADMO");
+      TextView end=floatingButton("× AKHIRI LIVE");
+      LinearLayout.LayoutParams item=new LinearLayout.LayoutParams(dp(156),dp(43));
+      item.topMargin=dp(4);
+      menu.addView(pause,new LinearLayout.LayoutParams(item));
+      menu.addView(back,new LinearLayout.LayoutParams(item));
+      menu.addView(end,new LinearLayout.LayoutParams(item));
+      column.addView(bubble,new LinearLayout.LayoutParams(dp(88),dp(46)));
+      column.addView(menu);
+      WindowManager.LayoutParams params=new WindowManager.LayoutParams(
+        WindowManager.LayoutParams.WRAP_CONTENT,WindowManager.LayoutParams.WRAP_CONTENT,
+        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
+        WindowManager.LayoutParams.FLAG_SECURE |
+        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+        PixelFormat.TRANSLUCENT);
+      params.gravity=Gravity.TOP|Gravity.RIGHT;
+      params.y=dp(165);params.x=dp(9);
+      wm.addView(column,params);
+      gameFloatingWindow=wm;gameFloatingRoot=column;
+      gameFloatingParams=params;gameFloatingBubble=bubble;
+      gameFloatingMenu=menu;gameFloatingPause=pause;gameFloatingStop=end;
+      updateGameFloatingControl();
+      bubble.setOnTouchListener(new View.OnTouchListener(){
+        private float initialY;private int baseY;private boolean dragged;
+        @Override public boolean onTouch(View v,MotionEvent ev){
+          switch(ev.getActionMasked()){
+            case MotionEvent.ACTION_DOWN:
+              initialY=ev.getRawY();baseY=params.y;dragged=false;return true;
+            case MotionEvent.ACTION_MOVE:
+              if(Math.abs(ev.getRawY()-initialY)>dp(9))dragged=true;
+              if(dragged){
+                int limit=Math.max(dp(45),getResources().getDisplayMetrics().heightPixels-dp(230));
+                params.y=Math.min(limit,Math.max(dp(45),baseY+(int)(ev.getRawY()-initialY)));
+                try{wm.updateViewLayout(column,params);}catch(Exception ignored){}
+              }
+              return true;
+            case MotionEvent.ACTION_UP:
+              if(!dragged){
+                menu.setVisibility(menu.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE);
+                endConfirmAt=0L;end.setText("× AKHIRI LIVE");
+                try{wm.updateViewLayout(column,params);}catch(Exception ignored){}
+              }return true;
+            default:return false;
+          }
+        }
+      });
+      pause.setOnClickListener(v->{
+        if(privacyPaused){
+          if(roomId.isEmpty()){android.widget.Toast.makeText(this,"Tunggu room GAME tersambung.",android.widget.Toast.LENGTH_SHORT).show();return;}
+          setPrivacyPaused(false);
+        }else setPrivacyPaused(true);
+        menu.setVisibility(View.GONE);
+      });
+      back.setOnClickListener(v->{
+        setPrivacyPaused(true); // shield BEFORE starting NADMO Activity
+        hideGameFloatingControl();
+        Intent open=new Intent(this,MainActivity.class);
+        open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        try{startActivity(open);}catch(Exception ex){
+          Log.w(TAG,"Could not return from game; capture remains paused",ex);
+          showGameFloatingControl();
+        }
+      });
+      end.setOnClickListener(v->{
+        long now=android.os.SystemClock.elapsedRealtime();
+        if(now-endConfirmAt>6000L){
+          endConfirmAt=now;end.setText("TEKAN LAGI AKHIRI");
+        }else stopGame("Siaran game diakhiri.");
+      });
+    }catch(Exception ex){
+      Log.w(TAG,"Floating control unavailable; notification PAUSE remains usable",ex);
+      hideGameFloatingControl();
+    }
+  }
+
   private void hideGameChatOverlay(){
     if(chatOverlayHide!=null){main.removeCallbacks(chatOverlayHide);chatOverlayHide=null;}
     if(chatOverlayWindow!=null&&chatOverlayView!=null){
@@ -480,7 +667,17 @@ public final class GameCaptureService extends Service {
         }
       });}
     });
-    screenCapturer.initialize(screenHelper,this,screenSource.getCapturerObserver());
+    final CapturerObserver transport=screenSource.getCapturerObserver();
+    screenCapturer.initialize(screenHelper,this,new CapturerObserver(){
+      @Override public void onCapturerStarted(boolean success){transport.onCapturerStarted(success);}
+      @Override public void onCapturerStopped(){transport.onCapturerStopped();}
+      @Override public void onFrameCaptured(VideoFrame captured){
+        if(!privacyPaused){transport.onFrameCaptured(captured);return;}
+        VideoFrame safe=blackPrivacyFrame(captured);
+        try{transport.onFrameCaptured(safe);}
+        finally{safe.release();}
+      }
+    });
     int[] dimensions=captureDimensions();
     screenCapturer.startCapture(dimensions[0],dimensions[1],activeVideoFps);
     // Android 14 forbids reusing the projection intent for a second session.
@@ -493,6 +690,7 @@ public final class GameCaptureService extends Service {
         if(projection!=null){
           gameAudio=new GameAudioRelay();
           if(!gameAudio.start(projection))gameAudio=null;
+          else gameAudio.setPaused(privacyPaused);
         }
       }catch(Exception unavailable){
         Log.w(TAG,"Internal GAME audio not capturable; microphone remains active",unavailable);
@@ -501,7 +699,7 @@ public final class GameCaptureService extends Service {
     }
     micSource=factory.createAudioSource(new MediaConstraints());
     micTrack=factory.createAudioTrack("nadmo_microphone",micSource);
-    micTrack.setEnabled(true);
+    micTrack.setEnabled(!privacyPaused);
     if(wantFace)startFaceCamera();
   }
   private int[] captureDimensions(){
@@ -532,6 +730,7 @@ public final class GameCaptureService extends Service {
         faceCapturer.initialize(faceHelper,this,faceSource.getCapturerObserver());
         faceTrack=factory.createVideoTrack("nadmo_face",faceSource);
         faceCapturer.startCapture(320,240,12);
+        faceTrack.setEnabled(!privacyPaused);
         break;
       }
     }catch(Exception error){
@@ -603,7 +802,8 @@ public final class GameCaptureService extends Service {
         if("created".equals(type))resumeToken=m.optString("resumeToken","");
         reconnectAttempt=0;offlineSince=0;
         String message="GAME LIVE aktif · "+game+" · mic"+(faceTrack!=null?" · facecam":"");
-        report("live",message,roomId);
+        report(privacyPaused?"paused":"live",
+          privacyPaused?"GAME siap — buka game, lalu tekan tombol melayang RESUME.":message,roomId);
         if("resumed".equals(type)){
           clearViewers();
           JSONArray ids=m.optJSONArray("viewers");
@@ -794,7 +994,8 @@ public final class GameCaptureService extends Service {
     viewers.clear();pendingIce.clear();screenSenders.clear();
   }
   private void stopGame(String reason){
-    if(stopping)return;stopping=true;
+    if(stopping)return;stopping=true;privacyPaused=true;
+    hideGameFloatingControl();
     if(retryTask!=null)main.removeCallbacks(retryTask);
     if(socketWatchdog!=null)main.removeCallbacks(socketWatchdog);
     if(firstFrameTimeout!=null)main.removeCallbacks(firstFrameTimeout);
@@ -812,6 +1013,7 @@ public final class GameCaptureService extends Service {
     if(gameAudio!=null){gameAudio.stop();gameAudio=null;}
     try{if(faceCapturer!=null){faceCapturer.stopCapture();faceCapturer.dispose();}}catch(Exception e){Log.w(TAG,"Stop face camera",e);}
     try{if(screenCapturer!=null){screenCapturer.stopCapture();screenCapturer.dispose();}}catch(Exception e){Log.w(TAG,"Stop projection",e);}
+    synchronized(this){if(privacyBlackBuffer!=null){privacyBlackBuffer.release();privacyBlackBuffer=null;}}
     if(screenTrack!=null)screenTrack.dispose();
     if(faceTrack!=null)faceTrack.dispose();
     if(micTrack!=null)micTrack.dispose();
