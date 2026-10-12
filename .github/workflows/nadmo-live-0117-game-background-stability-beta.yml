@@ -1,13 +1,5 @@
 name: NADMO LIVE v0.10.17 GAME app-switch drop recovery owner beta
 on:
-  push:
-    branches: ['feat/nadmo-radio-open-music-camera-stage-20261012']
-    paths:
-      - '.github/workflows/nadmo-live-0117-game-background-stability-beta.yml'
-      - 'nadmo-live/android/qa/game-background-contract.mjs'
-      - 'nadmo-live/android/qa/radio-open-music-contract.mjs'
-      - 'nadmo-live/android/app/src/main/java/id/nadmo/live/MainActivity.java'
-      - 'nadmo-live/android/app/src/main/java/id/nadmo/live/GameCaptureService.java'
   workflow_dispatch:
 permissions:
   contents: write
