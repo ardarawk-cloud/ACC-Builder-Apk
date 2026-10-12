@@ -34,6 +34,7 @@ assert.match(activity,/if\(activityVisible&&"starting"\.equals\(gameLiveState\)\
 assert.match(service,/Default network changed; awaiting actual socket failure or heartbeat timeout/);
 assert.doesNotMatch(service,/if\(socket!=null\)disconnectStaleSocket\(diagnostic\)/);
 assert.match(service,/PROJECTION_FRAME_DELAY/);
+assert.match(service,/menu\.setVisibility\(privacyPaused\?View\.VISIBLE:View\.GONE\)/,'Secure RESUME must be visible immediately after opening a game');
 assert.doesNotMatch(service,/stopGame\("PROJECTION_NO_FRAME/);
 assert.match(service,/if\(!roomId\.isEmpty\(\)\)updateNotification\("LIVE terhubung/);
 assert.match(activity,/private boolean ensureGameFloatingControls\(\)/);
