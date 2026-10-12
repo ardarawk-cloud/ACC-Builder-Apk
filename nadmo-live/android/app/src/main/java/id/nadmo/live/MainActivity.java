@@ -325,10 +325,26 @@ public final class MainActivity extends Activity {
   private void stopGame(){
     startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_STOP));
   }
+  private boolean ensureGameFloatingControls(){
+    if(Settings.canDrawOverlays(this))return true;
+    // Paused-by-default broadcast can only be resumed by the secure
+    // floating overlay outside NADMO. Without this permission, the game
+    // can launch but never publish audio/video, appearing disconnected.
+    try{
+      Toast.makeText(this,"Aktifkan Tampil di atas aplikasi lain untuk tombol RESUME LIVE.",Toast.LENGTH_LONG).show();
+      Intent overlay=new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+        Uri.parse("package:"+getPackageName()));
+      startActivity(overlay);
+    }catch(Exception error){
+      notifyGameStatus("error","Izin tombol melayang belum aktif.",gameLiveRoom);
+    }
+    return false;
+  }
   private void launchGame(){
     if(!"live".equals(gameLiveState)&&!"paused".equals(gameLiveState)){
       notifyGameStatus("error","Mulai GAME LIVE sebelum membuka permainan.","");return;
     }
+    if(!ensureGameFloatingControls())return;
     String[] packages;
     String key=gameName.toLowerCase(java.util.Locale.ROOT);
     if(key.contains("mobile legends"))packages=new String[]{"com.mobile.legends"};
@@ -348,6 +364,7 @@ public final class MainActivity extends Activity {
      if(!"radio".equals(gameBroadcastKind)||!("live".equals(gameLiveState)||"paused".equals(gameLiveState))){
        notifyGameStatus("error","Mulai RADIO LIVE dulu sebelum OPEN MUSIC.",gameLiveRoom);return;
      }
+     if(!ensureGameFloatingControls())return;
      // Never choose a music app on behalf of the creator or scrape installed app details.
      // Android music app selector may have no matching apps. Home is a universal fallback
      // where the host can open ANY installed authorized player manually.
