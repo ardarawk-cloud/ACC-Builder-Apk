@@ -308,7 +308,8 @@ public final class GameCaptureService extends Service {
       report("starting","Menghubungkan GAME LIVE...","");
       holdCaptureCpu();
       initCapture(grant);
-      showGameFloatingControl();
+      // Overlay is shown by MainActivity.onPause AFTER leaving NADMO for game.
+      // Never offer RESUME over the broadcaster's own account/settings screen.
       watchNetwork();
       startSocketWatchdog();
       // Never publish a room before MediaProjection delivers actual video frames.
@@ -382,10 +383,13 @@ public final class GameCaptureService extends Service {
     PendingIntent go=PendingIntent.getActivity(this,0,open,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
     Intent stop=new Intent(this,GameCaptureService.class).setAction(ACTION_STOP);
     PendingIntent cancel=PendingIntent.getService(this,1,stop,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+    Intent pauseIntent=new Intent(this,GameCaptureService.class).setAction(ACTION_PAUSE);
+    PendingIntent pauseSafe=PendingIntent.getService(this,2,pauseIntent,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
     Notification.Builder b=Build.VERSION.SDK_INT>=26?new Notification.Builder(this,CHANNEL):new Notification.Builder(this);
     return b.setSmallIcon(android.R.drawable.presence_video_online)
       .setContentTitle("NADMO / GAME LIVE").setContentText(text)
       .setContentIntent(go).setOngoing(ongoing).setOnlyAlertOnce(true)
+      .addAction(android.R.drawable.ic_media_pause,"JEDA AMAN",pauseSafe)
       .addAction(android.R.drawable.ic_menu_close_clear_cancel,"AKHIRI LIVE",cancel).build();
   }
 
