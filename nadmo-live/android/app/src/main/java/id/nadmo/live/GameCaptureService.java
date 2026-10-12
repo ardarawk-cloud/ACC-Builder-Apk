@@ -472,6 +472,9 @@ public final class GameCaptureService extends Service {
 
   private void setPrivacyPaused(boolean paused){
     if(!started||stopping)return;
+    // A repeated PAUSE from a foreground Activity is an idempotent command.
+    // Do not generate another status broadcast and recurse across processes.
+    if(privacyPaused==paused){updateGameFloatingControl();return;}
     privacyPaused=paused; // FIRST, before launching another Activity or touching UI.
     if(micTrack!=null)micTrack.setEnabled(!paused);
     if(faceTrack!=null)faceTrack.setEnabled(!paused);
