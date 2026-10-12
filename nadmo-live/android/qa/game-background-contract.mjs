@@ -35,6 +35,13 @@ assert.match(service,/disconnectStaleSocket\("Server tidak mengirim heartbeat"\)
 assert.doesNotMatch(service,/if\(socket!=null\)disconnectStaleSocket\(diagnostic\)/,'Network handover must never kill healthy GAME socket');
 assert.match(service,/DIAG_ARMED/);
 assert.match(service,/Layanan GAME|SERVICE_INTERRUPTED/);
+assert.match(service,/getHistoricalProcessExitReasons\(getPackageName\(\),0,12\)/,'Must inspect actual Android service-process exit, not guess from flag');
+assert.match(service,/REASON_LOW_MEMORY/,'Report low memory distinctly');
+assert.match(service,/REASON_CRASH_NATIVE/,'Report WebRTC/native crash distinctly');
+assert.match(service,/REASON_CRASH/,'Report Java crash distinctly');
+assert.match(service,/REASON_ANR/,'Report nonresponsive service distinctly');
+assert.match(service,/capture_started_at/,'Do not conflate old stale process-exit events with a new GAME session');
+assert.doesNotMatch(service,/SERVICE_INTERRUPTED: proses siaran GAME berhenti mendadak saat aplikasi lain dibuka/,'Do not claim unverified app switch caused a process death');
 assert.match(service,/rememberFailure\("PROJECTION_STOP/);
 assert.match(service,/WS_CLOSE_/);
 assert.match(service,/diagnosticPrefs\(\)\.edit\(\)\.putBoolean\(DIAG_ARMED,false\)\.commit\(\)/);
