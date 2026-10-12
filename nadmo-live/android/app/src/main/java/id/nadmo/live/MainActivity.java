@@ -406,7 +406,7 @@ public final class MainActivity extends Activity {
     String payload="{state:"+JSONObject.quote(state==null?"":state)+",message:"+
       JSONObject.quote(message==null?"":message)+",room:"+JSONObject.quote(room==null?"":room)+
       ",chatNotificationsEnabled:"+chatNotificationsEnabled()+",chatOverlayEnabled:"+Settings.canDrawOverlays(this)+
-      ",startedAt:"+gameLiveStartedAt+",broadcastKind:"+JSONObject.quote(gameBroadcastKind)+"}";
+      ",startedAt:"+gameLiveStartedAt+",broadcastKind:"+JSONObject.quote(gameBroadcastKind)+",radioMusicSupported:true}";
     web.evaluateJavascript("window.dispatchEvent(new CustomEvent('nadmo-game-status',{detail:"+payload+"}));",null);
   }
   private void grantMedia(){
