@@ -9,6 +9,16 @@ assert.match(manifest,/android:foregroundServiceType="mediaProjection\|microphon
 assert.match(service,/static final String ACTION_QUERY=/);
 assert.match(service,/if\(ACTION_QUERY\.equals\(intent\.getAction\(\)\)\)/);
 assert.match(service,/sendBroadcast\(event\)/);
+// Real regression: STARTING broadcasts previously triggered ACTION_PAUSE,
+// which rebroadcast STARTING across :game and Activity without end.
+assert.match(main,/if\(activityVisible\s*&&\s*"live"\.equals\(next\)\)/,
+  'Only a truly transmitting live state can trigger a foreground security pause');
+assert.doesNotMatch(main,/activityVisible\s*&&\s*\("live"\.equals\(next\)\|\|"reconnecting"/,
+  'Never feed RECONNECTING back into PAUSE -> RECONNECTING loop');
+assert.doesNotMatch(main,/activityVisible\s*&&\s*\("live"\.equals\(next\)\|\|"starting"/,
+  'Never feed STARTING back into PAUSE -> STARTING loop');
+assert.match(service,/if\(privacyPaused==paused\)\{updateGameFloatingControl\(\);return;\}/,
+  'Repeated Android PAUSE must be idempotent, without sending more status broadcasts');
 assert.match(main,/private String gameLiveState="stopped"/);
 assert.match(main,/requestGameStatus\(\)/);
 assert.match(main,/@Override protected void onResume\(\)/);
