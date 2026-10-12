@@ -1,12 +1,5 @@
 name: NADMO LIVE v0.10.14 RADIO beta signed APK
 on:
-  push:
-    branches:
-      - 'feat/nadmo-radio-open-music-camera-stage-20261012'
-    paths:
-      - '.github/workflows/nadmo-live-0114-radio-signed-beta.yml'
-      - 'nadmo-live/android/qa/game-floating-privacy-contract.mjs'
-      - 'nadmo-live/android/qa/offgrid-local-contract.mjs'
   workflow_dispatch:
 permissions:
   contents: write
