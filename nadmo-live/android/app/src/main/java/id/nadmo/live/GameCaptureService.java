@@ -578,7 +578,7 @@ public final class GameCaptureService extends Service {
           }
           setPrivacyPaused(false);
         }else setPrivacyPaused(true);
-        menu.setVisibility(View.GONE);
+        menu.setVisibility(privacyPaused?View.VISIBLE:View.GONE); // one-tap RESUME is visible when entering the game
       });
       back.setOnClickListener(v->{
         setPrivacyPaused(true); // shield BEFORE starting NADMO Activity
