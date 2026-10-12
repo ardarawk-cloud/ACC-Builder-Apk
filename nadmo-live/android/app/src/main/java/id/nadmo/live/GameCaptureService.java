@@ -282,7 +282,7 @@ public final class GameCaptureService extends Service {
     }
     if(!ACTION_START.equals(intent.getAction())||started)return START_NOT_STICKY;
     stopping=false;started=true;privacyPaused=true;
-    liveCreatedAt=System.currentTimeMillis();lastRestReminderHour=0;
+    liveCreatedAt=0L;lastRestReminderHour=0;
     diagnosticPrefs().edit().putBoolean(DIAG_ARMED,true)
       .putString(DIAG_LAST,"GAME LIVE mulai; menunggu perekaman layar.").commit();
     title=limit(intent.getStringExtra(EXTRA_TITLE),60,"NADMO GAME LIVE");
@@ -318,6 +318,11 @@ public final class GameCaptureService extends Service {
       report("starting","Menghubungkan GAME LIVE...","");
       holdCaptureCpu();
       initCapture(grant);
+      // Opening signaling cannot depend on the Android capture callback.
+      // Certain device/WebRTC versions never deliver onCapturerStarted to this observer,
+      // leaving GAME/RADIO forever in MENYAMBUNG even though MediaProjection is valid.
+      // Frame safety is independently enforced by the first-frame timeout below.
+      connectWhenCaptureStarted();
       // Overlay is shown by MainActivity.onPause AFTER leaving NADMO for game.
       // Never offer RESUME over the broadcaster's own account/settings screen.
       watchNetwork();
@@ -489,7 +494,7 @@ public final class GameCaptureService extends Service {
   }
   private void updateGameFloatingControl(){
     if(gameFloatingBubble!=null)gameFloatingBubble.setText(
-      (!webSocketOpen?"N/ LINK ":privacyPaused?"N/ JEDA ":"N/ LIVE ")+formatDuration(System.currentTimeMillis()-liveCreatedAt));
+      (roomId.isEmpty()?"N/ LINK ":privacyPaused?"N/ JEDA ":"N/ LIVE ")+formatDuration(liveCreatedAt>0?System.currentTimeMillis()-liveCreatedAt:0L));
     if(gameFloatingPause!=null)gameFloatingPause.setText(privacyPaused?(radioMode?"▶ RESUME RADIO":"▶ RESUME GAME"):"Ⅱ JEDA SIARAN");
   }
   private void hideGameFloatingControl(){
@@ -878,8 +883,7 @@ public final class GameCaptureService extends Service {
         roomId=m.optString("id",roomId);
         // The server's original creation time survives temporary disconnect.
         long serverStart=m.optLong("createdAt",0L),localNow=System.currentTimeMillis();
-        if(serverStart>1600000000000L&&serverStart<=localNow+60000L)
-          liveCreatedAt=serverStart;
+        liveCreatedAt=serverStart>1600000000000L&&serverStart<=localNow+60000L?serverStart:localNow;
         hostSocketId=m.optString("selfId",hostSocketId);
         if("created".equals(type))resumeToken=m.optString("resumeToken","");
         reconnectAttempt=0;offlineSince=0;
