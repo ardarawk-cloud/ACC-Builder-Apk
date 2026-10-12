@@ -27,4 +27,5 @@ assert.match(service,/if\(started&&!stopping&&ws==socket&&roomId\.isEmpty\(\)&&w
 assert.match(service,/stopGame\("ROOM_ACK_TIMEOUT"\)/);
 assert.match(service,/liveCreatedAt=0L;lastRestReminderHour=0;/);
 assert.match(service,/liveCreatedAt=serverStart>1600000000000L/);
+assert.match(activity,/if\(activityVisible&&"starting"\.equals\(gameLiveState\)\)requestGameStatus\(\)/);
 console.log('Radio, private screen, native room ACK bound and pre-ACK timer gating PASS');
