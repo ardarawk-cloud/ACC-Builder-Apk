@@ -106,6 +106,7 @@ public final class GameCaptureService extends Service {
   static final String EXTRA_RESULT="result";
   static final String EXTRA_TITLE="title";
   static final String EXTRA_GAME="game";
+   static final String EXTRA_BROADCAST_KIND="broadcastKind";
   static final String EXTRA_QUALITY="quality";
   static final String EXTRA_FACE="face";
   static final String EXTRA_COOKIE="cookie";
@@ -168,7 +169,7 @@ public final class GameCaptureService extends Service {
   private GameAudioRelay gameAudio;
   private String roomId="",resumeToken="",title="",game="",cookie="";
   private JSONObject faceLayout=null;
-  private boolean stopping=false,started=false,wantFace=false,webSocketOpen=false;
+  private boolean stopping=false,started=false,wantFace=false,webSocketOpen=false,radioMode=false;
   private long offlineSince=0L;
   private int reconnectAttempt=0;
   private Runnable retryTask;
@@ -251,7 +252,8 @@ public final class GameCaptureService extends Service {
       event.putExtra("state",started?state:"stopped")
         .putExtra("message",started?status:lastFailure())
         .putExtra("room",started?activeRoom:"")
-        .putExtra("startedAt",started?liveCreatedAt:0L);
+        .putExtra("startedAt",started?liveCreatedAt:0L)
+         .putExtra("broadcastKind",radioMode?"radio":"gaming");
       sendBroadcast(event);
       if(!started)stopSelf(startId);
       return START_NOT_STICKY;
@@ -284,7 +286,8 @@ public final class GameCaptureService extends Service {
     diagnosticPrefs().edit().putBoolean(DIAG_ARMED,true)
       .putString(DIAG_LAST,"GAME LIVE mulai; menunggu perekaman layar.").commit();
     title=limit(intent.getStringExtra(EXTRA_TITLE),60,"NADMO GAME LIVE");
-    game=limit(intent.getStringExtra(EXTRA_GAME),35,"Gaming");
+    radioMode="radio".equals(intent.getStringExtra(EXTRA_BROADCAST_KIND));
+     game=radioMode?"NADMO RADIO":limit(intent.getStringExtra(EXTRA_GAME),35,"Gaming");
     String quality=intent.getStringExtra(EXTRA_QUALITY);
     if("low".equals(quality)){
       activeVideoMaxEdge=640;activeVideoFps=15;activeVideoBitrateBps=420000;activeTotalUploadBps=1100000;
@@ -690,7 +693,8 @@ public final class GameCaptureService extends Service {
   private void report(String next,String message,String room){
     state=next;status=message;if(room!=null&&!room.isEmpty())activeRoom=room;
     Intent event=new Intent(ACTION_STATUS).setPackage(getPackageName());
-    event.putExtra("state",next).putExtra("message",message).putExtra("room",room).putExtra("startedAt",liveCreatedAt);
+    event.putExtra("state",next).putExtra("message",message).putExtra("room",room).putExtra("startedAt",liveCreatedAt)
+       .putExtra("broadcastKind",radioMode?"radio":"gaming");
     sendBroadcast(event);
     if(started&&!stopping)updateNotification(message);
   }
@@ -730,7 +734,11 @@ public final class GameCaptureService extends Service {
       @Override public void onCapturerStarted(boolean success){transport.onCapturerStarted(success);}
       @Override public void onCapturerStopped(){transport.onCapturerStopped();}
       @Override public void onFrameCaptured(VideoFrame captured){
-        if(!privacyPaused){transport.onFrameCaptured(captured);return;}
+        if(!privacyPaused&&!radioMode){transport.onFrameCaptured(captured);return;}
+         // RADIO ALWAYS outputs an opaque synthetic frame. Never leak music app
+         // pixels, notifications, messages, credentials or any phone screen.
+         // MediaProjection is only retained as Android audio-playback-capture
+         // authorization; protected apps can refuse audio capture.
         VideoFrame safe=blackPrivacyFrame(captured);
         try{transport.onFrameCaptured(safe);}
         finally{safe.release();}
@@ -816,7 +824,7 @@ public final class GameCaptureService extends Service {
             if(resume&&roomId.length()>0&&resumeToken.length()>0)
               send(new JSONObjectSafe().put("type","resume").put("id",roomId).put("token",resumeToken).json());
             else send(new JSONObjectSafe().put("type","create").put("title",title)
-              .put("category","Gaming").put("mode","public").put("hostName","Host").put("facecam",faceLayout).json());
+              .put("category",radioMode?"DJ & Music":"Gaming").put("broadcastKind",radioMode?"radio":"gaming").put("mode","public").put("hostName","Host").put("facecam",faceLayout).json());
           });
         }
         @Override public void onMessage(WebSocket ws,String body){main.post(()->{
@@ -863,9 +871,10 @@ public final class GameCaptureService extends Service {
         hostSocketId=m.optString("selfId",hostSocketId);
         if("created".equals(type))resumeToken=m.optString("resumeToken","");
         reconnectAttempt=0;offlineSince=0;
-        String message="GAME LIVE aktif · "+game+" · mic"+(faceTrack!=null?" · facecam":"");
+        String message=radioMode?"RADIO LIVE aktif · audio aplikasi hanya bila Android & pemutar mengizinkan · MIC":
+           "GAME LIVE aktif · "+game+" · mic"+(faceTrack!=null?" · facecam":"");
         report(privacyPaused?"paused":"live",
-          privacyPaused?"GAME siap — buka game, lalu tekan tombol melayang RESUME.":message,roomId);
+          privacyPaused?(radioMode?"RADIO siap — OPEN MUSIC, tekan RESUME pada tombol melayang. Layar aplikasi tidak ditampilkan.":"GAME siap — buka game, lalu tekan tombol melayang RESUME."):message,roomId);
         updateGameFloatingControl();checkHourlyRestReminder();
         if("resumed".equals(type)){
           clearViewers();
@@ -1088,7 +1097,7 @@ public final class GameCaptureService extends Service {
     if(factory!=null)factory.dispose();
     if(egl!=null)egl.release();
     if(client!=null){client.dispatcher().executorService().shutdown();client.connectionPool().evictAll();}
-    cookie="";roomId="";resumeToken="";started=false;activeRoom="";faceLayout=null;
+    cookie="";roomId="";resumeToken="";started=false;activeRoom="";faceLayout=null;radioMode=false;
     liveCreatedAt=0L;lastRestReminderHour=0;
     signalingStarted=false;firstFrameReceived.set(false);lastCapturedFrameAt=0;
     hostSocketId="";
