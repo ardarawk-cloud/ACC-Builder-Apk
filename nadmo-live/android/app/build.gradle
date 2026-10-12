@@ -6,8 +6,8 @@ android {
     applicationId 'id.nadmo.live'
     minSdk 26
     targetSdk 35
-    versionCode 34
-    versionName '0.10.15-beta'
+    versionCode 35
+    versionName '0.10.16-beta'
   }
   signingConfigs {
     release {
