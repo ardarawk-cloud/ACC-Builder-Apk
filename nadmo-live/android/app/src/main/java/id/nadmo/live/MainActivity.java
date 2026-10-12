@@ -67,7 +67,7 @@ public final class MainActivity extends Activity {
         // NEVER issue PAUSE for STARTING/RECONNECTING status broadcasts:
         // the service would re-report STARTING/RECONNECTING while already
         // privacy-paused, causing a cross-process status/PAUSE feedback loop.
-        if(activityVisible && "live".equals(next)){
+        if(LiveStatusPolicy.shouldEnforceForegroundPrivacy(activityVisible,next)){
           try{startService(new Intent(MainActivity.this,GameCaptureService.class).setAction(GameCaptureService.ACTION_PAUSE));}
           catch(Exception ignored){}
         }
