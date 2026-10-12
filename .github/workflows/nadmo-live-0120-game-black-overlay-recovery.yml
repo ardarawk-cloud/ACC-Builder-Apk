@@ -2,7 +2,9 @@ name: NADMO LIVE v0.10.20 remove black GAME floating HUD rectangle
 on:
   push:
     branches: ['feat/nadmo-radio-open-music-camera-stage-20261012']
-    paths: ['.github/workflows/nadmo-live-0120-game-black-overlay-recovery.yml']
+    paths:
+      - '.github/workflows/nadmo-live-0120-game-black-overlay-recovery.yml'
+      - 'nadmo-live/android/qa/game-floating-privacy-contract.mjs'
   workflow_dispatch:
 permissions:
   contents: write
