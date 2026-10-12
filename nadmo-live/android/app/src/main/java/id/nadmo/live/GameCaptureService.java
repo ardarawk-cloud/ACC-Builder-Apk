@@ -490,7 +490,7 @@ public final class GameCaptureService extends Service {
   private void updateGameFloatingControl(){
     if(gameFloatingBubble!=null)gameFloatingBubble.setText(
       (!webSocketOpen?"N/ LINK ":privacyPaused?"N/ JEDA ":"N/ LIVE ")+formatDuration(System.currentTimeMillis()-liveCreatedAt));
-    if(gameFloatingPause!=null)gameFloatingPause.setText(privacyPaused?"▶ RESUME GAME":"Ⅱ JEDA SIARAN");
+    if(gameFloatingPause!=null)gameFloatingPause.setText(privacyPaused?(radioMode?"▶ RESUME RADIO":"▶ RESUME GAME"):"Ⅱ JEDA SIARAN");
   }
   private void hideGameFloatingControl(){
     if(gameFloatingWindow!=null&&gameFloatingRoot!=null)
@@ -512,7 +512,7 @@ public final class GameCaptureService extends Service {
       bubble.setTextColor(0xFFE0FF76);
       LinearLayout menu=new LinearLayout(this);menu.setOrientation(LinearLayout.VERTICAL);
       menu.setVisibility(View.GONE);
-      TextView pause=floatingButton("▶ RESUME GAME");
+      TextView pause=floatingButton(radioMode?"▶ RESUME RADIO":"▶ RESUME GAME");
       TextView back=floatingButton("⌂ BUKA NADMO");
       TextView end=floatingButton("× AKHIRI LIVE");
       LinearLayout.LayoutParams item=new LinearLayout.LayoutParams(dp(156),dp(43));
@@ -698,6 +698,18 @@ public final class GameCaptureService extends Service {
     sendBroadcast(event);
     if(started&&!stopping)updateNotification(message);
   }
+  // Start signaling once Android confirms capture initialization. Wait for real
+  // frames separately with the 15s fail-closed timeout. Android WebRTC may defer
+  // VideoTrack sinks until a PeerConnection exists: waiting on that sink before
+  // opening the signaling socket can deadlock GAME and RADIO at STARTING.
+  private void connectWhenCaptureStarted(){
+    main.post(()->{
+      if(stopping||signalingStarted)return;
+      signalingStarted=true;
+      report("starting",radioMode?"RADIO menyambung...":"GAME menyambung...","");
+      connectSignaling(false);
+    });
+  }
   private void initCapture(Intent permissionData){
     PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(this)
       .setEnableInternalTracer(false).createInitializationOptions());
@@ -712,11 +724,7 @@ public final class GameCaptureService extends Service {
     screenTrack.addSink(frame->{
       lastCapturedFrameAt=android.os.SystemClock.elapsedRealtime();
       if(firstFrameReceived.compareAndSet(false,true))main.post(()->{
-        if(stopping||signalingStarted)return;
-        signalingStarted=true;
         if(firstFrameTimeout!=null)main.removeCallbacks(firstFrameTimeout);
-        report("starting","Layar game tertangkap. Menyambungkan penonton...","");
-        connectSignaling(false);
       });
     });
     screenHelper=SurfaceTextureHelper.create("NadmoScreenCapture",egl.getEglBaseContext());
@@ -731,7 +739,11 @@ public final class GameCaptureService extends Service {
     });
     final CapturerObserver transport=screenSource.getCapturerObserver();
     screenCapturer.initialize(screenHelper,this,new CapturerObserver(){
-      @Override public void onCapturerStarted(boolean success){transport.onCapturerStarted(success);}
+      @Override public void onCapturerStarted(boolean success){
+        transport.onCapturerStarted(success);
+        if(success)connectWhenCaptureStarted();
+        else main.post(()->{if(!stopping)stopGame("CAPTURE_START_FAILED");});
+       }
       @Override public void onCapturerStopped(){transport.onCapturerStopped();}
       @Override public void onFrameCaptured(VideoFrame captured){
         if(!privacyPaused&&!radioMode){transport.onFrameCaptured(captured);return;}
