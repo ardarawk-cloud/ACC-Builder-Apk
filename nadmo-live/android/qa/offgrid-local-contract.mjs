@@ -20,7 +20,7 @@ assert.ok(activity.includes('FALLBACK_URL="https://appassets.androidplatform.net
 assert.ok(activity.includes('if(req.isForMainFrame() && LIVE_HOST.equalsIgnoreCase(req.getUrl().getHost()))'),'online error triggers local fallback');
 assert.ok(activity.includes('view.loadUrl(FALLBACK_URL)'),'local fallback activates during outage');
 assert.match(gradle,/versionCode\s+30/);
-assert.match(gradle,/versionName\s+'0\.10\.10-beta'/);
+assert.match(gradle,/versionName\s+'0\.10\.11-beta'/);
 const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 assert.ok(scripts.length>=1);
 for(const block of scripts)new Function(block[1]);
