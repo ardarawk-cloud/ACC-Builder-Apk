@@ -28,4 +28,16 @@ assert.match(service,/stopGame\("ROOM_ACK_TIMEOUT"\)/);
 assert.match(service,/liveCreatedAt=0L;lastRestReminderHour=0;/);
 assert.match(service,/liveCreatedAt=serverStart>1600000000000L/);
 assert.match(activity,/if\(activityVisible&&"starting"\.equals\(gameLiveState\)\)requestGameStatus\(\)/);
-console.log('Radio, private screen, native room ACK bound and pre-ACK timer gating PASS');
+// Regression observed on Android when tapping BUKA GAME:
+// opening a heavy game can delay the first frame or trigger a transient
+// default-network callback. Neither event may disconnect an acknowledged room.
+assert.match(service,/Default network changed; awaiting actual socket failure or heartbeat timeout/);
+assert.doesNotMatch(service,/if\(socket!=null\)disconnectStaleSocket\(diagnostic\)/);
+assert.match(service,/PROJECTION_FRAME_DELAY/);
+assert.doesNotMatch(service,/stopGame\("PROJECTION_NO_FRAME/);
+assert.match(service,/if\(!roomId\.isEmpty\(\)\)updateNotification\("LIVE terhubung/);
+assert.match(activity,/private boolean ensureGameFloatingControls\(\)/);
+assert.match(activity,/Settings\.ACTION_MANAGE_OVERLAY_PERMISSION/);
+assert.match(activity,/private void launchGame\(\)[\s\S]{0,400}if\(!ensureGameFloatingControls\(\)\)return;/);
+assert.match(activity,/private void launchMusic\(\)[\s\S]{0,400}if\(!ensureGameFloatingControls\(\)\)return;/);
+console.log('GAME app-switch nonfatal capture/network regression, RADIO and secure RESUME permission PASS');
