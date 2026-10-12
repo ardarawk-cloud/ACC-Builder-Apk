@@ -224,9 +224,12 @@ public final class GameCaptureService extends Service {
         boolean switched=networkLost||(activeNetwork!=null&&!activeNetwork.equals(network));
         activeNetwork=network;networkLost=false;
         if(switched){
+          // Handover notifications can fire during app/game launch without
+          // any actual socket failure. Reconnect only if transport fails or
+          // the heartbeat watchdog confirms a stalled connection.
           diagnostic="NETWORK_SWITCH";
-          rememberFailure("NETWORK_SWITCH: koneksi HP berubah saat GAME berjalan");
-          if(socket!=null)disconnectStaleSocket(diagnostic);
+          Log.i(TAG,"Default network changed; preserving any healthy signaling socket");
+          if(!webSocketOpen&&socket==null)lostConnection();
         }
       });}
       @Override public void onLost(Network network){main.post(()->{
@@ -327,12 +330,15 @@ public final class GameCaptureService extends Service {
       // Never offer RESUME over the broadcaster's own account/settings screen.
       watchNetwork();
       startSocketWatchdog();
-      // Never publish a room before MediaProjection delivers actual video frames.
+      // Delayed first frame is not evidence that screen sharing was revoked:
+      // opening a heavy game can stall Android's video pipeline temporarily.
+      // Keep the acknowledged room alive so WebRTC may recover once frames
+      // arrive. A genuinely revoked capture still ends via onStop callback.
       firstFrameTimeout=()->{
         if(!firstFrameReceived.get()&&!stopping){
-          Log.e(TAG,"MediaProjection produced no frame in 15s");
-          rememberFailure("PROJECTION_NO_FRAME");
-          stopGame("PROJECTION_NO_FRAME: Android tidak mengirim video awal.");
+          Log.w(TAG,"First video frame delayed; retaining room and private media track");
+          rememberFailure("PROJECTION_FRAME_DELAY");
+          if(!roomId.isEmpty())updateNotification("LIVE terhubung — menunggu gambar game");
         }
       };
       main.postDelayed(firstFrameTimeout,15000);
