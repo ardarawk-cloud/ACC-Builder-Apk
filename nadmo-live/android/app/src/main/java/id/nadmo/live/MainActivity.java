@@ -63,7 +63,11 @@ public final class MainActivity extends Activity {
         String next=intent.getStringExtra("state");
         // Covers process recreation while GAME is still capturing in :game.
         // Fail closed even if this Activity forgot its previous native state.
-        if(activityVisible && ("live".equals(next)||"reconnecting".equals(next)||"starting".equals(next))){
+        // A LIVE -> PAUSE transition is sufficient when NADMO is in front.
+        // NEVER issue PAUSE for STARTING/RECONNECTING status broadcasts:
+        // the service would re-report STARTING/RECONNECTING while already
+        // privacy-paused, causing a cross-process status/PAUSE feedback loop.
+        if(activityVisible && "live".equals(next)){
           try{startService(new Intent(MainActivity.this,GameCaptureService.class).setAction(GameCaptureService.ACTION_PAUSE));}
           catch(Exception ignored){}
         }
