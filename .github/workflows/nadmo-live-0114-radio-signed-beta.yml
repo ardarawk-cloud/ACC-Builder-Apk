@@ -5,6 +5,7 @@ on:
       - 'feat/nadmo-radio-open-music-camera-stage-20261012'
     paths:
       - '.github/workflows/nadmo-live-0114-radio-signed-beta.yml'
+      - 'nadmo-live/android/qa/game-floating-privacy-contract.mjs'
   workflow_dispatch:
 permissions:
   contents: write
