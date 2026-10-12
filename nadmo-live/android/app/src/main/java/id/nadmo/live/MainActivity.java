@@ -45,7 +45,7 @@ public final class MainActivity extends Activity {
   private static final int ASK_SCREEN_CAPTURE=45;
   private static final int ASK_CHAT_NOTIFICATIONS=46;
   private boolean askedChatNotifications=false;
-  private String gameTitle="",gameName="",gameQuality="stable";
+  private String gameTitle="",gameName="",gameQuality="stable",gameBroadcastKind="gaming";
   private boolean gameFace=false;
   private String gameFaceLayout="";
   private boolean gameReceiverRegistered=false;
@@ -72,6 +72,8 @@ public final class MainActivity extends Activity {
           catch(Exception ignored){}
         }
         gameLiveStartedAt="stopped".equals(next)?0L:intent.getLongExtra("startedAt",gameLiveStartedAt);
+ String incomingKind=intent.getStringExtra("broadcastKind");
+ if("radio".equals(incomingKind)||"gaming".equals(incomingKind))gameBroadcastKind=incomingKind;
         notifyGameStatus(next,intent.getStringExtra("message"),intent.getStringExtra("room"));
       }
     }
@@ -135,6 +137,7 @@ public final class MainActivity extends Activity {
           if("start".equals(action))startGame(command);
           else if("stop".equals(action))stopGame();
           else if("launch".equals(action))launchGame();
+           else if("launch-music".equals(action))launchMusic();
           else if("status".equals(action))requestGameStatus();
           else if("chat-settings".equals(action))openGameChatSettings();
           else if("chat-overlay-settings".equals(action))openGameOverlaySettings();
@@ -277,8 +280,9 @@ public final class MainActivity extends Activity {
         "Room GAME masih aktif/menyambung. Jangan MULAI ulang. Buka GAME, lalu gunakan tombol melayang RESUME jika JEDA.",
         gameLiveRoom);return;
     }
-    gameTitle=command.optString("title","NADMO GAME LIVE");
-    gameName=command.optString("game","Gaming");
+    gameBroadcastKind="radio".equals(command.optString("broadcastKind"))?"radio":"gaming";
+     gameTitle=command.optString("title",gameBroadcastKind.equals("radio")?"NADMO RADIO LIVE":"NADMO GAME LIVE");
+    gameName=gameBroadcastKind.equals("radio")?"NADMO RADIO":command.optString("game","Gaming");
     gameQuality=command.optString("quality","stable");
     gameFace=command.optBoolean("face",false);
     gameFaceLayout=gameFace&&command.optJSONObject("facecam")!=null?command.optJSONObject("facecam").toString():"";
@@ -340,7 +344,31 @@ public final class MainActivity extends Activity {
     }
     Toast.makeText(this,"Buka game melalui layar utama HP. GAME LIVE tetap berjalan.",Toast.LENGTH_LONG).show();
   }
-  private boolean chatNotificationsEnabled(){
+  private void launchMusic(){
+     if(!"radio".equals(gameBroadcastKind)||!("live".equals(gameLiveState)||"paused".equals(gameLiveState))){
+       notifyGameStatus("error","Mulai RADIO LIVE dulu sebelum OPEN MUSIC.",gameLiveRoom);return;
+     }
+     // Never choose a music app on behalf of the creator or scrape installed app details.
+     // Android music app selector may have no matching apps. Home is a universal fallback
+     // where the host can open ANY installed authorized player manually.
+     try{
+       Intent selector=Intent.makeMainSelectorActivity(Intent.ACTION_MAIN,Intent.CATEGORY_APP_MUSIC);
+       selector.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+       if(selector.resolveActivity(getPackageManager())!=null){
+         startActivity(Intent.createChooser(selector,"OPEN MUSIC — pilih aplikasi musik"));
+         return;
+       }
+     }catch(Exception ignored){}
+     try{
+       Intent home=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+       startActivity(home);
+       Toast.makeText(this,"Pilih aplikasi musik di HP. Video layar pribadi tidak ikut disiarkan.",Toast.LENGTH_LONG).show();
+     }catch(Exception ignored){
+       notifyGameStatus(gameLiveState,"Tidak ada aplikasi musik yang dapat dibuka. Buka pemutar dari HP.",gameLiveRoom);
+     }
+   }
+   private boolean chatNotificationsEnabled(){
     if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return false;
     NotificationManager manager=getSystemService(NotificationManager.class);
     if(manager==null||!manager.areNotificationsEnabled())return false;
@@ -378,7 +406,7 @@ public final class MainActivity extends Activity {
     String payload="{state:"+JSONObject.quote(state==null?"":state)+",message:"+
       JSONObject.quote(message==null?"":message)+",room:"+JSONObject.quote(room==null?"":room)+
       ",chatNotificationsEnabled:"+chatNotificationsEnabled()+",chatOverlayEnabled:"+Settings.canDrawOverlays(this)+
-      ",startedAt:"+gameLiveStartedAt+"}";
+      ",startedAt:"+gameLiveStartedAt+",broadcastKind:"+JSONObject.quote(gameBroadcastKind)+"}";
     web.evaluateJavascript("window.dispatchEvent(new CustomEvent('nadmo-game-status',{detail:"+payload+"}));",null);
   }
   private void grantMedia(){
@@ -397,6 +425,7 @@ public final class MainActivity extends Activity {
         .putExtra(GameCaptureService.EXTRA_PROJECTION,data)
         .putExtra(GameCaptureService.EXTRA_TITLE,gameTitle)
         .putExtra(GameCaptureService.EXTRA_GAME,gameName)
+         .putExtra(GameCaptureService.EXTRA_BROADCAST_KIND,gameBroadcastKind)
         .putExtra(GameCaptureService.EXTRA_QUALITY,gameQuality)
         .putExtra(GameCaptureService.EXTRA_FACE,gameFace)
         .putExtra(GameCaptureService.EXTRA_FACE_LAYOUT,gameFaceLayout)
