@@ -38,6 +38,8 @@ final class GameAudioRelay {
   private AudioRecord record;
   private Thread reader;
   private volatile boolean running=false;
+  // Stop delivering GAME PCM at the same instant the video privacy shield engages.
+  private volatile boolean privacyPaused=true;
   private volatile boolean capturedSamples=false;
   private volatile long lastPacketAt=0L;
 
@@ -83,6 +85,7 @@ final class GameAudioRelay {
     if(old!=null){try{old.close();old.dispose();}catch(Exception ignored){}}
   }
   boolean isCapturing(){return running;}
+  void setPaused(boolean paused){privacyPaused=paused;}
   boolean receivedAudibleSamples(){return capturedSamples;}
   long lastPacketAt(){return lastPacketAt;}
 
@@ -100,6 +103,7 @@ final class GameAudioRelay {
           pos+=n;
         }
         if(!running||pos!=CAPTURE_FRAME_BYTES)break;
+        if(privacyPaused)continue; // Privacy first: no private app/game audio while paused.
         boolean audible=false;
         // 48 -> 24 kHz averaging adjacent samples, preserving signed PCM.
         for(int i=0;i<TRANSPORT_FRAME_BYTES/2;i++){
