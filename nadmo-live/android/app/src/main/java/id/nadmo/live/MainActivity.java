@@ -228,7 +228,26 @@ public final class MainActivity extends Activity {
   }
   @Override protected void onResume(){
     super.onResume();
+    // Always fail CLOSED before navigating Android menus, NADMO settings or
+    // other apps. The WebView can never reactivate GAME recording on its own.
+    if("live".equals(gameLiveState)||"paused".equals(gameLiveState)||
+       "reconnecting".equals(gameLiveState)||"starting".equals(gameLiveState)){
+      try{startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_PAUSE));}
+      catch(Exception ignored){}
+      try{startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_HIDE_FLOAT));}
+      catch(Exception ignored){}
+    }
     if(web!=null)requestGameStatus();
+  }
+  @Override protected void onPause(){
+    super.onPause();
+    // The screen broadcast runs in :game. Display its small control after
+    // the host leaves NADMO for a game; never auto-resume media.
+    if("live".equals(gameLiveState)||"paused".equals(gameLiveState)||
+       "reconnecting".equals(gameLiveState)||"starting".equals(gameLiveState)){
+      try{startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_SHOW_FLOAT));}
+      catch(Exception ignored){}
+    }
   }
   private void startGame(JSONObject command){
     if("live".equals(gameLiveState)||"starting".equals(gameLiveState)||"reconnecting".equals(gameLiveState)){
@@ -239,6 +258,11 @@ public final class MainActivity extends Activity {
     gameQuality=command.optString("quality","stable");
     gameFace=command.optBoolean("face",false);
     gameFaceLayout=gameFace&&command.optJSONObject("facecam")!=null?command.optJSONObject("facecam").toString():"";
+    if(!Settings.canDrawOverlays(this)){
+      notifyGameStatus("error","Aktifkan izin Tampilkan di atas aplikasi lain agar tombol melayang PAUSE tersedia. Setelah izin aktif, ketuk MULAI GAME lagi.","");
+      openGameOverlaySettings();
+      return;
+    }
     if(Build.VERSION.SDK_INT>=33&&!askedChatNotifications&&
        checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){
       askedChatNotifications=true;
@@ -273,7 +297,7 @@ public final class MainActivity extends Activity {
     startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_STOP));
   }
   private void launchGame(){
-    if(!"live".equals(gameLiveState)){
+    if(!"live".equals(gameLiveState)&&!"paused".equals(gameLiveState)){
       notifyGameStatus("error","Mulai GAME LIVE sebelum membuka permainan.","");return;
     }
     String[] packages;
@@ -302,7 +326,7 @@ public final class MainActivity extends Activity {
   }
   private void openGameOverlaySettings(){
     if(Settings.canDrawOverlays(this)){
-      notifyGameStatus(gameLiveState,"Chat melayang sudah diizinkan. Buka game untuk mencoba.",gameLiveRoom);
+      notifyGameStatus(gameLiveState,"Tombol jeda dan chat melayang sudah diizinkan.",gameLiveRoom);
       return;
     }
     try{
