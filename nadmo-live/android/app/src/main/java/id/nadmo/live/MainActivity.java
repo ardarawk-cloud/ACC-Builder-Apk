@@ -53,6 +53,7 @@ public final class MainActivity extends Activity {
   // GAME runs in a separate foreground process. Do not read its static fields:
   // those belong to a different VM after launching Mobile Legends.
   private String gameLiveState="stopped",gameLiveRoom="",gameLiveMessage="";
+  private long gameLiveStartedAt=0L;
   private final BroadcastReceiver gameStatusReceiver=new BroadcastReceiver(){
     @Override public void onReceive(Context context,Intent intent){
       if(GameCaptureService.ACTION_STATUS.equals(intent.getAction())){
@@ -67,6 +68,7 @@ public final class MainActivity extends Activity {
           try{startService(new Intent(MainActivity.this,GameCaptureService.class).setAction(GameCaptureService.ACTION_HIDE_FLOAT));}
           catch(Exception ignored){}
         }
+        gameLiveStartedAt="stopped".equals(next)?0L:intent.getLongExtra("startedAt",gameLiveStartedAt);
         notifyGameStatus(next,intent.getStringExtra("message"),intent.getStringExtra("room"));
       }
     }
@@ -366,7 +368,8 @@ public final class MainActivity extends Activity {
     if(web==null)return;
     String payload="{state:"+JSONObject.quote(state==null?"":state)+",message:"+
       JSONObject.quote(message==null?"":message)+",room:"+JSONObject.quote(room==null?"":room)+
-      ",chatNotificationsEnabled:"+chatNotificationsEnabled()+",chatOverlayEnabled:"+Settings.canDrawOverlays(this)+"}";
+      ",chatNotificationsEnabled:"+chatNotificationsEnabled()+",chatOverlayEnabled:"+Settings.canDrawOverlays(this)+
+      ",startedAt:"+gameLiveStartedAt+"}";
     web.evaluateJavascript("window.dispatchEvent(new CustomEvent('nadmo-game-status',{detail:"+payload+"}));",null);
   }
   private void grantMedia(){

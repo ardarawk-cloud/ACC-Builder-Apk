@@ -141,6 +141,11 @@ public final class GameCaptureService extends Service {
   private JavaI420Buffer privacyBlackBuffer=null;
   private String hostSocketId="";
   private static final String CHANNEL="nadmo_game_live";
+  private static final String REST_CHANNEL="nadmo_game_break_reminders";
+  private static final int REST_NOTIFICATION_ID=7710;
+  private static final long ONE_HOUR_MS=3600000L;
+  private long liveCreatedAt=0L;
+  private int lastRestReminderHour=0;
   private static final String TAG="NadmoGameLive";
   private final Handler main=new Handler(Looper.getMainLooper());
   private final Map<String,PeerConnection> viewers=new HashMap<>();
@@ -245,7 +250,8 @@ public final class GameCaptureService extends Service {
       Intent event=new Intent(ACTION_STATUS).setPackage(getPackageName());
       event.putExtra("state",started?state:"stopped")
         .putExtra("message",started?status:lastFailure())
-        .putExtra("room",started?activeRoom:"");
+        .putExtra("room",started?activeRoom:"")
+        .putExtra("startedAt",started?liveCreatedAt:0L);
       sendBroadcast(event);
       if(!started)stopSelf(startId);
       return START_NOT_STICKY;
@@ -274,6 +280,7 @@ public final class GameCaptureService extends Service {
     }
     if(!ACTION_START.equals(intent.getAction())||started)return START_NOT_STICKY;
     stopping=false;started=true;privacyPaused=true;
+    liveCreatedAt=System.currentTimeMillis();lastRestReminderHour=0;
     diagnosticPrefs().edit().putBoolean(DIAG_ARMED,true)
       .putString(DIAG_LAST,"GAME LIVE mulai; menunggu perekaman layar.").commit();
     title=limit(intent.getStringExtra(EXTRA_TITLE),60,"NADMO GAME LIVE");
@@ -345,6 +352,8 @@ public final class GameCaptureService extends Service {
         if(stopping)return;
         long now=android.os.SystemClock.elapsedRealtime();
         if(cpuWakeLock!=null&&!cpuWakeLock.isHeld())cpuWakeLock.acquire(180000);
+        updateGameFloatingControl();
+        checkHourlyRestReminder();
         if(webSocketOpen&&lastServerMessageAt>0&&now-lastServerMessageAt>SOCKET_STALE_MS){
           Log.w(TAG,"No server heartbeat for "+(now-lastServerMessageAt)+"ms; retrying signaling");
           disconnectStaleSocket("Server tidak mengirim heartbeat");
@@ -363,6 +372,38 @@ public final class GameCaptureService extends Service {
     if(old!=null)old.cancel();
     lostConnection();
   }
+  private static String formatDuration(long elapsedMs){
+    long sec=Math.max(0L,elapsedMs/1000L);
+    return String.format(java.util.Locale.ROOT,"%02d:%02d:%02d",sec/3600,(sec%3600)/60,sec%60);
+  }
+  // Reminder does not pause, disconnect, or alter the stream. Running in the
+  // foreground :game service means it still fires with a different game visible.
+  private void checkHourlyRestReminder(){
+    if(!started||stopping||roomId.isEmpty()||liveCreatedAt<=0L)return;
+    long elapsed=Math.max(0L,System.currentTimeMillis()-liveCreatedAt);
+    int hour=(int)Math.min(100000L,elapsed/ONE_HOUR_MS);
+    if(hour<=lastRestReminderHour||hour<1)return;
+    lastRestReminderHour=hour;
+    String message="Sudah LIVE "+hour+" jam. Istirahat sebentar bila perlu. Siaran tetap berjalan.";
+    try{
+      if(Settings.canDrawOverlays(this))showGameChatOverlay("NADMO / ISTIRAHAT",message);
+      if(Build.VERSION.SDK_INT<33||checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED){
+        NotificationManager nm=getSystemService(NotificationManager.class);
+        if(nm!=null&&nm.areNotificationsEnabled()){
+          Intent open=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
+          PendingIntent visit=PendingIntent.getActivity(this,7705,open,
+            PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+          Notification.Builder alert=new Notification.Builder(this,REST_CHANNEL)
+            .setSmallIcon(android.R.drawable.presence_video_online)
+            .setContentTitle("NADMO LIVE — PENGINGAT ISTIRAHAT")
+            .setContentText(message).setStyle(new Notification.BigTextStyle().bigText(message))
+            .setPriority(Notification.PRIORITY_HIGH).setCategory(Notification.CATEGORY_REMINDER)
+            .setVisibility(Notification.VISIBILITY_PRIVATE).setAutoCancel(true).setContentIntent(visit);
+          nm.notify(REST_NOTIFICATION_ID,alert.build());
+        }
+      }
+    }catch(Exception e){Log.w(TAG,"Cannot show LIVE hourly rest reminder",e);}
+  }
   private static String limit(String raw,int max,String fallback){
     if(raw==null)return fallback;
     raw=raw.trim();
@@ -377,6 +418,10 @@ public final class GameCaptureService extends Service {
     chatChannel.setDescription("Chat penonton muncul saat bermain. Jawab langsung lewat mikrofon LIVE.");
     chatChannel.enableVibration(true);
     manager.createNotificationChannel(chatChannel);
+    NotificationChannel rest=new NotificationChannel(REST_CHANNEL,"Pengingat istirahat LIVE",NotificationManager.IMPORTANCE_HIGH);
+    rest.setDescription("Pengingat tiap satu jam siaran, tanpa menghentikan siaran.");
+    rest.enableVibration(true);
+    manager.createNotificationChannel(rest);
   }
   private Notification notification(String text,boolean ongoing){
     Intent open=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -435,7 +480,8 @@ public final class GameCaptureService extends Service {
     return v;
   }
   private void updateGameFloatingControl(){
-    if(gameFloatingBubble!=null)gameFloatingBubble.setText(privacyPaused?"N/ JEDA":"N/ LIVE");
+    if(gameFloatingBubble!=null)gameFloatingBubble.setText(
+      (privacyPaused?"N/ JEDA ":"N/ LIVE ")+formatDuration(System.currentTimeMillis()-liveCreatedAt));
     if(gameFloatingPause!=null)gameFloatingPause.setText(privacyPaused?"▶ RESUME GAME":"Ⅱ JEDA SIARAN");
   }
   private void hideGameFloatingControl(){
@@ -466,7 +512,7 @@ public final class GameCaptureService extends Service {
       menu.addView(pause,new LinearLayout.LayoutParams(item));
       menu.addView(back,new LinearLayout.LayoutParams(item));
       menu.addView(end,new LinearLayout.LayoutParams(item));
-      column.addView(bubble,new LinearLayout.LayoutParams(dp(88),dp(46)));
+      column.addView(bubble,new LinearLayout.LayoutParams(dp(151),dp(46)));
       column.addView(menu);
       WindowManager.LayoutParams params=new WindowManager.LayoutParams(
         WindowManager.LayoutParams.WRAP_CONTENT,WindowManager.LayoutParams.WRAP_CONTENT,
@@ -636,7 +682,7 @@ public final class GameCaptureService extends Service {
   private void report(String next,String message,String room){
     state=next;status=message;if(room!=null&&!room.isEmpty())activeRoom=room;
     Intent event=new Intent(ACTION_STATUS).setPackage(getPackageName());
-    event.putExtra("state",next).putExtra("message",message).putExtra("room",room);
+    event.putExtra("state",next).putExtra("message",message).putExtra("room",room).putExtra("startedAt",liveCreatedAt);
     sendBroadcast(event);
     if(started&&!stopping)updateNotification(message);
   }
@@ -802,12 +848,17 @@ public final class GameCaptureService extends Service {
       JSONObject m=new JSONObject(raw);String type=m.optString("type","");
       if("created".equals(type)||"resumed".equals(type)){
         roomId=m.optString("id",roomId);
+        // The server's original creation time survives temporary disconnect.
+        long serverStart=m.optLong("createdAt",0L),localNow=System.currentTimeMillis();
+        if(serverStart>1600000000000L&&serverStart<=localNow+60000L)
+          liveCreatedAt=serverStart;
         hostSocketId=m.optString("selfId",hostSocketId);
         if("created".equals(type))resumeToken=m.optString("resumeToken","");
         reconnectAttempt=0;offlineSince=0;
         String message="GAME LIVE aktif · "+game+" · mic"+(faceTrack!=null?" · facecam":"");
         report(privacyPaused?"paused":"live",
           privacyPaused?"GAME siap — buka game, lalu tekan tombol melayang RESUME.":message,roomId);
+        updateGameFloatingControl();checkHourlyRestReminder();
         if("resumed".equals(type)){
           clearViewers();
           JSONArray ids=m.optJSONArray("viewers");
@@ -1030,6 +1081,7 @@ public final class GameCaptureService extends Service {
     if(egl!=null)egl.release();
     if(client!=null){client.dispatcher().executorService().shutdown();client.connectionPool().evictAll();}
     cookie="";roomId="";resumeToken="";started=false;activeRoom="";faceLayout=null;
+    liveCreatedAt=0L;lastRestReminderHour=0;
     signalingStarted=false;firstFrameReceived.set(false);lastCapturedFrameAt=0;
     hostSocketId="";
     try{
@@ -1038,6 +1090,7 @@ public final class GameCaptureService extends Service {
     }catch(Exception ignored){}
     shownChatNotifications.clear();
     hideGameChatOverlay();
+    try{NotificationManager nm=getSystemService(NotificationManager.class);if(nm!=null)nm.cancel(REST_NOTIFICATION_ID);}catch(Exception ignored){}
     state="stopped";status=reason;
     if("Siaran game diakhiri.".equals(reason))rememberFailure("LIVE_DIAKHIRI_HOST");
     else rememberFailure(reason);
