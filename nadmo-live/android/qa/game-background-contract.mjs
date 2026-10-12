@@ -11,8 +11,10 @@ assert.match(service,/if\(ACTION_QUERY\.equals\(intent\.getAction\(\)\)\)/);
 assert.match(service,/sendBroadcast\(event\)/);
 // Real regression: STARTING broadcasts previously triggered ACTION_PAUSE,
 // which rebroadcast STARTING across :game and Activity without end.
-assert.match(main,/if\(activityVisible\s*&&\s*"live"\.equals\(next\)\)/,
-  'Only a truly transmitting live state can trigger a foreground security pause');
+assert.match(main,/if\(LiveStatusPolicy\.shouldEnforceForegroundPrivacy\(activityVisible,next\)\)/,
+  'Native Activity uses tested foreground privacy policy instead of raw status branching');
+const policy=readFileSync(new URL('java/id/nadmo/live/LiveStatusPolicy.java',root),'utf8');
+assert.match(policy,/return activityVisible && "live"\.equals\(status\);/,'Only live stream can generate native foreground PAUSE');
 assert.doesNotMatch(main,/activityVisible\s*&&\s*\("live"\.equals\(next\)\|\|"reconnecting"/,
   'Never feed RECONNECTING back into PAUSE -> RECONNECTING loop');
 assert.doesNotMatch(main,/activityVisible\s*&&\s*\("live"\.equals\(next\)\|\|"starting"/,
