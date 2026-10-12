@@ -541,8 +541,10 @@ public final class GameCaptureService extends Service {
     return v;
   }
   private void updateGameFloatingControl(){
+    // Minimize captured HUD: the game viewers should see at most a small
+    // neutral NADMO control pill, never a large opaque privacy rectangle.
     if(gameFloatingBubble!=null)gameFloatingBubble.setText(
-      (roomId.isEmpty()?"N/ LINK ":privacyPaused?"N/ JEDA ":"N/ LIVE ")+formatDuration(liveCreatedAt>0?System.currentTimeMillis()-liveCreatedAt:0L));
+      roomId.isEmpty()?"N/ LINK":privacyPaused?"N/ JEDA":"N/ "+formatDuration(liveCreatedAt>0?System.currentTimeMillis()-liveCreatedAt:0L));
     if(gameFloatingPause!=null)gameFloatingPause.setText(privacyPaused?(radioMode?"▶ RESUME RADIO":"▶ RESUME GAME"):"Ⅱ JEDA SIARAN");
   }
   private void hideGameFloatingControl(){
@@ -563,6 +565,7 @@ public final class GameCaptureService extends Service {
       column.setPadding(dp(3),dp(3),dp(3),dp(3));
       TextView bubble=floatingButton("N/ JEDA");
       bubble.setTextColor(0xFFE0FF76);
+      bubble.setTextSize(10);
       LinearLayout menu=new LinearLayout(this);menu.setOrientation(LinearLayout.VERTICAL);
       menu.setVisibility(View.GONE);
       TextView pause=floatingButton(radioMode?"▶ RESUME RADIO":"▶ RESUME GAME");
@@ -573,13 +576,18 @@ public final class GameCaptureService extends Service {
       menu.addView(pause,new LinearLayout.LayoutParams(item));
       menu.addView(back,new LinearLayout.LayoutParams(item));
       menu.addView(end,new LinearLayout.LayoutParams(item));
-      column.addView(bubble,new LinearLayout.LayoutParams(dp(151),dp(46)));
+      column.addView(bubble,new LinearLayout.LayoutParams(dp(108),dp(39)));
       column.addView(menu);
       WindowManager.LayoutParams params=new WindowManager.LayoutParams(
         WindowManager.LayoutParams.WRAP_CONTENT,WindowManager.LayoutParams.WRAP_CONTENT,
         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+        // FLAG_SECURE does NOT reveal the game behind the floating bubble:
+        // MediaProjection replaces the entire overlay window with an opaque
+        // BLACK RECTANGLE. The only content here is a non-sensitive NADMO
+        // control / elapsed time; allow its small pill to be captured instead.
+        // IMPORTANT: screen privacy is still fail-closed at the WebRTC encoder
+        // via blackPrivacyFrame() and onActivityResume's pause gate.
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
-        WindowManager.LayoutParams.FLAG_SECURE |
         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
         PixelFormat.TRANSLUCENT);
       params.gravity=Gravity.TOP|Gravity.RIGHT;
