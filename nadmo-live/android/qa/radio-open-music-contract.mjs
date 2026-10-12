@@ -20,4 +20,11 @@ assert.match(service,/gameAudio\.setPaused\(paused\)/);
 assert.match(service,/EXTRA_PROJECTION/);
 assert.match(service,/\.putExtra\("broadcastKind",radioMode\?"radio":"gaming"\)/);
 assert.match(service,/radioMode=false;/);
-console.log('Radio OPEN MUSIC + private no-screen-leak native contract PASS');
+// P0 regression: observed phones were stuck in MENYAMBUNG for >30 seconds
+// with no room ACK. Capture video callback must NOT gate socket creation.
+assert.match(service,/initCapture\(grant\);[\s\S]{0,550}connectWhenCaptureStarted\(\);/);
+assert.match(service,/if\(started&&!stopping&&ws==socket&&roomId\.isEmpty\(\)&&webSocketOpen\)/);
+assert.match(service,/stopGame\("ROOM_ACK_TIMEOUT"\)/);
+assert.match(service,/liveCreatedAt=0L;lastRestReminderHour=0;/);
+assert.match(service,/liveCreatedAt=serverStart>1600000000000L/);
+console.log('Radio, private screen, native room ACK bound and pre-ACK timer gating PASS');
