@@ -50,6 +50,9 @@ public final class MainActivity extends Activity {
   private String gameFaceLayout="";
   private boolean gameReceiverRegistered=false;
   private boolean activityVisible=false;
+  // Consent dialog backgrounds this Activity before :game service exists.
+  // Never launch an empty overlay service or issue STOP/PAUSE out of order.
+  private boolean gameScreenConsentPending=false;
   // GAME runs in a separate foreground process. Do not read its static fields:
   // those belong to a different VM after launching Mobile Legends.
   private String gameLiveState="stopped",gameLiveRoom="",gameLiveMessage="";
@@ -245,8 +248,9 @@ public final class MainActivity extends Activity {
     activityVisible=true;
     // Always fail CLOSED before navigating Android menus, NADMO settings or
     // other apps. The WebView can never reactivate GAME recording on its own.
-    if("live".equals(gameLiveState)||"paused".equals(gameLiveState)||
-       "reconnecting".equals(gameLiveState)||"starting".equals(gameLiveState)){
+    if(!gameScreenConsentPending&&!gameLiveRoom.isEmpty()&&
+       ("live".equals(gameLiveState)||"paused".equals(gameLiveState)||
+       "reconnecting".equals(gameLiveState)||"starting".equals(gameLiveState))){
       try{startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_PAUSE));}
       catch(Exception ignored){}
       try{startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_HIDE_FLOAT));}
@@ -259,15 +263,19 @@ public final class MainActivity extends Activity {
     super.onPause();
     // The screen broadcast runs in :game. Display its small control after
     // the host leaves NADMO for a game; never auto-resume media.
-    if("live".equals(gameLiveState)||"paused".equals(gameLiveState)||
-       "reconnecting".equals(gameLiveState)||"starting".equals(gameLiveState)){
+    if(!gameScreenConsentPending&&!gameLiveRoom.isEmpty()&&
+       ("live".equals(gameLiveState)||"paused".equals(gameLiveState)||
+       "reconnecting".equals(gameLiveState))){
       try{startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_SHOW_FLOAT));}
       catch(Exception ignored){}
     }
   }
   private void startGame(JSONObject command){
-    if("live".equals(gameLiveState)||"starting".equals(gameLiveState)||"reconnecting".equals(gameLiveState)){
-      notifyGameStatus(gameLiveState,"GAME LIVE masih berjalan.",gameLiveRoom);return;
+    if("live".equals(gameLiveState)||"paused".equals(gameLiveState)||
+       "starting".equals(gameLiveState)||"reconnecting".equals(gameLiveState)){
+      notifyGameStatus(gameLiveState,
+        "Room GAME masih aktif/menyambung. Jangan MULAI ulang. Buka GAME, lalu gunakan tombol melayang RESUME jika JEDA.",
+        gameLiveRoom);return;
     }
     gameTitle=command.optString("title","NADMO GAME LIVE");
     gameName=command.optString("game","Gaming");
@@ -306,8 +314,9 @@ public final class MainActivity extends Activity {
       Intent capture=Build.VERSION.SDK_INT>=34
         ?manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
         :manager.createScreenCaptureIntent();
+      gameScreenConsentPending=true;
       startActivityForResult(capture,ASK_SCREEN_CAPTURE);
-    }catch(Exception e){notifyGameStatus("error","Gagal meminta izin rekam layar.","");}
+    }catch(Exception e){gameScreenConsentPending=false;notifyGameStatus("error","Gagal meminta izin rekam layar.","");}
   }
   private void stopGame(){
     startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_STOP));
@@ -381,6 +390,7 @@ public final class MainActivity extends Activity {
   @Override protected void onActivityResult(int request,int result,Intent data){
     super.onActivityResult(request,result,data);
     if(request==ASK_SCREEN_CAPTURE){
+      gameScreenConsentPending=false;
       if(result!=Activity.RESULT_OK||data==null){notifyGameStatus("error","Izin rekam layar dibatalkan.","");return;}
       Intent run=new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_START)
         .putExtra(GameCaptureService.EXTRA_RESULT,result)
