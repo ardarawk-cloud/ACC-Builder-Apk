@@ -1,6 +1,8 @@
 package id.nadmo.live;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.ApplicationExitInfo;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -212,8 +214,40 @@ public final class GameCaptureService extends Service {
   private String lastFailure(){
     SharedPreferences prefs=diagnosticPrefs();
     if(prefs.getBoolean(DIAG_ARMED,false))
-      return "SERVICE_INTERRUPTED: proses siaran GAME berhenti mendadak saat aplikasi lain dibuka.";
-    return prefs.getString(DIAG_LAST,"Belum ada catatan kesalahan GAME LIVE.");
+      return previousAndroidProcessExit(prefs);
+    return prefs.getString(DIAG_LAST,"Belum ada catatan kesalahan LIVE.");
+  }
+  // A prior unclean termination can be an Android low-memory kill, an
+  // uncaught Java/native crash or a user/system stop. The old generic
+  // SERVICE_INTERRUPTED message was NOT evidence of any particular cause.
+  // Query Android's own process-exit history, including the isolated :game
+  // process, without uploading logs or other private device information.
+  private String previousAndroidProcessExit(SharedPreferences prefs){
+    final String prefix="SERVICE_INTERRUPTED";
+    if(Build.VERSION.SDK_INT<30)return prefix+": proses LIVE berhenti. Alasan Android tidak tersedia.";
+    try{
+      ActivityManager manager=(ActivityManager)getSystemService(Context.ACTIVITY_SERVICE);
+      if(manager==null)return prefix+": proses LIVE berhenti. Diagnostik tidak tersedia.";
+      long since=prefs.getLong("capture_started_at",0L);
+      List<ApplicationExitInfo> history=manager.getHistoricalProcessExitReasons(getPackageName(),0,12);
+      if(history!=null)for(ApplicationExitInfo exit:history){
+        if(!(getPackageName()+":game").equals(exit.getProcessName()))continue;
+        if(since>0 && exit.getTimestamp()<since-30000L)continue;
+        int reason=exit.getReason();
+        if(reason==ApplicationExitInfo.REASON_LOW_MEMORY)
+          return prefix+": Android menghentikan proses LIVE karena kekurangan memori.";
+        if(reason==ApplicationExitInfo.REASON_CRASH)
+          return prefix+": proses LIVE crash (Java).";
+        if(reason==ApplicationExitInfo.REASON_CRASH_NATIVE)
+          return prefix+": proses LIVE crash (native/WebRTC).";
+        if(reason==ApplicationExitInfo.REASON_ANR)
+          return prefix+": proses LIVE tidak merespons (ANR).";
+        if(reason==ApplicationExitInfo.REASON_USER_REQUESTED)
+          return prefix+": proses LIVE dihentikan oleh Android/pengguna.";
+        return prefix+": proses LIVE berhenti (kode Android "+reason+").";
+      }
+    }catch(Exception error){Log.w(TAG,"Android process-exit history unavailable",error);}
+    return prefix+": proses LIVE berhenti, penyebabnya belum tercatat Android.";
   }
   private void watchNetwork(){
     connectivityManager=(ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -286,7 +320,8 @@ public final class GameCaptureService extends Service {
     stopping=false;started=true;privacyPaused=true;
     liveCreatedAt=0L;lastRestReminderHour=0;
     diagnosticPrefs().edit().putBoolean(DIAG_ARMED,true)
-      .putString(DIAG_LAST,"GAME LIVE mulai; menunggu perekaman layar.").commit();
+      .putLong("capture_started_at",System.currentTimeMillis())
+      .putString(DIAG_LAST,"LIVE mulai; menunggu perekaman layar.").commit();
     title=limit(intent.getStringExtra(EXTRA_TITLE),60,"NADMO GAME LIVE");
     radioMode="radio".equals(intent.getStringExtra(EXTRA_BROADCAST_KIND));
      game=radioMode?"NADMO RADIO":limit(intent.getStringExtra(EXTRA_GAME),35,"Gaming");
