@@ -49,13 +49,25 @@ public final class MainActivity extends Activity {
   private boolean gameFace=false;
   private String gameFaceLayout="";
   private boolean gameReceiverRegistered=false;
+  private boolean activityVisible=false;
   // GAME runs in a separate foreground process. Do not read its static fields:
   // those belong to a different VM after launching Mobile Legends.
   private String gameLiveState="stopped",gameLiveRoom="",gameLiveMessage="";
   private final BroadcastReceiver gameStatusReceiver=new BroadcastReceiver(){
     @Override public void onReceive(Context context,Intent intent){
       if(GameCaptureService.ACTION_STATUS.equals(intent.getAction())){
-        notifyGameStatus(intent.getStringExtra("state"),intent.getStringExtra("message"),intent.getStringExtra("room"));
+        String next=intent.getStringExtra("state");
+        // Covers process recreation while GAME is still capturing in :game.
+        // Fail closed even if this Activity forgot its previous native state.
+        if(activityVisible && ("live".equals(next)||"reconnecting".equals(next)||"starting".equals(next))){
+          try{startService(new Intent(MainActivity.this,GameCaptureService.class).setAction(GameCaptureService.ACTION_PAUSE));}
+          catch(Exception ignored){}
+        }
+        if(activityVisible && !"stopped".equals(next)){
+          try{startService(new Intent(MainActivity.this,GameCaptureService.class).setAction(GameCaptureService.ACTION_HIDE_FLOAT));}
+          catch(Exception ignored){}
+        }
+        notifyGameStatus(next,intent.getStringExtra("message"),intent.getStringExtra("room"));
       }
     }
   };
@@ -228,6 +240,7 @@ public final class MainActivity extends Activity {
   }
   @Override protected void onResume(){
     super.onResume();
+    activityVisible=true;
     // Always fail CLOSED before navigating Android menus, NADMO settings or
     // other apps. The WebView can never reactivate GAME recording on its own.
     if("live".equals(gameLiveState)||"paused".equals(gameLiveState)||
@@ -240,6 +253,7 @@ public final class MainActivity extends Activity {
     if(web!=null)requestGameStatus();
   }
   @Override protected void onPause(){
+    activityVisible=false;
     super.onPause();
     // The screen broadcast runs in :game. Display its small control after
     // the host leaves NADMO for a game; never auto-resume media.
