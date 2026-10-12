@@ -463,7 +463,12 @@ public final class GameCaptureService extends Service {
     if(micTrack!=null)micTrack.setEnabled(!paused);
     if(faceTrack!=null)faceTrack.setEnabled(!paused);
     if(gameAudio!=null)gameAudio.setPaused(paused);
-    report(paused?"paused":"live",
+    // Pause can be requested while Android is still granting the screen or
+    // the signaling socket is reconnecting. Never claim a LIVE room exists
+    // before server acknowledgement, or overwrite the connection error.
+    if(roomId.isEmpty())report("starting","Menyiapkan room GAME. Tunggu hingga server tersambung.",roomId);
+    else if(!webSocketOpen)report("reconnecting","Room GAME terputus, mencoba sambung lagi. Video tetap terlindungi.",roomId);
+    else report(paused?"paused":"live",
       paused?"SIARAN DIJEDA — penonton melihat layar hitam. Kembali ke game untuk RESUME.":
              "GAME LIVE berjalan — layar dan audio sedang disiarkan.",roomId);
     updateGameFloatingControl();
@@ -481,7 +486,7 @@ public final class GameCaptureService extends Service {
   }
   private void updateGameFloatingControl(){
     if(gameFloatingBubble!=null)gameFloatingBubble.setText(
-      (privacyPaused?"N/ JEDA ":"N/ LIVE ")+formatDuration(System.currentTimeMillis()-liveCreatedAt));
+      (!webSocketOpen?"N/ LINK ":privacyPaused?"N/ JEDA ":"N/ LIVE ")+formatDuration(System.currentTimeMillis()-liveCreatedAt));
     if(gameFloatingPause!=null)gameFloatingPause.setText(privacyPaused?"▶ RESUME GAME":"Ⅱ JEDA SIARAN");
   }
   private void hideGameFloatingControl(){
@@ -554,7 +559,10 @@ public final class GameCaptureService extends Service {
       });
       pause.setOnClickListener(v->{
         if(privacyPaused){
-          if(roomId.isEmpty()){android.widget.Toast.makeText(this,"Tunggu room GAME tersambung.",android.widget.Toast.LENGTH_SHORT).show();return;}
+          if(roomId.isEmpty()||!webSocketOpen){
+            android.widget.Toast.makeText(this,"GAME belum terhubung ke server. Tunggu sampai LINK pulih.",android.widget.Toast.LENGTH_LONG).show();
+            return;
+          }
           setPrivacyPaused(false);
         }else setPrivacyPaused(true);
         menu.setVisibility(View.GONE);
