@@ -36,6 +36,20 @@ const puppeteer=require('puppeteer-core');
   await page.$eval('#gameLaunchGame',el=>el.click());
   assert.ok(await page.evaluate(()=>window.__nativeCommands.some(c=>c.type==='launch')),
    'production UI must still send the native GAME launch command');
+  const pausedUi=await page.evaluate(()=>{
+   window.dispatchEvent(new CustomEvent('nadmo-game-status',{detail:{state:'paused',room:'synthetic-qa',
+    message:'SIARAN DIJEDA',chatNotificationsEnabled:true,chatOverlayEnabled:true}}));
+   return {screen:document.querySelector('#gameDeckScreen').textContent,
+    mic:document.querySelector('#gameDeckMic').textContent,
+    launch:document.querySelector('#gameLaunchGame').hidden,
+    stop:document.querySelector('#gameStopLive').hidden,
+    share:document.querySelector('#gameShareRoom').hidden};
+  });
+  assert.match(pausedUi.screen,/JEDA PRIVASI/,'GAME UI must explain privacy pause');
+  assert.match(pausedUi.mic,/JEDA/,'mic status cannot claim sound on air while paused');
+  assert.equal(pausedUi.launch,false,'BUKA GAME must work while stream is in safe pause');
+  assert.equal(pausedUi.stop,false,'AKHIRI LIVE must remain reachable during pause');
+  assert.equal(pausedUi.share,false,'existing room should remain shareable during pause');
   const sources=[];
   for(const [width,height] of [[1280,720],[720,1280]]){
    await page.evaluate(({width,height})=>{
@@ -70,12 +84,12 @@ const puppeteer=require('puppeteer-core');
    assert.deepEqual(snapshot.source,{width,height});
    assert.deepEqual(snapshot.decoded,{width,height});
    assert.equal(snapshot.sameStream,true,'camera must preserve source track; no low-resolution compositor');
-   assert.equal(snapshot.fit,width>height?'contain':'cover');
+   assert.equal(snapshot.fit,'contain','mobile camera must not reintroduce full-screen face crop');
    assert.equal(snapshot.landscape,width>height);
    assert.equal(snapshot.filter,'none');
    assert.equal(snapshot.hud,'block');
-   assert.equal(snapshot.constraints.width.ideal,1080);
-   assert.equal(snapshot.constraints.height.ideal,1920);
+   assert.equal(snapshot.constraints.width.ideal,960);
+   assert.equal(snapshot.constraints.height.ideal,1280);
    sources.push(snapshot);
    await page.evaluate(()=>{window.__rawCamera.getTracks().forEach(t=>t.stop());document.querySelector('#remote').srcObject=null});
   }
@@ -89,7 +103,7 @@ const puppeteer=require('puppeteer-core');
     hud:getComputedStyle(document.querySelector('#mobileLiveHud')).display})),{clean,hud:clean?'none':'block'});
   }
   assert.deepEqual(errors,[],'production document must initialize without script errors');
-  console.log('PRODUCTION_NATIVE_UI_BROWSER_PASS '+JSON.stringify({bridge,sources,
+  console.log('PRODUCTION_NATIVE_UI_BROWSER_PASS '+JSON.stringify({bridge,pausedUi,sources,
    limits:'Native bridge stub and synthetic camera; physical Android capture, GAME audio and upgrade still require device QC'}));
  }finally{await browser.close()}
 })().catch(e=>{console.error('PRODUCTION_NATIVE_UI_BROWSER_FAIL',e.stack||e);process.exitCode=1});
