@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/nadmo-live-0114-radio-signed-beta.yml'
       - 'nadmo-live/android/qa/game-floating-privacy-contract.mjs'
+      - 'nadmo-live/android/qa/offgrid-local-contract.mjs'
   workflow_dispatch:
 permissions:
   contents: write
