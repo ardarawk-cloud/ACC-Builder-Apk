@@ -27,7 +27,7 @@ assert.match(service,/Settings\.canDrawOverlays\(this\)/,'Permission must be che
 assert.match(service,/TextView back=floatingButton\("⌂ BUKA NADMO"\)/);
 assert.match(service,/setPrivacyPaused\(true\); \/\/ shield BEFORE starting NADMO Activity/);
 assert.match(service,/endConfirmAt/,'End Live requires two taps within confirmation window');
-assert.match(service,/ACTION_PAUSE\)\{/,'Notification pause fallback');
+assert.match(service,/if\(ACTION_PAUSE\.equals\(intent\.getAction\(\)\)\)\{/,'Notification pause fallback');
 assert.match(activity,/if\(!Settings\.canDrawOverlays\(this\)\)/,'Do not start without a working private control');
 assert.match(activity,/@Override protected void onPause\(\)/,'Game transition must enable floating control');
 assert.match(activity,/GameCaptureService\.ACTION_SHOW_FLOAT/);
