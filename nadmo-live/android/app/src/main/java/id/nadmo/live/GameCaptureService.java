@@ -502,7 +502,12 @@ public final class GameCaptureService extends Service {
       fill(privacyBlackBuffer.getDataU(),(byte)128);
       fill(privacyBlackBuffer.getDataV(),(byte)128);
     }
-    return new VideoFrame(privacyBlackBuffer,captured.getRotation(),captured.getTimestampNs());
+    // The cache retains its original reference for its lifetime. VideoFrame
+    // TAKES OWNERSHIP of another reference and is released after dispatch.
+    // Without retain(), the first frame frees the native I420 backing bytes,
+    // and frame #2 reuses freed memory (native crash / SERVICE_INTERRUPTED).
+    return PrivacyFrameOwnership.newRetainedFrame(
+      privacyBlackBuffer,captured.getRotation(),captured.getTimestampNs());
   }
 
   private void setPrivacyPaused(boolean paused){
