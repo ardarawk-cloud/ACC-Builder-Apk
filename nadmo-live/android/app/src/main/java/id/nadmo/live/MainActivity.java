@@ -45,7 +45,7 @@ public final class MainActivity extends Activity {
   private static final int ASK_SCREEN_CAPTURE=45;
   private static final int ASK_CHAT_NOTIFICATIONS=46;
   private boolean askedChatNotifications=false;
-  private String gameTitle="",gameName="",gameQuality="stable";
+  private String gameTitle="",gameName="",gameQuality="stable",gameBroadcastKind="gaming";
   private boolean gameFace=false;
   private String gameFaceLayout="";
   private boolean gameReceiverRegistered=false;
@@ -63,7 +63,11 @@ public final class MainActivity extends Activity {
         String next=intent.getStringExtra("state");
         // Covers process recreation while GAME is still capturing in :game.
         // Fail closed even if this Activity forgot its previous native state.
-        if(activityVisible && ("live".equals(next)||"reconnecting".equals(next)||"starting".equals(next))){
+        // A LIVE -> PAUSE transition is sufficient when NADMO is in front.
+        // NEVER issue PAUSE for STARTING/RECONNECTING status broadcasts:
+        // the service would re-report STARTING/RECONNECTING while already
+        // privacy-paused, causing a cross-process status/PAUSE feedback loop.
+        if(LiveStatusPolicy.shouldEnforceForegroundPrivacy(activityVisible,next)){
           try{startService(new Intent(MainActivity.this,GameCaptureService.class).setAction(GameCaptureService.ACTION_PAUSE));}
           catch(Exception ignored){}
         }
@@ -72,6 +76,8 @@ public final class MainActivity extends Activity {
           catch(Exception ignored){}
         }
         gameLiveStartedAt="stopped".equals(next)?0L:intent.getLongExtra("startedAt",gameLiveStartedAt);
+ String incomingKind=intent.getStringExtra("broadcastKind");
+ if("radio".equals(incomingKind)||"gaming".equals(incomingKind))gameBroadcastKind=incomingKind;
         notifyGameStatus(next,intent.getStringExtra("message"),intent.getStringExtra("room"));
       }
     }
@@ -135,6 +141,7 @@ public final class MainActivity extends Activity {
           if("start".equals(action))startGame(command);
           else if("stop".equals(action))stopGame();
           else if("launch".equals(action))launchGame();
+           else if("launch-music".equals(action))launchMusic();
           else if("status".equals(action))requestGameStatus();
           else if("chat-settings".equals(action))openGameChatSettings();
           else if("chat-overlay-settings".equals(action))openGameOverlaySettings();
@@ -277,8 +284,9 @@ public final class MainActivity extends Activity {
         "Room GAME masih aktif/menyambung. Jangan MULAI ulang. Buka GAME, lalu gunakan tombol melayang RESUME jika JEDA.",
         gameLiveRoom);return;
     }
-    gameTitle=command.optString("title","NADMO GAME LIVE");
-    gameName=command.optString("game","Gaming");
+    gameBroadcastKind="radio".equals(command.optString("broadcastKind"))?"radio":"gaming";
+     gameTitle=command.optString("title",gameBroadcastKind.equals("radio")?"NADMO RADIO LIVE":"NADMO GAME LIVE");
+    gameName=gameBroadcastKind.equals("radio")?"NADMO RADIO":command.optString("game","Gaming");
     gameQuality=command.optString("quality","stable");
     gameFace=command.optBoolean("face",false);
     gameFaceLayout=gameFace&&command.optJSONObject("facecam")!=null?command.optJSONObject("facecam").toString():"";
@@ -321,10 +329,26 @@ public final class MainActivity extends Activity {
   private void stopGame(){
     startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_STOP));
   }
+  private boolean ensureGameFloatingControls(){
+    if(Settings.canDrawOverlays(this))return true;
+    // Paused-by-default broadcast can only be resumed by the secure
+    // floating overlay outside NADMO. Without this permission, the game
+    // can launch but never publish audio/video, appearing disconnected.
+    try{
+      Toast.makeText(this,"Aktifkan Tampil di atas aplikasi lain untuk tombol RESUME LIVE.",Toast.LENGTH_LONG).show();
+      Intent overlay=new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+        Uri.parse("package:"+getPackageName()));
+      startActivity(overlay);
+    }catch(Exception error){
+      notifyGameStatus("error","Izin tombol melayang belum aktif.",gameLiveRoom);
+    }
+    return false;
+  }
   private void launchGame(){
     if(!"live".equals(gameLiveState)&&!"paused".equals(gameLiveState)){
       notifyGameStatus("error","Mulai GAME LIVE sebelum membuka permainan.","");return;
     }
+    if(!ensureGameFloatingControls())return;
     String[] packages;
     String key=gameName.toLowerCase(java.util.Locale.ROOT);
     if(key.contains("mobile legends"))packages=new String[]{"com.mobile.legends"};
@@ -340,7 +364,32 @@ public final class MainActivity extends Activity {
     }
     Toast.makeText(this,"Buka game melalui layar utama HP. GAME LIVE tetap berjalan.",Toast.LENGTH_LONG).show();
   }
-  private boolean chatNotificationsEnabled(){
+  private void launchMusic(){
+     if(!"radio".equals(gameBroadcastKind)||!("live".equals(gameLiveState)||"paused".equals(gameLiveState))){
+       notifyGameStatus("error","Mulai RADIO LIVE dulu sebelum OPEN MUSIC.",gameLiveRoom);return;
+     }
+     if(!ensureGameFloatingControls())return;
+     // Never choose a music app on behalf of the creator or scrape installed app details.
+     // Android music app selector may have no matching apps. Home is a universal fallback
+     // where the host can open ANY installed authorized player manually.
+     try{
+       Intent selector=Intent.makeMainSelectorActivity(Intent.ACTION_MAIN,Intent.CATEGORY_APP_MUSIC);
+       selector.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+       if(selector.resolveActivity(getPackageManager())!=null){
+         startActivity(Intent.createChooser(selector,"OPEN MUSIC — pilih aplikasi musik"));
+         return;
+       }
+     }catch(Exception ignored){}
+     try{
+       Intent home=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+       startActivity(home);
+       Toast.makeText(this,"Pilih aplikasi musik di HP. Video layar pribadi tidak ikut disiarkan.",Toast.LENGTH_LONG).show();
+     }catch(Exception ignored){
+       notifyGameStatus(gameLiveState,"Tidak ada aplikasi musik yang dapat dibuka. Buka pemutar dari HP.",gameLiveRoom);
+     }
+   }
+   private boolean chatNotificationsEnabled(){
     if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return false;
     NotificationManager manager=getSystemService(NotificationManager.class);
     if(manager==null||!manager.areNotificationsEnabled())return false;
@@ -378,7 +427,7 @@ public final class MainActivity extends Activity {
     String payload="{state:"+JSONObject.quote(state==null?"":state)+",message:"+
       JSONObject.quote(message==null?"":message)+",room:"+JSONObject.quote(room==null?"":room)+
       ",chatNotificationsEnabled:"+chatNotificationsEnabled()+",chatOverlayEnabled:"+Settings.canDrawOverlays(this)+
-      ",startedAt:"+gameLiveStartedAt+"}";
+      ",startedAt:"+gameLiveStartedAt+",broadcastKind:"+JSONObject.quote(gameBroadcastKind)+",radioMusicSupported:true}";
     web.evaluateJavascript("window.dispatchEvent(new CustomEvent('nadmo-game-status',{detail:"+payload+"}));",null);
   }
   private void grantMedia(){
@@ -397,12 +446,22 @@ public final class MainActivity extends Activity {
         .putExtra(GameCaptureService.EXTRA_PROJECTION,data)
         .putExtra(GameCaptureService.EXTRA_TITLE,gameTitle)
         .putExtra(GameCaptureService.EXTRA_GAME,gameName)
+         .putExtra(GameCaptureService.EXTRA_BROADCAST_KIND,gameBroadcastKind)
         .putExtra(GameCaptureService.EXTRA_QUALITY,gameQuality)
         .putExtra(GameCaptureService.EXTRA_FACE,gameFace)
         .putExtra(GameCaptureService.EXTRA_FACE_LAYOUT,gameFaceLayout)
         .putExtra(GameCaptureService.EXTRA_COOKIE,CookieManager.getInstance().getCookie(ONLINE_URL));
-      try{if(Build.VERSION.SDK_INT>=26)startForegroundService(run);else startService(run);}
-      catch(Exception e){notifyGameStatus("error","Android tidak mengizinkan layanan GAME LIVE.","");}
+      try{
+        if(Build.VERSION.SDK_INT>=26)startForegroundService(run);else startService(run);
+        // A broadcast may arrive before the WebView finishes resuming after
+        // MediaProjection consent. A few bounded queries recover the actual
+        // server-created status instead of leaving BUKA GAME disabled forever.
+        if(web!=null){
+          web.postDelayed(()->{if(activityVisible&&"starting".equals(gameLiveState))requestGameStatus();},2500);
+          web.postDelayed(()->{if(activityVisible&&"starting".equals(gameLiveState))requestGameStatus();},6500);
+          web.postDelayed(()->{if(activityVisible&&"starting".equals(gameLiveState))requestGameStatus();},11000);
+        }
+      }catch(Exception e){notifyGameStatus("error","Android tidak mengizinkan layanan LIVE.","");}
       return;
     }
     if(request!=PICK_AVATAR)return;
