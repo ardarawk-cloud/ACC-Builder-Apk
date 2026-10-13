@@ -5,6 +5,8 @@ on:
     paths:
       - '.github/workflows/nadmo-live-0120-game-black-overlay-recovery.yml'
       - 'nadmo-live/android/qa/game-floating-privacy-contract.mjs'
+      - 'nadmo-live/android/app/src/main/java/id/nadmo/live/GameAudioRelay.java'
+      - 'nadmo-live/android/app/src/test/java/id/nadmo/live/GameAudioRelayCodecTest.java'
   workflow_dispatch:
 permissions:
   contents: write
@@ -37,6 +39,8 @@ jobs:
           node nadmo-live/android/qa/webview-document-contract.mjs
       - name: Verify Android status event feedback regression in JVM
         run: gradle -p nadmo-live/android :app:testDebugUnitTest --no-daemon --tests id.nadmo.live.LiveStatusPolicyTest
+      - name: Verify compact GAME audio codec, independent of frame loss
+        run: gradle -p nadmo-live/android :app:testDebugUnitTest --no-daemon --tests id.nadmo.live.GameAudioRelayCodecTest
       - name: Regression reproduce 50,000 native privacy buffers plus staggered release
         run: gradle -p nadmo-live/android :app:testDebugUnitTest --no-daemon --tests id.nadmo.live.PrivacyFrameOwnershipTest
       - name: Verify real GAME host creates a room on live.nadmo.id
