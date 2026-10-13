@@ -1,4 +1,4 @@
-name: NADMO LIVE v0.10.20 remove black GAME floating HUD rectangle
+name: NADMO LIVE v0.10.21 compressed GAME audio + preserved privacy
 on:
   push:
     branches: ['feat/nadmo-radio-open-music-camera-stage-20261012']
@@ -11,7 +11,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: nadmo-live-v01020-radio-release
+  group: nadmo-live-v01021-game-audio-release
   cancel-in-progress: false
 jobs:
   radio-beta:
@@ -53,6 +53,14 @@ jobs:
           test -n "$CHROME_BIN"
           export CHROME_BIN
           node nadmo-live/android/qa/game-native-media-e2e.cjs
+      - name: Verify the live web viewer already supports compressed GAME audio
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLsS --max-time 20 https://live.nadmo.id/app/ -o /tmp/nadmo-game-audio-viewer.html
+          grep -Fq 'GAME_AUDIO_ADPCM_BYTES=248' /tmp/nadmo-game-audio-viewer.html
+          grep -Fq 'function decodeGameAudioSamples' /tmp/nadmo-game-audio-viewer.html
+          echo 'Web viewer supports new ADPCM and old PCM'
       - name: Require original owner signing material
         shell: bash
         env:
@@ -75,7 +83,7 @@ jobs:
           echo "NADMO_LIVE_RELEASE_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
       - name: Assemble signed install-over beta
         run: gradle -p nadmo-live/android :app:assembleRelease --no-daemon
-      - name: Confirm APK versionCode39, original certificate and package identity
+      - name: Confirm APK versionCode40, original certificate and package identity
         shell: bash
         run: |
           set -euo pipefail
@@ -86,7 +94,7 @@ jobs:
           META=$("$AAPT" dump badging "$SOURCE" | head -1)
           printf '%s\n' "$META"
           printf '%s\n' "$META" | grep -F "name='id.nadmo.live'"
-          printf '%s\n' "$META" | grep -F "versionCode='39'"
+          printf '%s\n' "$META" | grep -F "versionCode='40'"
           printf '%s\n' "$META" | grep -F "versionName='0.10.20-beta'"
           VERIFY=$("$SIGN" verify --verbose --print-certs "$SOURCE")
           printf '%s\n' "$VERIFY"
@@ -97,12 +105,12 @@ jobs:
           test "$EXPECTED" = "$ACTUAL"
           if unzip -l "$SOURCE" | grep -Fq 'nadmo-release.jks';then echo 'Keystore leakage';exit 1;fi
           mkdir -p qa-signed
-          cp "$SOURCE" qa-signed/NADMO-LIVE-v0.10.20-beta.apk
-          (cd qa-signed && sha256sum NADMO-LIVE-v0.10.20-beta.apk > SHA256SUMS.txt)
-          echo "PASS: original certificate, code39 upgrade, unchanged package ID"
+          cp "$SOURCE" qa-signed/NADMO-LIVE-v0.10.21-beta.apk
+          (cd qa-signed && sha256sum NADMO-LIVE-v0.10.21-beta.apk > SHA256SUMS.txt)
+          echo "PASS: original certificate, code40 upgrade, unchanged package ID"
       - uses: actions/upload-artifact@v4
         with:
-          name: nadmo-live-v01020-radio-signed-beta
+          name: nadmo-live-v01021-game-audio-signed-beta
           path: qa-signed/*
           retention-days: 14
           if-no-files-found: error
@@ -113,17 +121,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG=nadmo-live-v0.10.20-beta
+          TAG=nadmo-live-v0.10.21-beta
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1;then
             echo "::error::Signed beta tag already exists; never overwrite."
             exit 1
           fi
-          gh release create "$TAG" qa-signed/NADMO-LIVE-v0.10.20-beta.apk qa-signed/SHA256SUMS.txt \
+          gh release create "$TAG" qa-signed/NADMO-LIVE-v0.10.21-beta.apk qa-signed/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "NADMO LIVE v0.10.20-beta — remove GAME black box (owner test)" \
-            --notes "OWNER-TEST BETA (NOT CONFIRMED ON DEVICE). FIX GAME BLACK RECTANGLE: the Android app-owned floating control used FLAG_SECURE, which MediaProjection records as a black rectangle over the game. This benign control is now a tiny 108x39dp visible N/ badge instead; viewers may see that badge, but no opaque black block. Protected game pixels remain fail-closed until host resumes. Native WebRTC cached-frame memory bug fixed in prior beta. Prior root cause found via source/history: cached JavaI420Buffer backing pixels were freed after first privacy frame (VideoFrame takes buffer ownership), reused for every subsequent frame, risking native memory crash. Fix: retain a separate reference for each frame, preserve cache ref, release on resize/shutdown. 50k JVM frame regression PASS. Other protections retained. Previous change fixed Android STATUS(starting) -> ACTION_PAUSE -> STATUS(starting) infinite broadcast feedback cycle. Activity now pauses only valid LIVE state; repeated service PAUSE is idempotent and covered by a 10,000-iteration JVM unit test. Previous fixes retained for GAME drop after tapping BUKA GAME: no forced disconnect on transient Android network handover, delayed first video frame does not destroy a valid room, secure floating RESUME is required and shown immediately; RADIO uses same safe external-app flow. Retains 12-second room ACK limit, native status recovery and privacy masking. Native screen privacy remains fail-closed. Web TALK stage stays camera-size even after an audio guest joins. Radio host can choose music using OPEN MUSIC. Viewer full camera-size RADIO cover is delivered by the matching NADMO LIVE Cloudflare web beta. Android may block music apps' internal playback capture; only rights-cleared music can be rebroadcast. GAME privacy pause, phone VOICE full-camera layout via live.nadmo.id, original id.nadmo.live signing preserved; signed code39 installs over code38 with NO UNINSTALL. Report regressions before wider distribution." \
+            --title "NADMO LIVE v0.10.21-beta — remove GAME black box (owner test)" \
+            --notes "OWNER-TEST BETA — not yet verified on an Android device. GAME audio now uses independent 20ms 24kHz IMA-ADPCM packets (248 bytes, 99.2 kbps per viewer) instead of 960-byte raw PCM (384 kbps). Live web viewer accepts both formats during upgrades. Keeps GAME privacy masking, secure pause/resume, HUD black-rectangle fix, WebRTC frame-buffer lifetime safety, room reconnect, RADIO OPEN MUSIC and full-camera VOICE/RADIO stage. Signed as original id.nadmo.live with original certificate. Code40 installs over code39 without uninstall. No guarantee of live hardware performance until owner tests real game and viewers." \
             --prerelease --latest=false
-          echo "Signed direct download: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/NADMO-LIVE-v0.10.20-beta.apk" >> "$GITHUB_STEP_SUMMARY"
+          echo "Signed direct download: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/NADMO-LIVE-v0.10.21-beta.apk" >> "$GITHUB_STEP_SUMMARY"
       - name: Wipe sensitive signing file
         if: always()
         run: rm -f "$RUNNER_TEMP/nadmo-release.jks"
