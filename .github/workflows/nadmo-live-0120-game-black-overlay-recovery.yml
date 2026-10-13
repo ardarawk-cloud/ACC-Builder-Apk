@@ -4,7 +4,8 @@ on:
     branches: ['feat/nadmo-radio-open-music-camera-stage-20261012']
     paths:
       - '.github/workflows/nadmo-live-0120-game-black-overlay-recovery.yml'
-      - 'nadmo-live/android/qa/game-floating-privacy-contract.mjs'
+      - 'nadmo-live/android/qa/**'
+      - 'nadmo-live/android/app/build.gradle'
       - 'nadmo-live/android/app/src/main/java/id/nadmo/live/GameAudioRelay.java'
       - 'nadmo-live/android/app/src/test/java/id/nadmo/live/GameAudioRelayCodecTest.java'
   workflow_dispatch:
