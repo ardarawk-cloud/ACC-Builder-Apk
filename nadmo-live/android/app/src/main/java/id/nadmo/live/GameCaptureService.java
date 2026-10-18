@@ -544,8 +544,8 @@ public final class GameCaptureService extends Service {
     TextView v=new TextView(this);
     v.setText(title);v.setTextColor(Color.WHITE);v.setTextSize(12);
     v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-    v.setGravity(Gravity.CENTER);v.setMinHeight(dp(43));
-    v.setPadding(dp(11),dp(7),dp(11),dp(7));
+    v.setGravity(Gravity.CENTER);v.setMinHeight(dp(48));
+    v.setPadding(dp(12),dp(9),dp(12),dp(9));
     GradientDrawable bg=new GradientDrawable();
     bg.setColor(0xF5111719);bg.setCornerRadius(dp(10));
     bg.setStroke(dp(1),0xFFB3D962);v.setBackground(bg);
@@ -570,27 +570,39 @@ public final class GameCaptureService extends Service {
     try{
       WindowManager wm=(WindowManager)getSystemService(Context.WINDOW_SERVICE);
       if(wm==null)return;
+      // Fixed safe viewport: a WRAP_CONTENT overlay first measures the 108dp
+      // collapsed pill and clips its wider action panel after expanding.
+      final int availableWidth=Math.max(dp(112),getResources().getDisplayMetrics().widthPixels-dp(32));
+      final int overlayWidth=Math.min(dp(196),availableWidth);
+      final int actionWidth=overlayWidth-dp(12);
       LinearLayout column=new LinearLayout(this);
       column.setOrientation(LinearLayout.VERTICAL);
-      column.setGravity(Gravity.END);
-      column.setPadding(dp(3),dp(3),dp(3),dp(3));
+      column.setGravity(Gravity.RIGHT);
+      column.setPadding(dp(4),dp(4),dp(4),dp(4));
       TextView bubble=floatingButton("N/ JEDA");
       bubble.setTextColor(0xFFE0FF76);
       bubble.setTextSize(10);
       LinearLayout menu=new LinearLayout(this);menu.setOrientation(LinearLayout.VERTICAL);
+      menu.setGravity(Gravity.RIGHT);
       menu.setVisibility(View.GONE);
       TextView pause=floatingButton(radioMode?"▶ RESUME RADIO":"▶ RESUME GAME");
       TextView back=floatingButton("⌂ BUKA NADMO");
       TextView end=floatingButton("× AKHIRI LIVE");
-      LinearLayout.LayoutParams item=new LinearLayout.LayoutParams(dp(156),dp(43));
-      item.topMargin=dp(4);
+      GradientDrawable pauseBg=new GradientDrawable();
+      pauseBg.setColor(0xF5172420);pauseBg.setCornerRadius(dp(10));pauseBg.setStroke(dp(1),0xFFCBEE7F);
+      pause.setBackground(pauseBg);
+      GradientDrawable endBg=new GradientDrawable();
+      endBg.setColor(0xF52C171C);endBg.setCornerRadius(dp(10));endBg.setStroke(dp(1),0xFFF88A93);
+      end.setBackground(endBg);
+      LinearLayout.LayoutParams item=new LinearLayout.LayoutParams(actionWidth,dp(50));
+      item.topMargin=dp(7);
       menu.addView(pause,new LinearLayout.LayoutParams(item));
       menu.addView(back,new LinearLayout.LayoutParams(item));
       menu.addView(end,new LinearLayout.LayoutParams(item));
-      column.addView(bubble,new LinearLayout.LayoutParams(dp(108),dp(39)));
-      column.addView(menu);
+      column.addView(bubble,new LinearLayout.LayoutParams(dp(114),dp(44)));
+      column.addView(menu,new LinearLayout.LayoutParams(actionWidth,LinearLayout.LayoutParams.WRAP_CONTENT));
       WindowManager.LayoutParams params=new WindowManager.LayoutParams(
-        WindowManager.LayoutParams.WRAP_CONTENT,WindowManager.LayoutParams.WRAP_CONTENT,
+        overlayWidth,WindowManager.LayoutParams.WRAP_CONTENT,
         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
         // FLAG_SECURE does NOT reveal the game behind the floating bubble:
         // MediaProjection replaces the entire overlay window with an opaque
@@ -602,7 +614,7 @@ public final class GameCaptureService extends Service {
         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
         PixelFormat.TRANSLUCENT);
       params.gravity=Gravity.TOP|Gravity.RIGHT;
-      params.y=dp(165);params.x=dp(9);
+      params.y=dp(138);params.x=dp(14);
       wm.addView(column,params);
       gameFloatingWindow=wm;gameFloatingRoot=column;
       gameFloatingParams=params;gameFloatingBubble=bubble;
@@ -617,7 +629,7 @@ public final class GameCaptureService extends Service {
             case MotionEvent.ACTION_MOVE:
               if(Math.abs(ev.getRawY()-initialY)>dp(9))dragged=true;
               if(dragged){
-                int limit=Math.max(dp(45),getResources().getDisplayMetrics().heightPixels-dp(230));
+                int limit=Math.max(dp(45),getResources().getDisplayMetrics().heightPixels-dp(240));
                 params.y=Math.min(limit,Math.max(dp(45),baseY+(int)(ev.getRawY()-initialY)));
                 try{wm.updateViewLayout(column,params);}catch(Exception ignored){}
               }
