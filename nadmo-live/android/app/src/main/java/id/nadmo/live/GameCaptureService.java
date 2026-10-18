@@ -109,6 +109,8 @@ public final class GameCaptureService extends Service {
   static final String EXTRA_TITLE="title";
   static final String EXTRA_GAME="game";
    static final String EXTRA_BROADCAST_KIND="broadcastKind";
+  static final String EXTRA_RADIO_VISUAL="radioVisual";
+  static final String ACTION_RADIO_ENABLE_AUDIO="id.nadmo.live.RADIO_ENABLE_AUDIO";
   static final String EXTRA_QUALITY="quality";
   static final String EXTRA_FACE="face";
   static final String EXTRA_COOKIE="cookie";
@@ -172,6 +174,7 @@ public final class GameCaptureService extends Service {
   private String roomId="",resumeToken="",title="",game="",cookie="";
   private JSONObject faceLayout=null;
   private boolean stopping=false,started=false,wantFace=false,webSocketOpen=false,radioMode=false;
+  private String radioVisual="signal";
   private long offlineSince=0L;
   private int reconnectAttempt=0;
   private Runnable retryTask;
@@ -295,6 +298,12 @@ public final class GameCaptureService extends Service {
       return START_NOT_STICKY;
     }
     if(ACTION_STOP.equals(intent.getAction())){stopGame("Siaran game diakhiri.");return START_NOT_STICKY;}
+    if(ACTION_RADIO_ENABLE_AUDIO.equals(intent.getAction())){
+      // AUDIO ONLY: radio frames are always synthetic. Never enable GAME screen capture here.
+      if(started&&radioMode&&!roomId.isEmpty()&&webSocketOpen)setPrivacyPaused(false);
+      else if(!started)stopSelf(startId);
+      return START_NOT_STICKY;
+    }
     if(ACTION_PAUSE.equals(intent.getAction())){
       if(started)setPrivacyPaused(true);
       else stopSelf(startId);
@@ -324,6 +333,8 @@ public final class GameCaptureService extends Service {
       .putString(DIAG_LAST,"LIVE mulai; menunggu perekaman layar.").commit();
     title=limit(intent.getStringExtra(EXTRA_TITLE),60,"NADMO GAME LIVE");
     radioMode="radio".equals(intent.getStringExtra(EXTRA_BROADCAST_KIND));
+    String requestedRadioVisual=intent.getStringExtra(EXTRA_RADIO_VISUAL);
+    radioVisual=radioMode&&Arrays.asList("signal","vinyl","night","cover").contains(requestedRadioVisual)?requestedRadioVisual:"signal";
      game=radioMode?"NADMO RADIO":limit(intent.getStringExtra(EXTRA_GAME),35,"Gaming");
     String quality=intent.getStringExtra(EXTRA_QUALITY);
     if("low".equals(quality)){
@@ -897,7 +908,7 @@ public final class GameCaptureService extends Service {
             if(resume&&roomId.length()>0&&resumeToken.length()>0)
               send(new JSONObjectSafe().put("type","resume").put("id",roomId).put("token",resumeToken).json());
             else send(new JSONObjectSafe().put("type","create").put("title",title)
-              .put("category",radioMode?"DJ & Music":"Gaming").put("broadcastKind",radioMode?"radio":"gaming").put("mode","public").put("hostName","Host").put("facecam",faceLayout).json());
+              .put("category",radioMode?"DJ & Music":"Gaming").put("broadcastKind",radioMode?"radio":"gaming").put("radioVisual",radioVisual).put("mode","public").put("hostName","Host").put("facecam",faceLayout).json());
             // Do not leave beta users stuck on MENYAMBUNG forever when
             // WebSocket is open but the server never acknowledges CREATE.
             main.postDelayed(()->{
@@ -952,7 +963,7 @@ public final class GameCaptureService extends Service {
         hostSocketId=m.optString("selfId",hostSocketId);
         if("created".equals(type))resumeToken=m.optString("resumeToken","");
         reconnectAttempt=0;offlineSince=0;
-        String message=radioMode?"RADIO LIVE aktif · audio aplikasi hanya bila Android & pemutar mengizinkan · MIC":
+        String message=radioMode?"RADIO LIVE · musik yang mengizinkan capture + mikrofon":
            "GAME LIVE aktif · "+game+" · mic"+(faceTrack!=null?" · facecam":"");
         report(privacyPaused?"paused":"live",
           privacyPaused?(radioMode?"RADIO siap — OPEN MUSIC, tekan RESUME pada tombol melayang. Layar aplikasi tidak ditampilkan.":"GAME siap — buka game, lalu tekan tombol melayang RESUME."):message,roomId);
