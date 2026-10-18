@@ -45,7 +45,7 @@ public final class MainActivity extends Activity {
   private static final int ASK_SCREEN_CAPTURE=45;
   private static final int ASK_CHAT_NOTIFICATIONS=46;
   private boolean askedChatNotifications=false;
-  private String gameTitle="",gameName="",gameQuality="stable",gameBroadcastKind="gaming";
+  private String gameTitle="",gameName="",gameQuality="stable",gameBroadcastKind="gaming",gameRadioVisual="signal";
   private boolean gameFace=false;
   private String gameFaceLayout="";
   private boolean gameReceiverRegistered=false;
@@ -67,7 +67,7 @@ public final class MainActivity extends Activity {
         // NEVER issue PAUSE for STARTING/RECONNECTING status broadcasts:
         // the service would re-report STARTING/RECONNECTING while already
         // privacy-paused, causing a cross-process status/PAUSE feedback loop.
-        if(LiveStatusPolicy.shouldEnforceForegroundPrivacy(activityVisible,next)){
+        if(!"radio".equals(gameBroadcastKind)&&LiveStatusPolicy.shouldEnforceForegroundPrivacy(activityVisible,next)){
           try{startService(new Intent(MainActivity.this,GameCaptureService.class).setAction(GameCaptureService.ACTION_PAUSE));}
           catch(Exception ignored){}
         }
@@ -255,7 +255,7 @@ public final class MainActivity extends Activity {
     activityVisible=true;
     // Always fail CLOSED before navigating Android menus, NADMO settings or
     // other apps. The WebView can never reactivate GAME recording on its own.
-    if(!gameScreenConsentPending&&!gameLiveRoom.isEmpty()&&
+    if(!"radio".equals(gameBroadcastKind)&&!gameScreenConsentPending&&!gameLiveRoom.isEmpty()&&
        ("live".equals(gameLiveState)||"paused".equals(gameLiveState)||
        "reconnecting".equals(gameLiveState)||"starting".equals(gameLiveState))){
       try{startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_PAUSE));}
@@ -285,6 +285,8 @@ public final class MainActivity extends Activity {
         gameLiveRoom);return;
     }
     gameBroadcastKind="radio".equals(command.optString("broadcastKind"))?"radio":"gaming";
+    String radioChoice=command.optString("radioVisual","signal");
+    gameRadioVisual=java.util.Arrays.asList("signal","vinyl","night","cover").contains(radioChoice)?radioChoice:"signal";
      gameTitle=command.optString("title",gameBroadcastKind.equals("radio")?"NADMO RADIO LIVE":"NADMO GAME LIVE");
     gameName=gameBroadcastKind.equals("radio")?"NADMO RADIO":command.optString("game","Gaming");
     gameQuality=command.optString("quality","stable");
@@ -369,6 +371,10 @@ public final class MainActivity extends Activity {
        notifyGameStatus("error","Mulai RADIO LIVE dulu sebelum OPEN MUSIC.",gameLiveRoom);return;
      }
      if(!ensureGameFloatingControls())return;
+     // Host explicitly requests audio-only RADIO. The service still sends
+     // opaque generated video frames; GAME always keeps privacy resume locked.
+     startService(new Intent(this,GameCaptureService.class)
+       .setAction(GameCaptureService.ACTION_RADIO_ENABLE_AUDIO));
      // Never choose a music app on behalf of the creator or scrape installed app details.
      // Android music app selector may have no matching apps. Home is a universal fallback
      // where the host can open ANY installed authorized player manually.
@@ -447,6 +453,7 @@ public final class MainActivity extends Activity {
         .putExtra(GameCaptureService.EXTRA_TITLE,gameTitle)
         .putExtra(GameCaptureService.EXTRA_GAME,gameName)
          .putExtra(GameCaptureService.EXTRA_BROADCAST_KIND,gameBroadcastKind)
+        .putExtra(GameCaptureService.EXTRA_RADIO_VISUAL,gameRadioVisual)
         .putExtra(GameCaptureService.EXTRA_QUALITY,gameQuality)
         .putExtra(GameCaptureService.EXTRA_FACE,gameFace)
         .putExtra(GameCaptureService.EXTRA_FACE_LAYOUT,gameFaceLayout)
