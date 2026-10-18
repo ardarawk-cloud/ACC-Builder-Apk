@@ -25,7 +25,7 @@ assert.match(gameAudio,/if\(privacyPaused\)continue;/,'Internal GAME audio must 
 const runtimeService=service.replace(/\/\*[\s\S]*?\*\//g,'').replace(/^\s*\/\/.*$/gm,'');
 assert.doesNotMatch(runtimeService,/WindowManager\.LayoutParams\.FLAG_SECURE\b/,'Never set FLAG_SECURE on the floating HUD: MediaProjection would show a black rectangle');
 assert.match(runtimeService,/WindowManager\.LayoutParams\.FLAG_NOT_FOCUSABLE\s*\|\s*WindowManager\.LayoutParams\.FLAG_LAYOUT_IN_SCREEN/,'Keep the non-sensitive HUD visible to GAME viewers without disabling screen privacy');
-assert.match(service,/new LinearLayout\.LayoutParams\(dp\(108\),dp\(39\)\)/,'Floating controls should be a compact status pill');
+assert.match(service,/new LinearLayout\.LayoutParams\(dp\(114\),dp\(44\)\)/,'Collapsed LIVE pill must remain compact');
 assert.match(service,/WindowManager\.LayoutParams\.TYPE_APPLICATION_OVERLAY/,'Keep functional floating PAUSE/RESUME control');
 assert.match(service,/Settings\.canDrawOverlays\(this\)/,'Permission must be checked before overlay');
 assert.match(service,/TextView back=floatingButton\("⌂ BUKA NADMO"\)/);
@@ -39,8 +39,8 @@ assert.match(activity,/@Override protected void onResume\(\)/);
 assert.match(activity,/GameCaptureService\.ACTION_PAUSE/,'Returning to NADMO must stop transmitting its screen');
 assert.match(activity,/if\(!"live"\.equals\(gameLiveState\)&&!"paused"\.equals\(gameLiveState\)\)/,'Can open game from initial pause');
 assert.match(gradle,/applicationId 'id\.nadmo\.live'/);
-assert.match(gradle,/versionCode 41/);
-assert.match(gradle,/versionName '0\.10\.22-beta'/);
+assert.match(gradle,/versionCode 42/);
+assert.match(gradle,/versionName '0\.10\.23-beta'/);
 assert.doesNotMatch(service,/getMediaProjection\(Activity\.RESULT_OK/,'Do not reuse Android 14 one-shot projection token');
 assert.match(service,/checkHourlyRestReminder\(\)/,'GAME timer must run in native service while playing');
 assert.match(service,/3600000L/,'One-hour cadence');
@@ -55,4 +55,6 @@ assert.match(activity,/"paused"\.equals\(gameLiveState\)/,'A paused room cannot 
 assert.match(service,/roomId\.isEmpty\(\)\)report\("starting"/,'Never report LIVE before room creation');
 assert.match(service,/else if\(!webSocketOpen\)report\("reconnecting"/,'Reconnect state cannot be disguised as PAUSED');
 assert.match(service,/if\(roomId\.isEmpty\(\)\|\|!webSocketOpen\)/,'Resume forbidden while disconnected');
+assert.match(service,/final int overlayWidth=Math.min\(dp\(196\),availableWidth\)/,'The floating controls must fit on the phone');
+assert.match(service,/LinearLayout\.LayoutParams\(actionWidth,dp\(50\)\)/,'LIVE actions must be 50dp tall');
 console.log('PASS GAME PRIVACY CONTRACT: compact visible non-sensitive control, no FLAG_SECURE black rectangle, fail-closed YUV frames, pause audio, signer preserved');
