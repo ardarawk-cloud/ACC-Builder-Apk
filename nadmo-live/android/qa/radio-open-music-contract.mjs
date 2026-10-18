@@ -46,4 +46,12 @@ assert.match(activity,/private boolean ensureGameFloatingControls\(\)/);
 assert.match(activity,/Settings\.ACTION_MANAGE_OVERLAY_PERMISSION/);
 assert.match(activity,/private void launchGame\(\)[\s\S]{0,400}if\(!ensureGameFloatingControls\(\)\)return;/);
 assert.match(activity,/private void launchMusic\(\)[\s\S]{0,400}if\(!ensureGameFloatingControls\(\)\)return;/);
+// RADIO is strictly an audio-only exception. GAME keeps foreground safety locked.
+assert.match(activity,/if\(!"radio"\.equals\(gameBroadcastKind\)&&LiveStatusPolicy\.shouldEnforceForegroundPrivacy/);
+assert.match(activity,/setAction\(GameCaptureService\.ACTION_RADIO_ENABLE_AUDIO\)/);
+assert.match(activity,/\.putExtra\(GameCaptureService\.EXTRA_RADIO_VISUAL,gameRadioVisual\)/);
+assert.match(service,/if\(started&&radioMode&&!roomId\.isEmpty\(\)&&webSocketOpen\)setPrivacyPaused\(false\)/);
+assert.match(service,/if\(!privacyPaused&&!radioMode\)\{transport\.onFrameCaptured\(captured\);return;\}/);
+assert.match(service,/\.put\("radioVisual",radioVisual\)/);
+assert.doesNotMatch(activity,/ACTION_RESUME.*setPrivacyPaused\(false\)/);
 console.log('GAME app-switch nonfatal capture/network regression, RADIO and secure RESUME permission PASS');
