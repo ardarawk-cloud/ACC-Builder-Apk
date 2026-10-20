@@ -45,7 +45,9 @@ assert.match(service,/if\(!roomId\.isEmpty\(\)\)updateNotification\("LIVE terhub
 assert.match(activity,/private boolean ensureGameFloatingControls\(\)/);
 assert.match(activity,/Settings\.ACTION_MANAGE_OVERLAY_PERMISSION/);
 assert.match(activity,/private void launchGame\(\)[\s\S]{0,400}if\(!ensureGameFloatingControls\(\)\)return;/);
-assert.match(activity,/private void launchMusic\(\)[\s\S]{0,400}if\(!ensureGameFloatingControls\(\)\)return;/);
+assert.doesNotMatch(activity.slice(activity.indexOf('private void launchMusic()'),activity.indexOf('private boolean chatNotificationsEnabled()')),/ensureGameFloatingControls/,'RADIO audio must not depend on GAME overlay permission');
+assert.match(activity,/if\(!"radio"\.equals\(gameBroadcastKind\)&&!Settings\.canDrawOverlays\(this\)\)/);
+assert.match(service,/if\(radioMode&&"created"\.equals\(type\)\)setPrivacyPaused\(false\)/);
 // RADIO is strictly an audio-only exception. GAME keeps foreground safety locked.
 assert.match(activity,/if\(!"radio"\.equals\(gameBroadcastKind\)&&LiveStatusPolicy\.shouldEnforceForegroundPrivacy/);
 assert.match(activity,/setAction\(GameCaptureService\.ACTION_RADIO_ENABLE_AUDIO\)/);

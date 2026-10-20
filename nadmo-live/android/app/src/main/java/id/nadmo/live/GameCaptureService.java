@@ -185,6 +185,7 @@ public final class GameCaptureService extends Service {
   private boolean networkLost=false;
   private final AtomicBoolean firstFrameReceived=new AtomicBoolean(false);
   private volatile long lastCapturedFrameAt=0;
+  private FrameRateGate frameRateGate;
   private boolean signalingStarted=false;
   private Runnable firstFrameTimeout;
   private PowerManager.WakeLock cpuWakeLock;
@@ -345,6 +346,10 @@ public final class GameCaptureService extends Service {
     }else{
       activeVideoMaxEdge=720;activeVideoFps=18;activeVideoBitrateBps=620000;activeTotalUploadBps=1600000;
     }
+    if(radioMode){
+      activeVideoMaxEdge=160;activeVideoFps=2;activeVideoBitrateBps=24000;activeTotalUploadBps=96000;
+    }
+    frameRateGate=new FrameRateGate(activeVideoFps);
     cookie=intent.getStringExtra(EXTRA_COOKIE);
     if(cookie==null)cookie="";
     wantFace=intent.getBooleanExtra(EXTRA_FACE,false);
@@ -536,8 +541,9 @@ public final class GameCaptureService extends Service {
     if(roomId.isEmpty())report("starting","Menyiapkan room GAME. Tunggu hingga server tersambung.",roomId);
     else if(!webSocketOpen)report("reconnecting","Room GAME terputus, mencoba sambung lagi. Video tetap terlindungi.",roomId);
     else report(paused?"paused":"live",
-      paused?"SIARAN DIJEDA — penonton melihat layar hitam. Kembali ke game untuk RESUME.":
-             "GAME LIVE berjalan — layar dan audio sedang disiarkan.",roomId);
+      radioMode?(paused?"RADIO DIJEDA — audio tidak disiarkan.":"RADIO LIVE — mikrofon aktif. OPEN MUSIC untuk audio pemutar yang mengizinkan."):
+        (paused?"SIARAN DIJEDA — penonton melihat layar hitam. Kembali ke game untuk RESUME.":
+             "GAME LIVE berjalan — layar dan audio sedang disiarkan."),roomId);
     updateGameFloatingControl();
   }
   private TextView floatingButton(String title){
@@ -830,6 +836,9 @@ public final class GameCaptureService extends Service {
        }
       @Override public void onCapturerStopped(){transport.onCapturerStopped();}
       @Override public void onFrameCaptured(VideoFrame captured){
+        // ScreenCapturerAndroid ignores its FPS argument. Drop excess frames BEFORE
+        // native processing/encoding; never queue stale gameplay or privacy frames.
+        if(!frameRateGate.allow(captured.getTimestampNs()))return;
         if(!privacyPaused&&!radioMode){transport.onFrameCaptured(captured);return;}
          // RADIO ALWAYS outputs an opaque synthetic frame. Never leak music app
          // pixels, notifications, messages, credentials or any phone screen.
@@ -841,6 +850,7 @@ public final class GameCaptureService extends Service {
       }
     });
     int[] dimensions=captureDimensions();
+    screenSource.adaptOutputFormat(dimensions[0],dimensions[1],activeVideoFps);
     screenCapturer.startCapture(dimensions[0],dimensions[1],activeVideoFps);
     // Android 14 forbids reusing the projection intent for a second session.
     // Obtain the projection already held by the current screen capturer.
@@ -876,7 +886,10 @@ public final class GameCaptureService extends Service {
     super.onConfigurationChanged(configuration);
     if(screenCapturer!=null&&!stopping){
       int[] d=captureDimensions();
-      try{screenCapturer.changeCaptureFormat(d[0],d[1],activeVideoFps);}
+      try{
+        screenSource.adaptOutputFormat(d[0],d[1],activeVideoFps);
+        screenCapturer.changeCaptureFormat(d[0],d[1],activeVideoFps);
+      }
       catch(Exception e){Log.w(TAG,"Screen format rotation update failed",e);}
     }
   }
@@ -975,10 +988,13 @@ public final class GameCaptureService extends Service {
         hostSocketId=m.optString("selfId",hostSocketId);
         if("created".equals(type))resumeToken=m.optString("resumeToken","");
         reconnectAttempt=0;offlineSince=0;
+        // MULAI RADIO is explicit audio consent; no GAME overlay/resume dependency.
+        // Reconnect preserves a deliberate PAUSE. All RADIO pixels stay synthetic.
+        if(radioMode&&"created".equals(type))setPrivacyPaused(false);
         String message=radioMode?"RADIO LIVE · musik yang mengizinkan capture + mikrofon":
            "GAME LIVE aktif · "+game+" · mic"+(faceTrack!=null?" · facecam":"");
         report(privacyPaused?"paused":"live",
-          privacyPaused?(radioMode?"RADIO siap — OPEN MUSIC, tekan RESUME pada tombol melayang. Layar aplikasi tidak ditampilkan.":"GAME siap — buka game, lalu tekan tombol melayang RESUME."):message,roomId);
+          privacyPaused?(radioMode?"RADIO dijeda. Lanjutkan dari Studio atau OPEN MUSIC. Layar aplikasi tidak ditampilkan.":"GAME siap — buka game, lalu tekan tombol melayang RESUME."):message,roomId);
         updateGameFloatingControl();checkHourlyRestReminder();
         if("resumed".equals(type)){
           clearViewers();

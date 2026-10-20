@@ -1,4 +1,4 @@
-name: NADMO LIVE v0.10.23 mobile LIVE overlay visibility fix signed
+name: NADMO LIVE v0.10.24 mobile LIVE overlay visibility fix signed
 on:
   push:
     branches: ['feat/nadmo-radio-open-music-camera-stage-20261012']
@@ -6,16 +6,17 @@ on:
       - '.github/workflows/nadmo-live-0120-game-black-overlay-recovery.yml'
       - 'nadmo-live/android/qa/**'
       - 'nadmo-live/android/app/build.gradle'
-      - 'nadmo-live/android/app/src/main/java/id/nadmo/live/GameAudioRelay.java'
+      - 'nadmo-live/android/app/src/main/java/id/nadmo/live/**'
+      - 'nadmo-live/android/app/src/test/java/id/nadmo/live/**'
       - 'nadmo-live/android/app/src/test/java/id/nadmo/live/GameAudioRelayCodecTest.java'
   workflow_dispatch:
 permissions:
   contents: write
 concurrency:
-  group: nadmo-live-v01023-game-audio-release
+  group: nadmo-live-v01024-game-audio-release
   cancel-in-progress: false
 jobs:
-  radio-beta:
+  release:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -40,6 +41,8 @@ jobs:
           node nadmo-live/android/qa/webview-document-contract.mjs
       - name: Verify Android status event feedback regression in JVM
         run: gradle -p nadmo-live/android :app:testDebugUnitTest --no-daemon --tests id.nadmo.live.LiveStatusPolicyTest
+      - name: Verify capture pacing for 60/90/120 Hz games and audio-only RADIO
+        run: gradle -p nadmo-live/android :app:testDebugUnitTest --no-daemon --tests id.nadmo.live.FrameRateGateTest
       - name: Verify compact GAME audio codec, independent of frame loss
         run: gradle -p nadmo-live/android :app:testDebugUnitTest --no-daemon --tests id.nadmo.live.GameAudioRelayCodecTest
       - name: Regression reproduce 50,000 native privacy buffers plus staggered release
@@ -82,9 +85,9 @@ jobs:
           echo "NADMO_LIVE_RELEASE_STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
           echo "NADMO_LIVE_RELEASE_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
           echo "NADMO_LIVE_RELEASE_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
-      - name: Assemble signed install-over beta
+      - name: Assemble signed install-over release
         run: gradle -p nadmo-live/android :app:assembleRelease --no-daemon
-      - name: Confirm APK versionCode42, original certificate and package identity
+      - name: Confirm APK versionCode43, original certificate and package identity
         shell: bash
         run: |
           set -euo pipefail
@@ -95,8 +98,8 @@ jobs:
           META=$("$AAPT" dump badging "$SOURCE" | head -1)
           printf '%s\n' "$META"
           printf '%s\n' "$META" | grep -F "name='id.nadmo.live'"
-          printf '%s\n' "$META" | grep -F "versionCode='42'"
-          printf '%s\n' "$META" | grep -F "versionName='0.10.23-beta'"
+          printf '%s\n' "$META" | grep -F "versionCode='43'"
+          printf '%s\n' "$META" | grep -F "versionName='0.10.24'"
           VERIFY=$("$SIGN" verify --verbose --print-certs "$SOURCE")
           printf '%s\n' "$VERIFY"
           printf '%s\n' "$VERIFY" | grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true'
@@ -106,33 +109,33 @@ jobs:
           test "$EXPECTED" = "$ACTUAL"
           if unzip -l "$SOURCE" | grep -Fq 'nadmo-release.jks';then echo 'Keystore leakage';exit 1;fi
           mkdir -p qa-signed
-          cp "$SOURCE" qa-signed/NADMO-LIVE-v0.10.23-beta.apk
-          (cd qa-signed && sha256sum NADMO-LIVE-v0.10.23-beta.apk > SHA256SUMS.txt)
+          cp "$SOURCE" qa-signed/NADMO-LIVE-v0.10.24.apk
+          (cd qa-signed && sha256sum NADMO-LIVE-v0.10.24.apk > SHA256SUMS.txt)
           echo "PASS: original certificate, code40 upgrade, unchanged package ID"
       - uses: actions/upload-artifact@v4
         with:
-          name: nadmo-live-v01023-radio-personal-signed-beta
+          name: nadmo-live-v01024-radio-personal-signed
           path: qa-signed/*
           retention-days: 14
           if-no-files-found: error
-      - name: Publish direct APK as beta prerelease for owner QA (optional, artifact remains)
+      - name: Publish versioned APK release (artifact remains available)
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          TAG=nadmo-live-v0.10.23-beta
+          TAG=nadmo-live-v0.10.24
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1;then
-            echo "::error::Signed beta tag already exists; never overwrite."
+            echo "::error::Release tag already exists; never overwrite."
             exit 1
           fi
-          gh release create "$TAG" qa-signed/NADMO-LIVE-v0.10.23-beta.apk qa-signed/SHA256SUMS.txt \
+          gh release create "$TAG" qa-signed/NADMO-LIVE-v0.10.24.apk qa-signed/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "NADMO LIVE v0.10.23-beta — fixed mobile LIVE overlay (owner test)" \
-            --notes "OWNER-TEST BETA — internal host RADIO no longer re-pauses by GAME foreground policy and enables authorized app-audio relay after OPEN MUSIC while always sending opaque synthetic video. Creator RADIO VINYL/NIGHT/SIGNAL/WALLPAPER follows trusted room metadata and public profile cover on web viewer. Spotify or any streaming service may disallow Android playback capture: cannot guarantee protected audio or rebroadcast rights. Existing signed package id.nadmo.live, original certificate, GAME pause/screen privacy, APK upgrade code41, Cloudflare live.nadmo.id unchanged. Not declared stable until real HP-to-viewer audio QC." \
-            --prerelease --latest=false
-          echo "Signed direct download: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/NADMO-LIVE-v0.10.23-beta.apk" >> "$GITHUB_STEP_SUMMARY"
+            --title "NADMO LIVE v0.10.24 — GAME frame pacing, RADIO startup and Studio PC" \
+            --notes "GAME capture now applies a tested frame budget before native processing; RADIO audio starts after room acknowledgement without requiring GAME overlay permission and keeps synthetic video privacy. Studio PC now shares display/tab/OBS projector with optional mixed microphone audio. No beta label. Original package id.nadmo.live and certificate preserved; versionCode43. Automated JVM, signaling and browser-media checks are recorded in Actions. Physical Android gameplay and third-party music playback still require device verification; protected music capture depends on the player." \
+            --latest=false
+          echo "Signed direct download: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/NADMO-LIVE-v0.10.24.apk" >> "$GITHUB_STEP_SUMMARY"
       - name: Wipe sensitive signing file
         if: always()
         run: rm -f "$RUNNER_TEMP/nadmo-release.jks"

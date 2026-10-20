@@ -142,6 +142,10 @@ public final class MainActivity extends Activity {
           else if("stop".equals(action))stopGame();
           else if("launch".equals(action))launchGame();
            else if("launch-music".equals(action))launchMusic();
+          else if("radio-pause".equals(action)&&"radio".equals(gameBroadcastKind))
+            startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_PAUSE));
+          else if("radio-resume".equals(action)&&"radio".equals(gameBroadcastKind))
+            startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_RADIO_ENABLE_AUDIO));
           else if("status".equals(action))requestGameStatus();
           else if("chat-settings".equals(action))openGameChatSettings();
           else if("chat-overlay-settings".equals(action))openGameOverlaySettings();
@@ -292,7 +296,7 @@ public final class MainActivity extends Activity {
     gameQuality=command.optString("quality","stable");
     gameFace=command.optBoolean("face",false);
     gameFaceLayout=gameFace&&command.optJSONObject("facecam")!=null?command.optJSONObject("facecam").toString():"";
-    if(!Settings.canDrawOverlays(this)){
+    if(!"radio".equals(gameBroadcastKind)&&!Settings.canDrawOverlays(this)){
       notifyGameStatus("error","Aktifkan izin Tampilkan di atas aplikasi lain agar tombol melayang PAUSE tersedia. Setelah izin aktif, ketuk MULAI GAME lagi.","");
       openGameOverlaySettings();
       return;
@@ -320,7 +324,7 @@ public final class MainActivity extends Activity {
       // Android 14+ defaults to allowing single-app capture: selecting NADMO
       // would end/blank the projection as soon as Mobile Legends is opened.
       // Request full-display sharing; Android still shows its consent dialog.
-      notifyGameStatus("starting","Izinkan perekaman seluruh layar untuk GAME LIVE.","");
+      notifyGameStatus("starting","radio".equals(gameBroadcastKind)?"Izinkan akses audio perangkat untuk RADIO. Layar tidak ditampilkan ke penonton.":"Izinkan perekaman seluruh layar untuk GAME LIVE.","");
       Intent capture=Build.VERSION.SDK_INT>=34
         ?manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
         :manager.createScreenCaptureIntent();
@@ -370,7 +374,7 @@ public final class MainActivity extends Activity {
      if(!"radio".equals(gameBroadcastKind)||!("live".equals(gameLiveState)||"paused".equals(gameLiveState))){
        notifyGameStatus("error","Mulai RADIO LIVE dulu sebelum OPEN MUSIC.",gameLiveRoom);return;
      }
-     if(!ensureGameFloatingControls())return;
+     // RADIO can run without overlay permission; in-app and notification controls remain available.
      // Host explicitly requests audio-only RADIO. The service still sends
      // opaque generated video frames; GAME always keeps privacy resume locked.
      startService(new Intent(this,GameCaptureService.class)
@@ -433,7 +437,7 @@ public final class MainActivity extends Activity {
     String payload="{state:"+JSONObject.quote(state==null?"":state)+",message:"+
       JSONObject.quote(message==null?"":message)+",room:"+JSONObject.quote(room==null?"":room)+
       ",chatNotificationsEnabled:"+chatNotificationsEnabled()+",chatOverlayEnabled:"+Settings.canDrawOverlays(this)+
-      ",startedAt:"+gameLiveStartedAt+",broadcastKind:"+JSONObject.quote(gameBroadcastKind)+",radioMusicSupported:true}";
+      ",startedAt:"+gameLiveStartedAt+",broadcastKind:"+JSONObject.quote(gameBroadcastKind)+",radioMusicSupported:true,radioControlsSupported:true}";
     web.evaluateJavascript("window.dispatchEvent(new CustomEvent('nadmo-game-status',{detail:"+payload+"}));",null);
   }
   private void grantMedia(){
