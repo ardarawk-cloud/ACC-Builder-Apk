@@ -39,7 +39,7 @@ assert.match(activity,/@Override protected void onResume\(\)/);
 assert.match(activity,/GameCaptureService\.ACTION_PAUSE/,'Returning to NADMO must stop transmitting its screen');
 assert.match(activity,/if\(!"live"\.equals\(gameLiveState\)&&!"paused"\.equals\(gameLiveState\)\)/,'Can open game from initial pause');
 assert.match(gradle,/applicationId 'id\.nadmo\.live'/);
-assert.match(gradle,/versionCode 43/);
+assert.match(gradle,/versionCode 44/);
 assert.match(gradle,/versionName '0\.10\.24'/);
 assert.doesNotMatch(service,/getMediaProjection\(Activity\.RESULT_OK/,'Do not reuse Android 14 one-shot projection token');
 assert.match(service,/checkHourlyRestReminder\(\)/,'GAME timer must run in native service while playing');
