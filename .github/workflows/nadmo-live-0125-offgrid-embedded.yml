@@ -1,5 +1,5 @@
 name: NADMO LIVE v0.10.25 OFFGRID embedded signed candidate
-# retry-2: version gate aligned to code44
+# retry-3: code44 and versionName 0.10.25 gates aligned
 on:
   push:
     branches: ['feat/nadmo-live-offgrid-native-embedded-v2-20261026']
