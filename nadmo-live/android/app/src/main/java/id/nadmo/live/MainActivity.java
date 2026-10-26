@@ -38,14 +38,13 @@ public final class MainActivity extends Activity {
   private static final String APP_HOST="appassets.androidplatform.net";
   private static final String LIVE_HOST="live.nadmo.id";
   private static final String ONLINE_URL="https://"+LIVE_HOST+"/app/";
-  private static final String OFFGRID_APP="com.offgrid.mesh.dev";
   private static final int ASK_MEDIA=42;
   private static final int PICK_AVATAR=43;
   private static final int ASK_GAME_PERMISSION=44;
   private static final int ASK_SCREEN_CAPTURE=45;
   private static final int ASK_CHAT_NOTIFICATIONS=46;
   private boolean askedChatNotifications=false;
-  private String gameTitle="",gameName="",gameQuality="stable";
+  private String gameTitle="",gameName="",gameQuality="stable",gameBroadcastKind="gaming",gameRadioVisual="signal";
   private boolean gameFace=false;
   private String gameFaceLayout="";
   private boolean gameReceiverRegistered=false;
@@ -63,7 +62,11 @@ public final class MainActivity extends Activity {
         String next=intent.getStringExtra("state");
         // Covers process recreation while GAME is still capturing in :game.
         // Fail closed even if this Activity forgot its previous native state.
-        if(activityVisible && ("live".equals(next)||"reconnecting".equals(next)||"starting".equals(next))){
+        // A LIVE -> PAUSE transition is sufficient when NADMO is in front.
+        // NEVER issue PAUSE for STARTING/RECONNECTING status broadcasts:
+        // the service would re-report STARTING/RECONNECTING while already
+        // privacy-paused, causing a cross-process status/PAUSE feedback loop.
+        if(!"radio".equals(gameBroadcastKind)&&LiveStatusPolicy.shouldEnforceForegroundPrivacy(activityVisible,next)){
           try{startService(new Intent(MainActivity.this,GameCaptureService.class).setAction(GameCaptureService.ACTION_PAUSE));}
           catch(Exception ignored){}
         }
@@ -72,6 +75,8 @@ public final class MainActivity extends Activity {
           catch(Exception ignored){}
         }
         gameLiveStartedAt="stopped".equals(next)?0L:intent.getLongExtra("startedAt",gameLiveStartedAt);
+ String incomingKind=intent.getStringExtra("broadcastKind");
+ if("radio".equals(incomingKind)||"gaming".equals(incomingKind))gameBroadcastKind=incomingKind;
         notifyGameStatus(next,intent.getStringExtra("message"),intent.getStringExtra("room"));
       }
     }
@@ -90,16 +95,14 @@ public final class MainActivity extends Activity {
       && "https".equalsIgnoreCase(uri.getScheme())
       && (APP_HOST.equalsIgnoreCase(uri.getHost()) || LIVE_HOST.equalsIgnoreCase(uri.getHost()));
   }
-  // Existing OFFGRID Alpha (BLE direct/group/relay) remains in its own native app.
-  // Route only the fixed, user-tapped local URI; do not need Internet or a server.
+  // OFFGRID is embedded as a native module inside the signed NADMO LIVE APK.
+  // The fixed local URI is still used by the WebView, but no second APK is required.
   private void openOffgrid(){
-    final Intent launch=getPackageManager().getLaunchIntentForPackage(OFFGRID_APP);
-    if(launch==null){
-      Toast.makeText(this,"OFFGRID belum terpasang. Instal sebelum internet blackout.",Toast.LENGTH_LONG).show();
-      return;
+    try{
+      startActivity(new Intent(this,com.offgrid.mesh.OffgridActivity.class));
+    }catch(Exception ignored){
+      Toast.makeText(this,"OFFGRID native tidak dapat dibuka.",Toast.LENGTH_LONG).show();
     }
-    try{startActivity(launch);}
-    catch(Exception ignored){Toast.makeText(this,"Tidak dapat membuka OFFGRID.",Toast.LENGTH_LONG).show();}
   }
   @Override public void onCreate(Bundle state){
     super.onCreate(state);
@@ -135,6 +138,11 @@ public final class MainActivity extends Activity {
           if("start".equals(action))startGame(command);
           else if("stop".equals(action))stopGame();
           else if("launch".equals(action))launchGame();
+           else if("launch-music".equals(action))launchMusic();
+          else if("radio-pause".equals(action)&&"radio".equals(gameBroadcastKind))
+            startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_PAUSE));
+          else if("radio-resume".equals(action)&&"radio".equals(gameBroadcastKind))
+            startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_RADIO_ENABLE_AUDIO));
           else if("status".equals(action))requestGameStatus();
           else if("chat-settings".equals(action))openGameChatSettings();
           else if("chat-overlay-settings".equals(action))openGameOverlaySettings();
@@ -248,7 +256,7 @@ public final class MainActivity extends Activity {
     activityVisible=true;
     // Always fail CLOSED before navigating Android menus, NADMO settings or
     // other apps. The WebView can never reactivate GAME recording on its own.
-    if(!gameScreenConsentPending&&!gameLiveRoom.isEmpty()&&
+    if(!"radio".equals(gameBroadcastKind)&&!gameScreenConsentPending&&!gameLiveRoom.isEmpty()&&
        ("live".equals(gameLiveState)||"paused".equals(gameLiveState)||
        "reconnecting".equals(gameLiveState)||"starting".equals(gameLiveState))){
       try{startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_PAUSE));}
@@ -277,12 +285,15 @@ public final class MainActivity extends Activity {
         "Room GAME masih aktif/menyambung. Jangan MULAI ulang. Buka GAME, lalu gunakan tombol melayang RESUME jika JEDA.",
         gameLiveRoom);return;
     }
-    gameTitle=command.optString("title","NADMO GAME LIVE");
-    gameName=command.optString("game","Gaming");
+    gameBroadcastKind="radio".equals(command.optString("broadcastKind"))?"radio":"gaming";
+    String radioChoice=command.optString("radioVisual","signal");
+    gameRadioVisual=java.util.Arrays.asList("signal","vinyl","night","cover").contains(radioChoice)?radioChoice:"signal";
+     gameTitle=command.optString("title",gameBroadcastKind.equals("radio")?"NADMO RADIO LIVE":"NADMO GAME LIVE");
+    gameName=gameBroadcastKind.equals("radio")?"NADMO RADIO":command.optString("game","Gaming");
     gameQuality=command.optString("quality","stable");
     gameFace=command.optBoolean("face",false);
     gameFaceLayout=gameFace&&command.optJSONObject("facecam")!=null?command.optJSONObject("facecam").toString():"";
-    if(!Settings.canDrawOverlays(this)){
+    if(!"radio".equals(gameBroadcastKind)&&!Settings.canDrawOverlays(this)){
       notifyGameStatus("error","Aktifkan izin Tampilkan di atas aplikasi lain agar tombol melayang PAUSE tersedia. Setelah izin aktif, ketuk MULAI GAME lagi.","");
       openGameOverlaySettings();
       return;
@@ -310,7 +321,7 @@ public final class MainActivity extends Activity {
       // Android 14+ defaults to allowing single-app capture: selecting NADMO
       // would end/blank the projection as soon as Mobile Legends is opened.
       // Request full-display sharing; Android still shows its consent dialog.
-      notifyGameStatus("starting","Izinkan perekaman seluruh layar untuk GAME LIVE.","");
+      notifyGameStatus("starting","radio".equals(gameBroadcastKind)?"Izinkan akses audio perangkat untuk RADIO. Layar tidak ditampilkan ke penonton.":"Izinkan perekaman seluruh layar untuk GAME LIVE.","");
       Intent capture=Build.VERSION.SDK_INT>=34
         ?manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
         :manager.createScreenCaptureIntent();
@@ -321,10 +332,26 @@ public final class MainActivity extends Activity {
   private void stopGame(){
     startService(new Intent(this,GameCaptureService.class).setAction(GameCaptureService.ACTION_STOP));
   }
+  private boolean ensureGameFloatingControls(){
+    if(Settings.canDrawOverlays(this))return true;
+    // Paused-by-default broadcast can only be resumed by the secure
+    // floating overlay outside NADMO. Without this permission, the game
+    // can launch but never publish audio/video, appearing disconnected.
+    try{
+      Toast.makeText(this,"Aktifkan Tampil di atas aplikasi lain untuk tombol RESUME LIVE.",Toast.LENGTH_LONG).show();
+      Intent overlay=new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+        Uri.parse("package:"+getPackageName()));
+      startActivity(overlay);
+    }catch(Exception error){
+      notifyGameStatus("error","Izin tombol melayang belum aktif.",gameLiveRoom);
+    }
+    return false;
+  }
   private void launchGame(){
     if(!"live".equals(gameLiveState)&&!"paused".equals(gameLiveState)){
       notifyGameStatus("error","Mulai GAME LIVE sebelum membuka permainan.","");return;
     }
+    if(!ensureGameFloatingControls())return;
     String[] packages;
     String key=gameName.toLowerCase(java.util.Locale.ROOT);
     if(key.contains("mobile legends"))packages=new String[]{"com.mobile.legends"};
@@ -340,7 +367,36 @@ public final class MainActivity extends Activity {
     }
     Toast.makeText(this,"Buka game melalui layar utama HP. GAME LIVE tetap berjalan.",Toast.LENGTH_LONG).show();
   }
-  private boolean chatNotificationsEnabled(){
+  private void launchMusic(){
+     if(!"radio".equals(gameBroadcastKind)||!("live".equals(gameLiveState)||"paused".equals(gameLiveState))){
+       notifyGameStatus("error","Mulai RADIO LIVE dulu sebelum OPEN MUSIC.",gameLiveRoom);return;
+     }
+     // RADIO can run without overlay permission; in-app and notification controls remain available.
+     // Host explicitly requests audio-only RADIO. The service still sends
+     // opaque generated video frames; GAME always keeps privacy resume locked.
+     startService(new Intent(this,GameCaptureService.class)
+       .setAction(GameCaptureService.ACTION_RADIO_ENABLE_AUDIO));
+     // Never choose a music app on behalf of the creator or scrape installed app details.
+     // Android music app selector may have no matching apps. Home is a universal fallback
+     // where the host can open ANY installed authorized player manually.
+     try{
+       Intent selector=Intent.makeMainSelectorActivity(Intent.ACTION_MAIN,Intent.CATEGORY_APP_MUSIC);
+       selector.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+       if(selector.resolveActivity(getPackageManager())!=null){
+         startActivity(Intent.createChooser(selector,"OPEN MUSIC — pilih aplikasi musik"));
+         return;
+       }
+     }catch(Exception ignored){}
+     try{
+       Intent home=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+       startActivity(home);
+       Toast.makeText(this,"Pilih aplikasi musik di HP. Video layar pribadi tidak ikut disiarkan.",Toast.LENGTH_LONG).show();
+     }catch(Exception ignored){
+       notifyGameStatus(gameLiveState,"Tidak ada aplikasi musik yang dapat dibuka. Buka pemutar dari HP.",gameLiveRoom);
+     }
+   }
+   private boolean chatNotificationsEnabled(){
     if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return false;
     NotificationManager manager=getSystemService(NotificationManager.class);
     if(manager==null||!manager.areNotificationsEnabled())return false;
@@ -378,7 +434,7 @@ public final class MainActivity extends Activity {
     String payload="{state:"+JSONObject.quote(state==null?"":state)+",message:"+
       JSONObject.quote(message==null?"":message)+",room:"+JSONObject.quote(room==null?"":room)+
       ",chatNotificationsEnabled:"+chatNotificationsEnabled()+",chatOverlayEnabled:"+Settings.canDrawOverlays(this)+
-      ",startedAt:"+gameLiveStartedAt+"}";
+      ",startedAt:"+gameLiveStartedAt+",broadcastKind:"+JSONObject.quote(gameBroadcastKind)+",radioMusicSupported:true,radioControlsSupported:true}";
     web.evaluateJavascript("window.dispatchEvent(new CustomEvent('nadmo-game-status',{detail:"+payload+"}));",null);
   }
   private void grantMedia(){
@@ -397,12 +453,23 @@ public final class MainActivity extends Activity {
         .putExtra(GameCaptureService.EXTRA_PROJECTION,data)
         .putExtra(GameCaptureService.EXTRA_TITLE,gameTitle)
         .putExtra(GameCaptureService.EXTRA_GAME,gameName)
+         .putExtra(GameCaptureService.EXTRA_BROADCAST_KIND,gameBroadcastKind)
+        .putExtra(GameCaptureService.EXTRA_RADIO_VISUAL,gameRadioVisual)
         .putExtra(GameCaptureService.EXTRA_QUALITY,gameQuality)
         .putExtra(GameCaptureService.EXTRA_FACE,gameFace)
         .putExtra(GameCaptureService.EXTRA_FACE_LAYOUT,gameFaceLayout)
         .putExtra(GameCaptureService.EXTRA_COOKIE,CookieManager.getInstance().getCookie(ONLINE_URL));
-      try{if(Build.VERSION.SDK_INT>=26)startForegroundService(run);else startService(run);}
-      catch(Exception e){notifyGameStatus("error","Android tidak mengizinkan layanan GAME LIVE.","");}
+      try{
+        if(Build.VERSION.SDK_INT>=26)startForegroundService(run);else startService(run);
+        // A broadcast may arrive before the WebView finishes resuming after
+        // MediaProjection consent. A few bounded queries recover the actual
+        // server-created status instead of leaving BUKA GAME disabled forever.
+        if(web!=null){
+          web.postDelayed(()->{if(activityVisible&&"starting".equals(gameLiveState))requestGameStatus();},2500);
+          web.postDelayed(()->{if(activityVisible&&"starting".equals(gameLiveState))requestGameStatus();},6500);
+          web.postDelayed(()->{if(activityVisible&&"starting".equals(gameLiveState))requestGameStatus();},11000);
+        }
+      }catch(Exception e){notifyGameStatus("error","Android tidak mengizinkan layanan LIVE.","");}
       return;
     }
     if(request!=PICK_AVATAR)return;
