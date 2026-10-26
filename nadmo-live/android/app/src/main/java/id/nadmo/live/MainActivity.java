@@ -38,7 +38,6 @@ public final class MainActivity extends Activity {
   private static final String APP_HOST="appassets.androidplatform.net";
   private static final String LIVE_HOST="live.nadmo.id";
   private static final String ONLINE_URL="https://"+LIVE_HOST+"/app/";
-  private static final String OFFGRID_APP="com.offgrid.mesh.dev";
   private static final int ASK_MEDIA=42;
   private static final int PICK_AVATAR=43;
   private static final int ASK_GAME_PERMISSION=44;
@@ -96,16 +95,14 @@ public final class MainActivity extends Activity {
       && "https".equalsIgnoreCase(uri.getScheme())
       && (APP_HOST.equalsIgnoreCase(uri.getHost()) || LIVE_HOST.equalsIgnoreCase(uri.getHost()));
   }
-  // Existing OFFGRID Alpha (BLE direct/group/relay) remains in its own native app.
-  // Route only the fixed, user-tapped local URI; do not need Internet or a server.
+  // OFFGRID is embedded as a native module inside the signed NADMO LIVE APK.
+  // The fixed local URI is still used by the WebView, but no second APK is required.
   private void openOffgrid(){
-    final Intent launch=getPackageManager().getLaunchIntentForPackage(OFFGRID_APP);
-    if(launch==null){
-      Toast.makeText(this,"OFFGRID belum terpasang. Instal sebelum internet blackout.",Toast.LENGTH_LONG).show();
-      return;
+    try{
+      startActivity(new Intent(this,com.offgrid.mesh.OffgridActivity.class));
+    }catch(Exception ignored){
+      Toast.makeText(this,"OFFGRID native tidak dapat dibuka.",Toast.LENGTH_LONG).show();
     }
-    try{startActivity(launch);}
-    catch(Exception ignored){Toast.makeText(this,"Tidak dapat membuka OFFGRID.",Toast.LENGTH_LONG).show();}
   }
   @Override public void onCreate(Bundle state){
     super.onCreate(state);
