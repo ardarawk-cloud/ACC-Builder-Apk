@@ -1,5 +1,5 @@
 name: NADMO LIVE v0.10.25 OFFGRID embedded signed candidate
-# retry-3: code44 and versionName 0.10.25 gates aligned
+# retry-4: verify embedded classes from DEX descriptors
 on:
   push:
     branches: ['feat/nadmo-live-offgrid-native-embedded-v2-20261026']
@@ -78,9 +78,47 @@ jobs:
           ACTUAL=$(printf '%s\n' "$VERIFY" | sed -n 's/.*Signer #1 certificate SHA-256 digest: //p' | head -1)
           test -n "$EXPECTED"
           test "$EXPECTED" = "$ACTUAL"
-          unzip -l "$SOURCE" | grep -Fq 'com/offgrid/mesh/OffgridActivity'
-          unzip -l "$SOURCE" | grep -Fq 'com/offgrid/mesh/BleChatManager'
-          unzip -l "$SOURCE" | grep -Fq 'com/offgrid/mesh/MeshStore'
+          DEX_TEXT="$RUNNER_TEMP/offgrid-dex-strings.txt"
+          : > "$DEX_TEXT"
+          for DEX in $(unzip -Z1 "$SOURCE" | grep -E '^classes([0-9]+)?\.dex
+          if unzip -l "$SOURCE" | grep -Fq 'nadmo-release.jks';then echo 'Keystore leakage';exit 1;fi
+          mkdir -p qa-signed
+          cp "$SOURCE" qa-signed/NADMO-LIVE-v0.10.25-offgrid-embedded.apk
+          (cd qa-signed && sha256sum NADMO-LIVE-v0.10.25-offgrid-embedded.apk > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nadmo-live-v01025-offgrid-embedded
+          path: qa-signed/*
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Publish direct owner-test APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG=nadmo-live-v0.10.25-offgrid-embedded-beta
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1;then
+            echo "::error::Release tag $TAG already exists; refusing overwrite."
+            exit 1
+          fi
+          gh release create "$TAG" qa-signed/NADMO-LIVE-v0.10.25-offgrid-embedded.apk qa-signed/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "NADMO LIVE v0.10.25 — OFFGRID embedded owner test" \
+            --notes "Owner-test candidate. OFFGRID encrypted BLE direct chat, groups, nearby discovery, persistent history, identity verification, encrypted store-and-forward mesh, auto relay, diagnostics and offline APK sharing are embedded inside package id.nadmo.live; no separate OFFGRID APK is required. Existing NADMO LIVE package and owner signing certificate are preserved for install-over updates. Physical three-phone A→B→C mesh remains PENDING and is not claimed PASS until tested on real devices." \
+            --prerelease --latest=false
+
+      - name: Wipe signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/nadmo-release.jks"
+); do
+            unzip -p "$SOURCE" "$DEX" | strings >> "$DEX_TEXT"
+          done
+          grep -Fq 'Lcom/offgrid/mesh/OffgridActivity;' "$DEX_TEXT"
+          grep -Fq 'Lcom/offgrid/mesh/BleChatManager;' "$DEX_TEXT"
+          grep -Fq 'Lcom/offgrid/mesh/MeshStore;' "$DEX_TEXT"
           if unzip -l "$SOURCE" | grep -Fq 'nadmo-release.jks';then echo 'Keystore leakage';exit 1;fi
           mkdir -p qa-signed
           cp "$SOURCE" qa-signed/NADMO-LIVE-v0.10.25-offgrid-embedded.apk
