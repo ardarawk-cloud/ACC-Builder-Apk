@@ -3928,5 +3928,144 @@ window.PSLLocalDate = function(d){
  if(window.PSL30){window.PSL30.stockCard=open32;window.PSL30.shareCard=share32}
 })();
 </script>
+
+<script id="PSL_V33_BOSS_REPORT">
+(function(){
+  'use strict';
+  const ENDPOINT='https://laporanpapa.nadmo.id/api/publish';
+  const BASE='https://laporanpapa.nadmo.id/?key=';
+  const PUBLISH_KEY='PSL_BOSS_V33_PUBLISH_CODE';
+  const VIEW_KEY='PSL_BOSS_V33_VIEW_CODE';
+  const DATE_KEY='PSL_BOSS_V33_LAST_SEND';
+  const active=x=>x&& !['CORRECTED','VOID','CANCELLED'].includes(x.status);
+  const products=()=>Array.from(PRODUCTS||[]);
+  const safeNum=n=>Number.isFinite(Number(n))?Number(n):0;
+  const stamp=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d);
+  const pad=n=>String(n).padStart(2,'0');
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function summarize(transactions,movements,asOf){
+    const ts=(transactions||[]).filter(t=>active(t)&&stamp(t.date)&&t.date<=asOf);
+    const ms=(movements||[]).filter(m=>active(m)&&stamp(m.date)&&m.date<=asOf&&['restock','stockout'].includes(m.type)&&products().includes(m.product));
+    const monthsSet=new Set([asOf.slice(0,7)]);
+    for(const t of ts)monthsSet.add(t.date.slice(0,7));
+    for(const m of ms)monthsSet.add(m.date.slice(0,7));
+    const monthsList=Array.from(monthsSet).sort().reverse().slice(0,36).sort();
+    const result={schema:'psl-boss-v1',appVersion:33,generatedAt:new Date().toISOString(),asOf,months:{},quality:'UNVERIFIED_PHYSICAL_STOCK'};
+    for(const mon of monthsList){
+      const [year,month]=mon.split('-').map(Number);
+      const last=mon===asOf.slice(0,7)?Number(asOf.slice(-2)):new Date(Date.UTC(year,month,0)).getUTCDate();
+      const first=mon+'-01';
+      const daily=Array.from({length:last},(_,i)=>({day:pad(i+1),date:mon+'-'+pad(i+1),production:0,stockOut:0,sales:0,expenses:0}));
+      const byDay=Object.fromEntries(daily.map(x=>[x.date,x]));
+      const monthTx=ts.filter(x=>x.date.startsWith(mon));
+      const m={sales:0,expenses:0,hbAdd:0,production:0,stockOut:0,distributed:0,categories:{},products:{},outlets:[],daily};
+      for(const t of monthTx){
+        const n=safeNum(t.amount),d=byDay[t.date];if(!d)continue;
+        if(t.type==='sales'){m.sales+=n;d.sales+=n}
+        else if(t.type==='expense'){m.expenses+=n;d.expenses+=n;const cat=String(t.category||'Lainnya').slice(0,45);m.categories[cat]=(m.categories[cat]||0)+n}
+        else if(t.type==='hb_add')m.hbAdd+=n;
+      }
+      const outletTotals={};
+      for(const p of products()){
+        const allProduct=ms.filter(x=>x.product===p);
+        const opening=allProduct.filter(x=>x.date<first).reduce((n,x)=>n+(x.type==='restock'?1:-1)*safeNum(x.qty),0);
+        const inMonth=allProduct.filter(x=>x.date.startsWith(mon));
+        let balance=opening,incTotal=0,outTotal=0,negative=opening<0;
+        const rows=[];
+        for(const day of daily){
+          const entries=inMonth.filter(x=>x.date===day.date);
+          const incoming=entries.filter(x=>x.type==='restock').reduce((n,x)=>n+safeNum(x.qty),0);
+          const outgoing=entries.filter(x=>x.type==='stockout').reduce((n,x)=>n+safeNum(x.qty),0);
+          balance+=incoming-outgoing;
+          incTotal+=incoming;outTotal+=outgoing;
+          day.production+=incoming;day.stockOut+=outgoing;
+          if(balance<0)negative=true;
+          rows.push({day:day.day,incoming,outgoing,remaining:balance});
+        }
+        m.products[p]={product:p,opening,incoming:incTotal,outgoing:outTotal,closing:balance,negative,rows};
+        m.production+=incTotal;m.stockOut+=outTotal;
+        for(const move of inMonth){
+          if(move.type!=='stockout'||(!move.distributionId&&!move.destinationOutlet&&!move.outlet))continue;
+          const outlet=String(move.destinationOutlet||move.outlet||'').replace('PSBK','PSB');
+          if(!['PSK','PSP','PSB'].includes(outlet))continue;
+          const key=outlet+'|'+p;
+          outletTotals[key]=(outletTotals[key]||0)+safeNum(move.qty);
+          m.distributed+=safeNum(move.qty);
+        }
+      }
+      m.outlets=Object.entries(outletTotals).map(([key,qty])=>({outlet:key.split('|')[0],product:key.split('|')[1],qty}));
+      result.months[mon]=m;
+    }
+    return result;
+  }
+  const shareUrl=()=>{const key=localStorage.getItem(VIEW_KEY)||'';return key?BASE+encodeURIComponent(key):''};
+  function mount(){
+    const tab=document.getElementById('tab-laporan');if(!tab||document.getElementById('psl33-boss'))return;
+    const box=document.createElement('div');box.id='psl33-boss';box.className='card';
+    box.style.cssText='padding:18px;border:1px solid #ead5d7;border-radius:14px;margin:16px 0';
+    box.innerHTML='<div class="card-title">Dashboard Laporan Bos · Link Privat</div><p style="font-size:12px;line-height:1.55;color:#66585d">Bos melihat stok, produksi, distribusi, kartu stok harian, dan keuangan melalui browser. Hanya baca. Data dikirim ketika Owner menekan Sinkronisasi.</p><button class="btn btn-primary btn-block" onclick="PSLBoss33.open()">Kirim Laporan / Bagikan Link Bos</button><div id="psl33-sync-last" style="font-size:11px;margin-top:10px;color:#76676c"></div>';
+    tab.insertBefore(box,tab.firstChild);
+    const stamp=localStorage.getItem(DATE_KEY);
+    const el=document.getElementById('psl33-sync-last');
+    if(el)el.textContent=stamp?'Terakhir dikirim: '+new Date(stamp).toLocaleString('id-ID'):'Belum pernah dikirim. Laporan hanya ada di HP ini.';
+  }
+  function open(){
+    if(currentRole!=='OWNER')return alert('Hanya OWNER dapat mengirim laporan ke website.');
+    const title=document.getElementById('detailTitle'),body=document.getElementById('detailContent');
+    if(!title||!body)return;
+    title.textContent='Laporan Bos · Sinkronisasi Privat';
+    const configured=!!localStorage.getItem(PUBLISH_KEY),link=shareUrl();
+    body.innerHTML='<p style="font-size:12px;line-height:1.5">Pengaturan sekali: masukkan Kode Kirim dan Kode Link Bos dari NADMO Studio. Kode tidak dimasukkan ke GitHub dan tidak ikut ke laporan publik.</p>'+
+      '<label class="form-label">Kode Kirim (khusus Owner)</label><input class="form-input" id="psl33-publish" type="password" placeholder="'+(configured?'Tersimpan — kosongkan jika tidak berubah':'Tempel kode kirim privat')+'" autocomplete="off">'+
+      '<label class="form-label" style="margin-top:10px">Kode Akses Link Bos (hanya baca)</label><input class="form-input" id="psl33-view" type="password" placeholder="'+(link?'Tersimpan — kosongkan jika tidak berubah':'Tempel kode akses link bos')+'" autocomplete="off">'+
+      '<p style="font-size:12px;color:#7d575c">Hanya ringkasan transaksi dan stok dikirim. Data di HP tidak dihapus atau diubah.</p>'+
+      '<button class="btn btn-primary btn-block" id="psl33-send" onclick="PSLBoss33.send()">KIRIM LAPORAN TERBARU</button>'+
+      '<div id="psl33-message" style="margin-top:10px;font-size:12px"></div>'+
+      '<button class="btn btn-secondary btn-block" style="margin-top:10px" onclick="PSLBoss33.share()">Bagikan Link Bos</button>';
+    UI.showModal('detail');
+  }
+  async function send(){
+    if(currentRole!=='OWNER')return alert('Hanya Owner.');
+    const code=String(document.getElementById('psl33-publish')?.value||localStorage.getItem(PUBLISH_KEY)||'').trim();
+    const view=String(document.getElementById('psl33-view')?.value||localStorage.getItem(VIEW_KEY)||'').trim();
+    const status=document.getElementById('psl33-message'),btn=document.getElementById('psl33-send');
+    if(!code||!view){alert('Isi Kode Kirim dan Kode Link Bos dahulu.');return}
+    if(!navigator.onLine){alert('Perlu koneksi internet untuk mengirim laporan.');return}
+    if(btn)btn.disabled=true;if(status)status.textContent='Menghitung laporan dari database lokal...';
+    try{
+      const [transactions,movements]=await Promise.all([dbGetAll('transactions'),dbGetAll('stock_movements')]);
+      if(!transactions.length&&!movements.length)throw Error('Belum ada transaksi untuk diterbitkan.');
+      const payload=summarize(transactions,movements,PSLLocalDate());
+      if(status)status.textContent='Mengirim laporan privat...';
+      const r=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+code},body:JSON.stringify(payload),cache:'no-store'});
+      const body=await r.json().catch(()=>({error:'Respons server tidak valid'}));
+      if(!r.ok||!body.ok)throw Error(body.error||'Gagal kirim, HTTP '+r.status);
+      localStorage.setItem(PUBLISH_KEY,code);
+      localStorage.setItem(VIEW_KEY,view);
+      localStorage.setItem(DATE_KEY,body.publishedAt);
+      if(status)status.textContent='Berhasil! '+Object.keys(payload.months).length+' bulan laporan sudah tersimpan. Link Bos siap dibagikan. Data di HP aman.';
+      const el=document.getElementById('psl33-sync-last');
+      if(el)el.textContent='Terakhir dikirim: '+new Date(body.publishedAt).toLocaleString('id-ID');
+      alert('Laporan bos berhasil diperbarui!');
+    }catch(e){if(status)status.textContent='GAGAL: '+String(e.message||e)+' (data HP tidak berubah)'}
+    finally{if(btn)btn.disabled=false}
+  }
+  async function share(){
+    let link=shareUrl();
+    if(!link){
+      const view=String(document.getElementById('psl33-view')?.value||'').trim();
+      if(view){localStorage.setItem(VIEW_KEY,view);link=shareUrl()}
+    }
+    if(!link)return alert('Kode akses link bos belum tersedia.');
+    const txt='PAPA SAUCE LAB — Dashboard Laporan Bos (hanya baca)\n'+link+'\nData diperbarui setelah Owner melakukan sinkronisasi.';
+    if(navigator.share){try{await navigator.share({title:'Laporan Papa Sauce Lab',text:txt});return}catch(e){if(e.name==='AbortError')return}}
+    if(navigator.clipboard?.writeText){try{await navigator.clipboard.writeText(txt);alert('Link laporan bos disalin.');return}catch(e){}}
+    prompt('Salin link laporan bos:',link);
+  }
+  window.PSLBoss33={open,send,share,buildPayload:summarize};
+  let attempts=0;const timer=setInterval(()=>{if(document.getElementById('tab-laporan')&&typeof db!=='undefined'&&db){clearInterval(timer);mount()}else if(++attempts>100)clearInterval(timer)},100);
+})();
+
+</script>
 </body>
 </html>
