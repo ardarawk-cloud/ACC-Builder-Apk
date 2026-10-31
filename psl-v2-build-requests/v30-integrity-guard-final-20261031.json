@@ -1,0 +1,7 @@
+{
+  "request_id": "psl-v30-integrity-guard-final-20261031",
+  "project_id": "papa-sauce-lab",
+  "version": 30,
+  "mode": "stable_signed_update",
+  "reason": "Rebuild official V30 with corrections blocked across closed dates and corrected balance calculations"
+}
