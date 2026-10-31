@@ -1,13 +1,13 @@
 {
   "id": "papa-sauce-lab",
   "name": "Papa Sauce Lab",
-  "version": 29,
-  "provider": "manual-hotfix",
+  "version": 30,
+  "provider": "manual-source-audit",
   "model": "none",
-  "qc": "passed",
-  "last_request_id": "papa-sauce-lab-v29-reset-closed-range",
-  "last_prompt": "Owner-only audited reset of a closed date range so incorrect days can be re-entered from the prior valid closing balance.",
+  "qc": "source-syntax-validated",
+  "last_request_id": "papa-sauce-lab-v30-owner-recovery-and-distribution",
+  "last_prompt": "Owner-only audited stock corrections; safe last-day reopen; photo-assisted 3-outlet distribution; automatic stock cards",
   "last_build": "pending",
   "created_at": "2026-09-11T14:05:37.288377+00:00",
-  "updated_at": "2026-10-10T16:18:23.218850+00:00"
+  "updated_at": "2026-10-31T07:55:00Z"
 }

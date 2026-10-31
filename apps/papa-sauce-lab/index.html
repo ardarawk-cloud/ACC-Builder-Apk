@@ -3383,5 +3383,337 @@ window.PSLLocalDate = function(d){
 })();
 </script>
 
+
+<style id="PSL_V30_REPAIR_STYLE">
+.psl30-box{margin:14px 0;padding:15px;border:1px solid #eadbdc;border-radius:16px;background:#fffafa}
+.psl30-box h3{font-size:17px;color:#92152e;margin:0 0 7px}
+.psl30-box p{font-size:12px;color:#605b5d;line-height:1.5;margin:5px 0 10px}
+.psl30-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.psl30-box input,.psl30-box select,.psl30-form input,.psl30-form select{width:100%;min-width:0;padding:9px;border:1px solid #ddcbd0;border-radius:9px;background:white;color:#222;font-size:14px}
+.psl30-small{font-size:11px;color:#685c61}
+.psl30-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #eee}
+.psl30-row span{flex:1;min-width:0}
+.psl30-row button{flex-shrink:0}
+.psl30-table{width:100%;border-collapse:collapse;font-size:12px}
+.psl30-table td,.psl30-table th{padding:6px 3px;border-bottom:1px solid #eadbdc;text-align:center}
+.psl30-table td:first-child,.psl30-table th:first-child{text-align:left}
+.psl30-table input{width:55px;padding:6px;text-align:center}
+.psl30-warn{background:#fff3da;color:#83500a;padding:10px;border-radius:8px;font-size:12px}
+.psl30-ok{color:#176b43;font-weight:750}
+.psl30-btn{margin:9px 6px 0 0}
+</style>
+<script id="PSL_V30_REPAIR">
+(function(){
+  'use strict';
+  const MARK='PSL_V30_REPAIR';
+  const CANON=['PSK','PSP','PSBK'];
+  const LABEL={PSK:'PSK',PSP:'PSP',PSBK:'PSB'};
+  const OWNER=()=>currentRole==='OWNER';
+  const date=()=>document.getElementById('operationalDateV5')?.value||PSLLocalDate();
+  const today=()=>PSLLocalDate();
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+  const uid=()=>('psl30-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,11));
+  const integer=v=>Number.isSafeInteger(Number(v))&&Number(v)>=0;
+  const active=m=>m&&m.status!=='CORRECTED'&&m.status!=='VOID'&&m.status!=='CANCELLED';
+  const validDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&!Number.isNaN(new Date(d+'T12:00:00').getTime())&&d<=today();
+  const PRODUCTS30=()=>Array.from(PRODUCTS);
+  const allMoves=async()=>await dbGetAll('stock_movements');
+  const allSnaps=async()=>await dbGetAll('snapshots');
+  const allPeriods=async()=>await dbGetAll('periods');
+  const isClosed=async d=>(await allSnaps()).some(s=>s&&s.date===d&&s.type!=='period_end');
+  function atomic(stores,fn){
+    return new Promise((resolve,reject)=>{
+      let tx;
+      try{
+        tx=db.transaction(stores,'readwrite');
+        fn(tx);
+        tx.oncomplete=()=>resolve(true);
+        tx.onerror=()=>reject(tx.error||new Error('Gagal menyimpan'));
+        tx.onabort=()=>reject(tx.error||new Error('Transaksi dibatalkan'));
+      }catch(e){if(tx)try{tx.abort()}catch(x){}reject(e)}
+    });
+  }
+  function movementsLevel(moves,until){
+    const levels={};
+    PRODUCTS30().forEach(p=>levels[p]=0);
+    moves.filter(active).filter(x=>!until||x.date<=until).forEach(x=>{
+      if(!x.product||!['restock','stockout'].includes(x.type))return;
+      levels[x.product]=(levels[x.product]||0)+(x.type==='restock'?Number(x.qty||0):-Number(x.qty||0));
+    });
+    return levels;
+  }
+  Stock.getLevels=async function(){return movementsLevel(await allMoves())};
+  async function refresh(){
+    await UI.updateDashboard();
+    await UI.renderStock();
+    await UI.renderHistory();
+    if(UI.renderTodayTransactions)await UI.renderTodayTransactions();
+  }
+  function show(title,body){
+    document.getElementById('detailTitle').textContent=title;
+    document.getElementById('detailContent').innerHTML=body;
+    UI.showModal('detail');
+  }
+  function noReset(){
+    alert('Reset/hapus rentang tanggal dinonaktifkan demi keamanan data. Gunakan Buka Tanggal dan Koreksi Transaksi.');
+  }
+  if(window.PSLReset29)window.PSLReset29.run=noReset;
+  async function reopen(){
+    if(!OWNER())return alert('Hanya OWNER boleh membuka kembali tanggal.');
+    const d=String(document.getElementById('psl30-reopen-date')?.value||date());
+    const reason=String(document.getElementById('psl30-reopen-reason')?.value||'').trim();
+    if(!validDate(d))return alert('Tanggal tidak valid');
+    if(reason.length<5)return alert('Isi alasan buka tanggal minimal 5 karakter.');
+    const snaps=await allSnaps(),targets=snaps.filter(s=>s&&s.date===d&&s.type!=='period_end');
+    if(!targets.length)return alert('Tanggal ini tidak memiliki snapshot CLOSED.');
+    if(snaps.some(s=>s&&s.date>d&&s.type!=='period_end'))return alert('Ada tanggal setelah '+d+' yang sudah CLOSED. Buka dari tanggal terbaru terlebih dulu.');
+    const periods=await allPeriods();
+    if(periods.some(p=>p&&[p.date,p.end,p.endDate].some(x=>x&&x>=d)))return alert('Tanggal terikat penutupan periode/bulan. Perlu rekonsiliasi periode terlebih dahulu.');
+    if(!confirm('BUKA KEMBALI '+d+'? Transaksi tidak dihapus. Snapshot lama disimpan dalam audit.'))return;
+    const id=uid();
+    await atomic(['snapshots','corrections'],tx=>{
+      tx.objectStore('corrections').add({id,action:'REOPEN_DAY',date:d,reason,user:currentRole,time:new Date().toISOString(),archivedSnapshots:targets});
+      targets.forEach(x=>tx.objectStore('snapshots').delete(x.id));
+    });
+    const el=document.getElementById('operationalDateV5');
+    if(el){el.value=d;el.dispatchEvent(new Event('change',{bubbles:true}))}
+    localStorage.setItem('PSL_OPERATIONAL_DATE_V27',d);
+    await refresh();
+    alert('Tanggal '+d+' kembali OPEN. Perbaiki transaksi lalu tutup hari kembali. Rekaman lama tersimpan di audit.');
+  }
+  async function editMovement(id){
+    if(!OWNER())return alert('Koreksi stok hanya untuk OWNER.');
+    const m=await dbGet('stock_movements',id);
+    if(!m||!active(m))return alert('Pergerakan stok sudah tidak aktif.');
+    if(m.smartSale||m.linkedSaleId)return alert('Stok ini terhubung ke Smart Sale. Koreksi harus dilakukan bersama transaksi penjualan; koreksi stok terpisah diblokir.');
+    if(m.distributionId)return alert('Bagian dari nota distribusi. Koreksi seluruh nota melalui fitur pembatalan nota agar tidak terpisah.');
+    if(await isClosed(m.date))return alert('Tanggal CLOSED. Gunakan Buka Tanggal lebih dulu.');
+    const options=PRODUCTS30().map(p=>'<option value="'+esc(p)+'"'+(p===m.product?' selected':'')+'>'+esc(p)+'</option>').join('');
+    show('Koreksi Stock', '<div class="psl30-form"><p>Transaksi asli tetap tersimpan dalam jejak audit. Mengedit tidak menambah produksi fiktif.</p><label>Produk</label><select id="psl30-edit-product">'+options+'</select><label>Jumlah pax</label><input id="psl30-edit-qty" type="number" step="1" min="1" value="'+Number(m.qty||0)+'"><label>Tanggal Bisnis</label><input id="psl30-edit-date" type="date" value="'+esc(m.date)+'"><label>Outlet (jika Stock Out)</label><select id="psl30-edit-outlet"><option value="">LAB / tidak ada outlet</option>'+CANON.map(o=>'<option value="'+o+'"'+(m.outlet===o?' selected':'')+'>'+LABEL[o]+'</option>').join('')+'</select><label>Alasan koreksi</label><input id="psl30-edit-reason" placeholder="Alasan wajib diisi"><button class="btn btn-primary btn-block" onclick="PSL30.saveEdit(\''+esc(id)+'\',false)">Simpan Koreksi</button><button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="PSL30.saveEdit(\''+esc(id)+'\',true)">Batalkan Transaksi Ini</button></div>');
+  }
+  async function saveEdit(id,voidOnly){
+    if(!OWNER())return alert('Hanya OWNER.');
+    const old=await dbGet('stock_movements',id);
+    if(!old||!active(old)||old.smartSale||old.linkedSaleId||old.distributionId)return alert('Transaksi tidak dapat dikoreksi secara terpisah.');
+    const product=String(document.getElementById('psl30-edit-product')?.value||'');
+    const qty=Number(document.getElementById('psl30-edit-qty')?.value);
+    const target=String(document.getElementById('psl30-edit-date')?.value||'');
+    const outlet=String(document.getElementById('psl30-edit-outlet')?.value||'');
+    const reason=String(document.getElementById('psl30-edit-reason')?.value||'').trim();
+    if(reason.length<5)return alert('Alasan minimal 5 karakter.');
+    if(!voidOnly&&(!PRODUCTS30().includes(product)||!integer(qty)||qty<1||!validDate(target)))return alert('Produk, jumlah, atau tanggal tidak valid.');
+    if(await isClosed(old.date)||(!voidOnly&&await isClosed(target)))return alert('Tanggal masih CLOSED. Buka tanggal terlebih dahulu.');
+    if(!voidOnly&&old.type==='stockout'&&old.outlet&&!CANON.includes(outlet))return alert('Pilih outlet tujuan.');
+    if(!confirm(voidOnly?'Batalkan pergerakan '+old.qty+' pax?':'Simpan koreksi '+old.product+' '+old.qty+' → '+product+' '+qty+' pax?'))return;
+    const changeId=uid(),now=new Date().toISOString();
+    const updated={...old,status:'CORRECTED',correctedAt:now,correctedBy:currentRole,correctionReason:reason,correctedTo:voidOnly?null:changeId+'-new'};
+    const newer=voidOnly?null:{...old,id:changeId+'-new',date:target,datetime:now,product,qty,outlet:outlet||null,destinationOutlet:outlet||null,status:'ACTIVE',correctedFrom:id,correctionReason:reason,user:currentRole};
+    await atomic(['stock_movements','corrections'],tx=>{
+      tx.objectStore('stock_movements').put(updated);
+      if(newer)tx.objectStore('stock_movements').add(newer);
+      tx.objectStore('corrections').add({id:changeId,action:voidOnly?'VOID_STOCK_MOVEMENT':'EDIT_STOCK_MOVEMENT',date:old.date,oldMovement:old,newMovement:newer,reason,user:currentRole,time:now});
+    });
+    UI.closeModal('detail');
+    await refresh();
+    alert(voidOnly?'Stok keluar/masuk salah dibatalkan, tanpa produksi tambahan.':'Koreksi stok berhasil. Saldo dan laporan dihitung ulang.');
+  }
+  function normalizeProduct(label){
+    const l=String(label||'').toLowerCase().replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();
+    if(/babi.*kecap|pork.*soy/.test(l))return 'Babi Kecap';
+    if(/babi.*rica/.test(l))return 'Babi Rica';
+    if(/woku/.test(l))return 'Ayam Woku';
+    if(/cumi|squid/.test(l))return 'Cumi';
+    if(/tongkol|cakalang/.test(l))return 'Tongkol';
+    if(/brenebon|brenebone/.test(l))return 'Sup Brenebone';
+    if(/grangasem/.test(l))return 'Sup Grangasem';
+    return '';
+  }
+  function parseText(text){
+    const result={};const seen=[];
+    String(text||'').split(/\r?\n/).forEach(line=>{
+      const x=line.trim().replace(/pax|pcs|pack/gi,'').trim();
+      const m=x.match(/^(.+?)[\s:=\-]+(\d+)\s*$/);
+      if(!m)return;
+      const p=normalizeProduct(m[1]);
+      if(!p){seen.push(line);return;}
+      result[p]=Number(m[2]);
+    });
+    return {result,unmatched:seen};
+  }
+  const scan={PSK:{},PSP:{},PSBK:{}},fileKeys={};
+  async function readPhoto(outlet,file){
+    if(!CANON.includes(outlet)||!file)return;
+    const label=document.getElementById('psl30-scan-note');
+    if(label)label.textContent='Membaca foto '+LABEL[outlet]+'...';
+    try{
+      if(!window.Tesseract){
+        await new Promise((resolve,reject)=>{
+          const sc=document.createElement('script');
+          sc.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+          sc.onload=resolve;sc.onerror=reject;document.head.appendChild(sc);
+        });
+      }
+      if(!window.Tesseract?.recognize)throw new Error('OCR belum tersedia');
+      const res=await window.Tesseract.recognize(file,'eng');
+      const parsed=parseText(res?.data?.text||'');
+      scan[outlet]=parsed.result;
+      fileKeys[outlet]=[file.name,file.size,file.lastModified].join(':');
+      fillInputs(outlet);
+      if(label)label.textContent=LABEL[outlet]+': '+Object.keys(parsed.result).length+' menu terbaca. Periksa angka sebelum hitung; baris lain diisi manual.';
+    }catch(e){
+      if(label)label.textContent='OCR gagal / offline. Angka dapat diisi manual. '+(e.message||e);
+    }
+  }
+  function fillInputs(o){
+    PRODUCTS30().forEach((p,i)=>{
+      const el=document.getElementById('psl30-outlet-'+o+'-'+i);
+      if(el&&Object.prototype.hasOwnProperty.call(scan[o],p))el.value=scan[o][p];
+    });
+  }
+  function allocations(qty,balances){
+    const values=balances.slice();const split=[0,0,0];
+    for(let i=0;i<qty;i++){
+      const pos=values.indexOf(Math.min(...values));
+      values[pos]++;split[pos]++;
+    }
+    return split;
+  }
+  let preview=null,busy=false;
+  async function calculate(){
+    const d=String(document.getElementById('psl30-distribute-date')?.value||date());
+    if(!validDate(d))return alert('Tanggal tidak valid');
+    if(await isClosed(d))return alert('Tanggal CLOSED. Buka dahulu sebelum distribusi.');
+    const moves=await allMoves(),lab=movementsLevel(moves,d),entries=[];
+    for(let i=0;i<PRODUCTS30().length;i++){
+      const p=PRODUCTS30()[i];
+      const available=Number(lab[p]||0);
+      const values=CANON.map(o=>Number(document.getElementById('psl30-outlet-'+o+'-'+i)?.value));
+      if(values.some(x=>!integer(x)))return alert('Stok foto tidak boleh negatif atau desimal: '+p);
+      const field=Number(document.getElementById('psl30-lab-'+i)?.value);
+      if(!integer(field)||field>available)return alert('Stok yang dibagi '+p+' melebihi stok LAB ('+available+').');
+      if(field>0)entries.push({product:p,qty:field,split:allocations(field,values),reported:values});
+    }
+    if(!entries.length)return alert('Isi stok LAB yang ingin dibagi.');
+    preview={date:d,entries};
+    const th='<tr><th>Menu</th><th>PSK</th><th>PSP</th><th>PSB</th><th>Total</th></tr>';
+    const rows=entries.map((x,i)=>'<tr><td>'+esc(x.product)+'</td>'+x.split.map((n,j)=>'<td><input type="number" min="0" step="1" value="'+n+'" id="psl30-allot-'+i+'-'+j+'"></td>').join('')+'<td>'+x.qty+'</td></tr>').join('');
+    const cont=document.getElementById('psl30-preview');
+    cont.innerHTML='<h3>Preview Nota Distribusi</h3><p>Periksa pembagian berdasarkan stok outlet. Angka masih bisa diedit sebelum disimpan.</p><table class="psl30-table">'+th+rows+'</table><button class="btn btn-primary btn-block" onclick="PSL30.commitDistribution()">Konfirmasi dan Catat Sekali</button>';
+    cont.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  async function commitDistribution(){
+    if(busy)return;
+    if(!OWNER())return alert('Hanya OWNER dapat menyimpan distribusi.');
+    if(!preview)return alert('Hitung dulu pembagian.');
+    const entries=preview.entries.map((x,i)=>({...x,split:CANON.map((_,j)=>Number(document.getElementById('psl30-allot-'+i+'-'+j)?.value))}));
+    if(entries.some(x=>x.split.some(n=>!integer(n))||x.split.reduce((a,n)=>a+n,0)!==x.qty))return alert('Jumlah per outlet harus sama dengan total stok yang dibagi.');
+    if(await isClosed(preview.date))return alert('Tanggal sudah CLOSED.');
+    if(!confirm('Simpan 1 nota distribusi untuk '+entries.reduce((s,x)=>s+x.qty,0)+' pax? Produksi tidak akan bertambah.'))return;
+    busy=true;
+    try{
+      const id=uid(),d=preview.date,when=new Date().toISOString(),stock=(await allMoves());
+      const balance=movementsLevel(stock,d);
+      if(entries.some(x=>Number(balance[x.product]||0)<x.qty))throw new Error('Stok LAB berubah. Hitung ulang pembagian.');
+      const list=[];
+      entries.forEach(x=>x.split.forEach((qty,j)=>{if(qty>0)list.push({id:uid(),date:d,datetime:when,product:x.product,qty,type:'stockout',note:'Distribusi Otomatis '+LABEL[CANON[j]]+' · Nota '+id,outlet:CANON[j],destinationOutlet:CANON[j],movementKind:'outlet_transfer',distributionId:id,user:currentRole,status:'ACTIVE'});}));
+      const receipt={id,action:'DISTRIBUTION_NOTE',date:d,createdAt:when,user:currentRole,entries,outlets:CANON,photoKeys:fileKeys,movementIds:list.map(x=>x.id),status:'CONFIRMED'};
+      await atomic(['stock_movements','corrections'],tx=>{
+        const a=tx.objectStore('stock_movements');list.forEach(x=>a.add(x));
+        tx.objectStore('corrections').add(receipt);
+      });
+      preview=null;document.getElementById('psl30-preview').innerHTML='';
+      await refresh();
+      show('Nota Distribusi Berhasil','<div class="psl30-box"><b>Nota '+esc(id)+'</b><p>'+esc(d)+' · '+list.length+' baris. Stok LAB, kartu stok dan laporan transaksi otomatis mengikuti nota; produksi tetap tidak bertambah.</p><button class="btn btn-primary btn-block" onclick="PSL30.shareNote(\''+id+'\')">Bagikan Nota</button><button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="PSL30.cancelNote(\''+id+'\')">Batalkan Nota (Owner)</button></div>');
+    }catch(e){alert('Distribusi gagal: '+(e.message||e));}
+    finally{busy=false;}
+  }
+  async function cancelNote(id){
+    if(!OWNER())return alert('Hanya OWNER.');
+    const note=await dbGet('corrections',id);
+    if(!note||note.action!=='DISTRIBUTION_NOTE'||note.status!=='CONFIRMED')return alert('Nota tidak aktif.');
+    if(await isClosed(note.date))return alert('Buka tanggal terlebih dulu.');
+    const reason=prompt('Alasan membatalkan seluruh nota:');
+    if(reason===null)return;
+    if(reason.trim().length<5)return alert('Alasan minimal 5 karakter.');
+    if(!confirm('Batalkan SELURUH nota '+id+'? Stok LAB dan laporan akan dihitung ulang.'))return;
+    const moves=await allMoves(),line=moves.filter(x=>x.distributionId===id&&active(x));
+    const now=new Date().toISOString();
+    await atomic(['stock_movements','corrections'],tx=>{
+      line.forEach(m=>tx.objectStore('stock_movements').put({...m,status:'CORRECTED',correctionReason:reason,correctedAt:now}));
+      tx.objectStore('corrections').put({...note,status:'CANCELLED',cancelledAt:now,cancelReason:reason});
+      tx.objectStore('corrections').add({id:uid(),action:'CANCEL_DISTRIBUTION_NOTE',originalId:id,date:note.date,time:now,reason,user:currentRole,archivedMovements:line});
+    });
+    UI.closeModal('detail');await refresh();alert('Nota dibatalkan secara utuh. Tidak ada produksi tambahan.');
+  }
+  async function shareNote(id){
+    const r=await dbGet('corrections',id);
+    if(!r)return alert('Nota tidak ditemukan.');
+    let text='PAPA SAUCE LAB · NOTA DISTRIBUSI\nTanggal: '+r.date+'\nNomor: '+r.id+'\n';
+    r.entries.forEach(x=>{text+=x.product+' | PSK '+x.split[0]+' | PSP '+x.split[1]+' | PSB '+x.split[2]+' | Total '+x.qty+'\n'});
+    text+='Total: '+r.entries.reduce((a,x)=>a+x.qty,0)+' pax\nStatus: '+r.status;
+    if(navigator.share){try{await navigator.share({title:'Nota Distribusi Papa Sauce',text});return;}catch(e){}}
+    if(navigator.clipboard){await navigator.clipboard.writeText(text);alert('Nota disalin. Tempel ke WhatsApp.');}
+    else show('Salin Nota','<textarea rows="15" style="width:100%">'+esc(text)+'</textarea>');
+  }
+  async function stockCard(){
+    const d=date(),list=(await allMoves()).filter(x=>x.date<=d).sort((a,b)=>String(a.date).localeCompare(b.date)||String(a.datetime).localeCompare(b.datetime));
+    const sums={};PRODUCTS30().forEach(p=>sums[p]=0);
+    const rows=[];
+    list.forEach(x=>{
+      if(!active(x)||!['restock','stockout'].includes(x.type))return;
+      sums[x.product]=(sums[x.product]||0)+(x.type==='restock'?Number(x.qty):-Number(x.qty));
+      rows.push({date:x.date,p:x.product,kind:x.movementKind==='outlet_transfer'?'Distribusi '+(LABEL[x.outlet]||x.outlet||''):x.type,delta:x.type==='restock'?Number(x.qty):-Number(x.qty),ending:sums[x.product]});
+    });
+    let text='KARTU STOK LAB · '+d+'\n';
+    rows.forEach(x=>text+=x.date+' | '+x.p+' | '+x.kind+' | '+(x.delta>=0?'+':'')+x.delta+' | '+x.ending+'\n');
+    const label=document.getElementById('detailTitle'),body=document.getElementById('detailContent');
+    label.textContent='Kartu Stok Otomatis';
+    body.innerHTML='<p class="psl30-small">Kartu stok dihitung otomatis dari transaksi aktif, bukan diinput ulang.</p><textarea id="psl30-card-text" style="width:100%;min-height:280px" readonly>'+esc(text)+'</textarea><button class="btn btn-primary btn-block" onclick="PSL30.shareCard()">Bagikan Kartu Stock</button>';
+    UI.showModal('detail');
+  }
+  async function shareCard(){
+    const text=document.getElementById('psl30-card-text')?.value||'';
+    if(navigator.share){try{await navigator.share({title:'Kartu Stok Papa Sauce Lab',text});return;}catch(e){}}
+    if(navigator.clipboard){await navigator.clipboard.writeText(text);alert('Kartu stok disalin.');}
+  }
+  let installed=false;
+  async function render(){
+    const list=await allMoves();
+    const target=document.getElementById('psl30-history');
+    if(!target)return;
+    const selected=date();
+    const rows=list.filter(x=>x&&x.date===selected).sort((a,b)=>String(b.datetime||'').localeCompare(String(a.datetime||''))).slice(0,40);
+    target.innerHTML=rows.length?rows.map(x=>{
+      const isActive=active(x),can=OWNER()&&isActive&&!x.smartSale&&!x.linkedSaleId&&!x.distributionId;
+      return '<div class="psl30-row"><span><b>'+esc(x.product)+'</b><br><small>'+esc(x.note||x.type)+' · '+esc(x.date)+(isActive?'':' · DIKOREKSI')+'</small></span><b>'+(x.type==='restock'?'+':'-')+Number(x.qty||0)+'</b>'+(can?'<button class="btn btn-secondary btn-sm" onclick="PSL30.edit(\''+esc(x.id)+'\')">Edit</button>':'')+'</div>';
+    }).join(''):'<p>Belum ada stok masuk/keluar pada tanggal ini.</p>';
+  }
+  async function install(){
+    if(installed)return;
+    const tab=document.getElementById('tab-stock');
+    if(!tab||typeof db==='undefined'||!db)return;
+    installed=true;
+    const b=document.createElement('div');b.id='psl30-root';b.className='psl30-box';
+    const opts=PRODUCTS30().map((p,i)=>'<tr><td>'+esc(p)+'</td>'+CANON.map(o=>'<td><input type="number" min="0" step="1" value="0" id="psl30-outlet-'+o+'-'+i+'"></td>').join('')+'<td><input type="number" min="0" step="1" value="0" id="psl30-lab-'+i+'"></td></tr>').join('');
+    b.innerHTML='<h3>Smart Bagi Stok — LAB ke 3 Outlet</h3><p>Masukkan foto stok PSK, PSP, PSB. OCR membantu membaca angka, lalu Owner wajib cek hasilnya. Pembagian hanya dicatat setelah satu kali konfirmasi.</p><label>Tanggal distribusi</label><input id="psl30-distribute-date" type="date" value="'+esc(date())+'"><div class="psl30-grid">'+CANON.map(o=>'<label>Foto '+LABEL[o]+'<input type="file" accept="image/*" id="psl30-photo-'+o+'"></label>').join('')+'</div><p id="psl30-scan-note" class="psl30-small">Foto opsional jika angka stok outlet sudah diketahui. Bisa input manual tanpa OCR.</p><table class="psl30-table"><tr><th>Produk</th><th>PSK</th><th>PSP</th><th>PSB</th><th>LAB Dibagi</th></tr>'+opts+'</table><p class="psl30-warn">Stok pada foto adalah hasil laporan outlet, bukan stok real-time. Periksa foto dan tanggalnya. Jumlah LAB Dibagi tidak boleh melebihi saldo aplikasi.</p><button class="btn btn-primary btn-block" onclick="PSL30.calculate()">Hitung & Preview Nota</button><div id="psl30-preview" style="margin-top:12px"></div>';
+    tab.insertBefore(b,tab.children[1]||null);
+    CANON.forEach(o=>document.getElementById('psl30-photo-'+o)?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)readPhoto(o,f)}));
+    const box=document.createElement('div');box.className='psl30-box';box.id='psl30-stock-box';
+    box.innerHTML='<h3>Audit & Kartu Stok</h3><button class="btn btn-secondary btn-sm psl30-btn" onclick="PSL30.stockCard()">Kartu Stok Otomatis</button><p class="psl30-small">Edit stock masuk/keluar salah tanpa menambah produksi. Transaksi Smart Sale dikunci agar tidak terpisah dari penjualannya.</p><div id="psl30-history"></div>';
+    tab.appendChild(box);
+    const c=document.createElement('div');c.className='psl30-box';c.id='psl30-reopen-box';
+    c.innerHTML='<h3>Buka Kembali Tanggal</h3><p>Owner saja. Tidak menghapus transaksi. Tanggal tertutup terakhir dapat dibuka, snapshot lama disimpan ke audit.</p><label>Tanggal</label><input type="date" id="psl30-reopen-date" value="'+esc(date())+'"><label>Alasan</label><input id="psl30-reopen-reason" placeholder="Alasan wajib"><button class="btn btn-secondary btn-block" onclick="PSL30.reopen()">Buka Tanggal Aman</button>';
+    const t=document.getElementById('tab-transaksi');
+    if(t)t.appendChild(c);
+    const old=document.getElementById('psl29ResetBox');if(old)old.remove();
+    await render();
+    const oldStock=UI.renderStock?.bind(UI);
+    if(oldStock)UI.renderStock=async function(){await oldStock();await render()};
+    console.log(MARK+' installed');
+  }
+  window.PSL30={edit:editMovement,saveEdit,reopen,calculate,commitDistribution,cancelNote,shareNote,stockCard,shareCard,parseText,allocations};
+  let tries=0;const timer=setInterval(()=>{tries++;if(typeof db!=='undefined'&&db&&document.getElementById('tab-stock')){clearInterval(timer);install().catch(console.error);}else if(tries>=100)clearInterval(timer)},100);
+})();
+</script>
 </body>
 </html>
