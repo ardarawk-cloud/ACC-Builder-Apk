@@ -3688,6 +3688,17 @@ window.PSLLocalDate = function(d){
       return '<div class="psl30-row"><span><b>'+esc(x.product)+'</b><br><small>'+esc(x.note||x.type)+' · '+esc(x.date)+(isActive?'':' · DIKOREKSI')+'</small></span><b>'+(x.type==='restock'?'+':'-')+Number(x.qty||0)+'</b>'+(can?'<button class="btn btn-secondary btn-sm" onclick="PSL30.edit(\''+esc(x.id)+'\')">Edit</button>':'')+'</div>';
     }).join(''):'<p>Belum ada stok masuk/keluar pada tanggal ini.</p>';
   }
+  async function fillLab30(){
+    const d=String(document.getElementById('psl30-distribute-date')?.value||date());
+    const levels=movementsLevel(await allMoves(),d);
+    const negative=PRODUCTS30().filter(p=>Number(levels[p]||0)<0);
+    PRODUCTS30().forEach((p,i)=>{
+      const field=document.getElementById('psl30-lab-'+i);
+      if(field){field.value=Math.max(0,Number(levels[p]||0));field.max=Math.max(0,Number(levels[p]||0));}
+    });
+    const msg=document.getElementById('psl30-lab-status');
+    if(msg)msg.textContent=negative.length?'STOK NEGATIF PERLU AUDIT: '+negative.join(', ')+'. Jangan tambahkan produksi fiktif.':'Stok LAB diambil dari transaksi aktif sampai '+d+'. Jumlah yang dibagi bisa disesuaikan.';
+  }
   async function install(){
     if(installed)return;
     const tab=document.getElementById('tab-stock');
@@ -3695,7 +3706,7 @@ window.PSLLocalDate = function(d){
     installed=true;
     const b=document.createElement('div');b.id='psl30-root';b.className='psl30-box';
     const opts=PRODUCTS30().map((p,i)=>'<tr><td>'+esc(p)+'</td>'+CANON.map(o=>'<td><input type="number" min="0" step="1" value="0" id="psl30-outlet-'+o+'-'+i+'"></td>').join('')+'<td><input type="number" min="0" step="1" value="0" id="psl30-lab-'+i+'"></td></tr>').join('');
-    b.innerHTML='<h3>Smart Bagi Stok — LAB ke 3 Outlet</h3><p>Masukkan foto stok PSK, PSP, PSB. OCR membantu membaca angka, lalu Owner wajib cek hasilnya. Pembagian hanya dicatat setelah satu kali konfirmasi.</p><label>Tanggal distribusi</label><input id="psl30-distribute-date" type="date" value="'+esc(date())+'"><div class="psl30-grid">'+CANON.map(o=>'<label>Foto '+LABEL[o]+'<input type="file" accept="image/*" id="psl30-photo-'+o+'"></label>').join('')+'</div><p id="psl30-scan-note" class="psl30-small">Foto opsional jika angka stok outlet sudah diketahui. Bisa input manual tanpa OCR.</p><table class="psl30-table"><tr><th>Produk</th><th>PSK</th><th>PSP</th><th>PSB</th><th>LAB Dibagi</th></tr>'+opts+'</table><p class="psl30-warn">Stok pada foto adalah hasil laporan outlet, bukan stok real-time. Periksa foto dan tanggalnya. Jumlah LAB Dibagi tidak boleh melebihi saldo aplikasi.</p><button class="btn btn-primary btn-block" onclick="PSL30.calculate()">Hitung & Preview Nota</button><div id="psl30-preview" style="margin-top:12px"></div>';
+    b.innerHTML='<h3>Smart Bagi Stok — LAB ke 3 Outlet</h3><p>Masukkan foto stok PSK, PSP, PSB. OCR membantu membaca angka, lalu Owner wajib cek hasilnya. Pembagian hanya dicatat setelah satu kali konfirmasi.</p><label>Tanggal distribusi</label><input id="psl30-distribute-date" type="date" value="'+esc(date())+'"><div class="psl30-grid">'+CANON.map(o=>'<label>Foto '+LABEL[o]+'<input type="file" accept="image/*" id="psl30-photo-'+o+'"></label>').join('')+'</div><p id="psl30-scan-note" class="psl30-small">Foto opsional jika angka stok outlet sudah diketahui. Bisa input manual tanpa OCR.</p><p id="psl30-lab-status" class="psl30-small"></p><div style="max-width:100%;overflow-x:auto"><table class="psl30-table"><tr><th>Produk</th><th>PSK</th><th>PSP</th><th>PSB</th><th>LAB Dibagi</th></tr>'+opts+'</table></div><p class="psl30-warn">Stok pada foto adalah hasil laporan outlet, bukan stok real-time. Periksa foto dan tanggalnya. Jumlah LAB Dibagi tidak boleh melebihi saldo aplikasi.</p><button class="btn btn-primary btn-block" onclick="PSL30.calculate()">Hitung & Preview Nota</button><div id="psl30-preview" style="margin-top:12px"></div>';
     tab.insertBefore(b,tab.children[1]||null);
     CANON.forEach(o=>document.getElementById('psl30-photo-'+o)?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)readPhoto(o,f)}));
     const box=document.createElement('div');box.className='psl30-box';box.id='psl30-stock-box';
@@ -3706,6 +3717,8 @@ window.PSLLocalDate = function(d){
     const t=document.getElementById('tab-transaksi');
     if(t)t.appendChild(c);
     const old=document.getElementById('psl29ResetBox');if(old)old.remove();
+    document.getElementById('psl30-distribute-date')?.addEventListener('change',()=>fillLab30().catch(console.error));
+    await fillLab30();
     await render();
     const oldStock=UI.renderStock?.bind(UI);
     if(oldStock)UI.renderStock=async function(){await oldStock();await render()};
