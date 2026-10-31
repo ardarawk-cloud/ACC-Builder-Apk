@@ -3522,17 +3522,18 @@ window.PSLLocalDate = function(d){
     const l=String(label||'').toLowerCase().replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();
     if(/babi.*kecap|pork.*soy/.test(l))return 'Babi Kecap';
     if(/babi.*rica/.test(l))return 'Babi Rica';
+    if(/(?:^|\s)babi(?:\s|$)/.test(l))return 'Babi Rica'; // Label Babi dari outlet, tetap wajib verifikasi Owner
     if(/woku/.test(l))return 'Ayam Woku';
     if(/cumi|squid/.test(l))return 'Cumi';
     if(/tongkol|cakalang/.test(l))return 'Tongkol';
-    if(/brenebon|brenebone/.test(l))return 'Sup Brenebone';
+    if(/bren[ae]bon(?:e)?|bren[a-z]{1,5}bon(?:e)?/.test(l))return 'Sup Brenebone';
     if(/grangasem/.test(l))return 'Sup Grangasem';
     return '';
   }
   function parseText(text){
     const result={};const seen=[];
     String(text||'').split(/\r?\n/).forEach(line=>{
-      const x=line.trim().replace(/pax|pcs|pack/gi,'').trim();
+      const x=line.trim().replace(/pax|pcs|pack|port(?:ion)?s?|porsi/gi,'').trim();
       const m=x.match(/^(.+?)[\s:=\-]+(\d+)\s*$/);
       if(!m)return;
       const p=normalizeProduct(m[1]);
@@ -3542,34 +3543,97 @@ window.PSLLocalDate = function(d){
     return {result,unmatched:seen};
   }
   const scan={PSK:{},PSP:{},PSBK:{}},fileKeys={};
-  async function readPhoto(outlet,file){
-    if(!CANON.includes(outlet)||!file)return;
-    const label=document.getElementById('psl30-scan-note');
-    if(label)label.textContent='Membaca foto '+LABEL[outlet]+'...';
-    try{
-      if(!window.Tesseract){
-        await new Promise((resolve,reject)=>{
-          const sc=document.createElement('script');
-          sc.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-          sc.onload=resolve;sc.onerror=reject;document.head.appendChild(sc);
-        });
-      }
-      if(!window.Tesseract?.recognize)throw new Error('OCR belum tersedia');
-      const res=await window.Tesseract.recognize(file,'eng');
-      const parsed=parseText(res?.data?.text||'');
-      scan[outlet]=parsed.result;
-      fileKeys[outlet]=[file.name,file.size,file.lastModified].join(':');
-      fillInputs(outlet);
-      if(label)label.textContent=LABEL[outlet]+': '+Object.keys(parsed.result).length+' menu terbaca. Periksa angka sebelum hitung; baris lain diisi manual.';
-    }catch(e){
-      if(label)label.textContent='OCR gagal / offline. Angka dapat diisi manual. '+(e.message||e);
-    }
+  const REQUIRED31=['Ayam Woku','Cumi','Tongkol','Babi Rica','Babi Kecap','Sup Brenebone'];
+  let previewWarning31='';
+  function invalidate31(){
+    preview=null;
+    const box=document.getElementById('psl30-preview');
+    if(box)box.innerHTML='';
+    const review=document.getElementById('psl31-review');
+    if(review)review.checked=false;
   }
   function fillInputs(o){
     PRODUCTS30().forEach((p,i)=>{
       const el=document.getElementById('psl30-outlet-'+o+'-'+i);
-      if(el&&Object.prototype.hasOwnProperty.call(scan[o],p))el.value=scan[o][p];
+      if(!el)return;
+      const found=Object.prototype.hasOwnProperty.call(scan[o],p);
+      el.value=found?String(scan[o][p]):'';
+      el.placeholder=found?'0':'?';
+      el.style.borderColor=found?'#80bb8d':'#c99c46';
     });
+    invalidate31();
+  }
+  function useParsed31(outlet,parsed,source){
+    scan[outlet]=parsed.result;
+    fillInputs(outlet);
+    const found=REQUIRED31.filter(p=>Object.prototype.hasOwnProperty.call(parsed.result,p));
+    const missing=REQUIRED31.filter(p=>!found.includes(p));
+    const el=document.getElementById('psl31-status-'+outlet);
+    if(el)el.textContent=LABEL[outlet]+': '+found.length+'/6 menu terbaca ('+source+'). '+(missing.length?'PERLU CEK: '+missing.join(', ')+'.':'Semua enam menu utama terbaca.');
+    const note=document.getElementById('psl30-scan-note');
+    if(note)note.textContent='Tanda ? berarti belum terbaca, BUKAN stok 0. Nama Babi dipetakan sementara ke Babi Rica dan harus dikonfirmasi.';
+  }
+  function readText31(outlet){
+    const el=document.getElementById('psl31-text-'+outlet);
+    const value=String(el?.value||'').trim();
+    if(!value)return alert('Tempel teks laporan '+LABEL[outlet]+' dari WhatsApp.');
+    useParsed31(outlet,parseText(value),'teks WhatsApp');
+  }
+  async function readPhoto(outlet,file){
+    if(!CANON.includes(outlet)||!file)return;
+    const key=[file.name,file.size,file.lastModified].join(':');
+    if(Object.entries(fileKeys).some(([o,k])=>o!==outlet&&k===key))return alert('Foto identik dipilih untuk dua outlet berbeda. Cek kembali.');
+    const label=document.getElementById('psl31-status-'+outlet);
+    if(label)label.textContent='Memindai foto '+LABEL[outlet]+'...';
+    try{
+      if(!window.Tesseract){
+        await new Promise((resolve,reject)=>{
+          const existing=document.getElementById('psl31-tesseract-js');
+          if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});}
+          else{const sc=document.createElement('script');sc.id='psl31-tesseract-js';sc.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';sc.onload=resolve;sc.onerror=reject;document.head.appendChild(sc);}
+        });
+      }
+      if(!window.Tesseract?.recognize)throw Error('OCR belum tersedia');
+      const primary=await window.Tesseract.recognize(file,'eng');
+      const one=parseText(primary?.data?.text||'');
+      let merged={...one.result};
+      if(REQUIRED31.filter(p=>p in merged).length<6 && typeof createImageBitmap==='function'){
+        if(label)label.textContent='Membaca ulang tulisan putih di WhatsApp '+LABEL[outlet]+'...';
+        try{
+          const image=await createImageBitmap(file),scale=Math.min(2,1700/Math.max(image.width,image.height));
+          const canvas=document.createElement('canvas');canvas.width=Math.round(image.width*scale);canvas.height=Math.round(image.height*scale);
+          const ctx=canvas.getContext('2d',{willReadFrequently:true});
+          ctx.drawImage(image,0,0,canvas.width,canvas.height);
+          const picture=ctx.getImageData(0,0,canvas.width,canvas.height),a=picture.data;
+          for(let j=0;j<a.length;j+=4){
+            const r=a[j],g=a[j+1],b=a[j+2],blue=b>r*1.25&&b>g*1.06&&b>65;
+            const pixel=blue?255:(r+g+b>525?0:255);
+            a[j]=a[j+1]=a[j+2]=pixel;
+          }
+          ctx.putImageData(picture,0,0);
+          image.close?.();
+          const secondary=await window.Tesseract.recognize(canvas,'eng');
+          const two=parseText(secondary?.data?.text||'');
+          for(const [p,q] of Object.entries(two.result)){
+            if(!(p in merged))merged[p]=q;
+            else if(merged[p]!==q)delete merged[p]; // conflict => manual review, never guess
+          }
+        }catch(e){console.warn('OCR contrast retry',e);}
+      }
+      fileKeys[outlet]=key;
+      useParsed31(outlet,{result:merged},'foto');
+    }catch(e){
+      if(label)label.textContent='OCR gagal: '+String(e.message||e)+'. Tempel teks WhatsApp atau isi manual.';
+    }
+  }
+  function fillUnlisted31(){
+    if(!confirm('Set 0 hanya untuk menu TAMBAHAN yang tidak disebut (Sup Grangasem). Enam menu utama tetap wajib dicek.'))return;
+    CANON.forEach(o=>PRODUCTS30().forEach((p,i)=>{
+      if(REQUIRED31.includes(p))return;
+      const el=document.getElementById('psl30-outlet-'+o+'-'+i);
+      if(el&&el.value==='')el.value='0';
+    }));
+    invalidate31();
   }
   function allocations(qty,balances){
     const values=balances.slice();const split=[0,0,0];
@@ -3584,11 +3648,13 @@ window.PSLLocalDate = function(d){
     const d=String(document.getElementById('psl30-distribute-date')?.value||date());
     if(!validDate(d))return alert('Tanggal tidak valid');
     if(await hasClosedFrom(d))return alert('Tanggal ini atau hari sesudahnya CLOSED. Distribusi historis ditolak sampai periode dibuka berurutan.');
+    if(!document.getElementById('psl31-review')?.checked)return alert('Cocokkan seluruh angka dengan foto, lalu centang verifikasi sebelum membuat nota.');
     const moves=await allMoves(),lab=movementsLevel(moves,d),entries=[];
     for(let i=0;i<PRODUCTS30().length;i++){
       const p=PRODUCTS30()[i];
       const available=Number(lab[p]||0);
-      const values=CANON.map(o=>Number(document.getElementById('psl30-outlet-'+o+'-'+i)?.value));
+      const values=[];
+      for(const o of CANON){const el=document.getElementById('psl30-outlet-'+o+'-'+i);if(!el||String(el.value).trim()==='')return alert(LABEL[o]+' '+p+' belum terbaca. Periksa foto dan isi nilainya; 0 hanya jika benar-benar kosong.');values.push(Number(el.value))}
       if(values.some(x=>!integer(x)))return alert('Stok foto tidak boleh negatif atau desimal: '+p);
       const field=Number(document.getElementById('psl30-lab-'+i)?.value);
       if(!integer(field)||field>available)return alert('Stok yang dibagi '+p+' melebihi stok LAB ('+available+').');
@@ -3706,10 +3772,11 @@ window.PSLLocalDate = function(d){
     if(!tab||typeof db==='undefined'||!db)return;
     installed=true;
     const b=document.createElement('div');b.id='psl30-root';b.className='psl30-box';
-    const opts=PRODUCTS30().map((p,i)=>'<tr><td>'+esc(p)+'</td>'+CANON.map(o=>'<td><input type="number" min="0" step="1" value="0" id="psl30-outlet-'+o+'-'+i+'"></td>').join('')+'<td><input type="number" min="0" step="1" value="0" id="psl30-lab-'+i+'"></td></tr>').join('');
-    b.innerHTML='<h3>Smart Bagi Stok — LAB ke 3 Outlet</h3><p>Masukkan foto stok PSK, PSP, PSB. OCR membantu membaca angka, lalu Owner wajib cek hasilnya. Pembagian hanya dicatat setelah satu kali konfirmasi.</p><label>Tanggal distribusi</label><input id="psl30-distribute-date" type="date" value="'+esc(date())+'"><div class="psl30-grid">'+CANON.map(o=>'<label>Foto '+LABEL[o]+'<input type="file" accept="image/*" id="psl30-photo-'+o+'"></label>').join('')+'</div><p id="psl30-scan-note" class="psl30-small">Foto opsional jika angka stok outlet sudah diketahui. Bisa input manual tanpa OCR.</p><p id="psl30-lab-status" class="psl30-small"></p><div style="max-width:100%;overflow-x:auto"><table class="psl30-table"><tr><th>Produk</th><th>PSK</th><th>PSP</th><th>PSB</th><th>LAB Dibagi</th></tr>'+opts+'</table></div><p class="psl30-warn">Stok pada foto adalah hasil laporan outlet, bukan stok real-time. Periksa foto dan tanggalnya. Jumlah LAB Dibagi tidak boleh melebihi saldo aplikasi.</p><button class="btn btn-primary btn-block" onclick="PSL30.calculate()">Hitung & Preview Nota</button><div id="psl30-preview" style="margin-top:12px"></div>';
+    const opts=PRODUCTS30().map((p,i)=>'<tr><td>'+esc(p)+'</td>'+CANON.map(o=>'<td><input type="number" min="0" step="1" value="" placeholder="?" id="psl30-outlet-'+o+'-'+i+'"></td>').join('')+'<td><input type="number" min="0" step="1" value="0" id="psl30-lab-'+i+'"></td></tr>').join('');
+    b.innerHTML='<h3>Smart Bagi Stok — LAB ke 3 Outlet</h3><p>Masukkan foto stok PSK, PSP, PSB. OCR membantu membaca angka, lalu Owner wajib cek hasilnya. Pembagian hanya dicatat setelah satu kali konfirmasi.</p><label>Tanggal distribusi</label><input id="psl30-distribute-date" type="date" value="'+esc(date())+'"><div class="psl30-grid">'+CANON.map(o=>'<label>Foto '+LABEL[o]+'<input type="file" accept="image/*" id="psl30-photo-'+o+'"></label>').join('')+'</div>'+CANON.map(o=>'<div id="psl31-status-'+o+'" class="psl30-small">'+LABEL[o]+': belum dibaca</div><details><summary>Tempel teks laporan '+LABEL[o]+' dari WhatsApp</summary><textarea rows="5" id="psl31-text-'+o+'" style="width:100%"></textarea><button class="btn btn-secondary btn-sm" onclick="PSL30.readText31(\''+o+'\')">Baca Teks</button></details>').join('')+'<p id="psl30-scan-note" class="psl30-small">Foto atau teks WhatsApp dapat dibaca. Angka ? belum terbaca, bukan 0.</p><p id="psl30-lab-status" class="psl30-small"></p><div style="max-width:100%;overflow-x:auto"><table class="psl30-table"><tr><th>Produk</th><th>PSK</th><th>PSP</th><th>PSB</th><th>LAB Dibagi</th></tr>'+opts+'</table></div><p class="psl30-warn">Stok pada foto adalah hasil laporan outlet, bukan stok real-time. Periksa foto dan tanggalnya. Jumlah LAB Dibagi tidak boleh melebihi saldo aplikasi.</p><button class="btn btn-secondary btn-sm" onclick="PSL30.fillUnlisted31()">Isi nol untuk menu tambahan tak tercantum</button><label style="display:block;margin:12px 0"><input id="psl31-review" type="checkbox"> Saya sudah mencocokkan seluruh angka dengan foto. Kolom Babi = Babi Rica.</label><button class="btn btn-primary btn-block" onclick="PSL30.calculate()">Hitung & Preview Nota</button><div id="psl30-preview" style="margin-top:12px"></div>';
     tab.insertBefore(b,tab.children[1]||null);
     CANON.forEach(o=>document.getElementById('psl30-photo-'+o)?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)readPhoto(o,f)}));
+    b.addEventListener('input',e=>{if(!e.target.closest('#psl30-preview'))invalidate31()});
     const box=document.createElement('div');box.className='psl30-box';box.id='psl30-stock-box';
     box.innerHTML='<h3>Audit & Kartu Stok</h3><button class="btn btn-secondary btn-sm psl30-btn" onclick="PSL30.stockCard()">Kartu Stok Otomatis</button><p class="psl30-small">Edit stock masuk/keluar salah tanpa menambah produksi. Transaksi Smart Sale dikunci agar tidak terpisah dari penjualannya.</p><div id="psl30-history"></div>';
     tab.appendChild(box);
@@ -3744,7 +3811,7 @@ window.PSLLocalDate = function(d){
       return oldFinancialCorrect30();
     };
   }
-  window.PSL30={edit:editMovement,saveEdit,reopen,calculate,commitDistribution,cancelNote,shareNote,stockCard,shareCard,parseText,allocations};
+  window.PSL30={edit:editMovement,saveEdit,reopen,calculate,commitDistribution,cancelNote,shareNote,stockCard,shareCard,parseText,allocations,readText31,fillUnlisted31};
   let tries=0;const timer=setInterval(()=>{tries++;if(typeof db!=='undefined'&&db&&document.getElementById('tab-stock')){clearInterval(timer);install().catch(console.error);}else if(tries>=100)clearInterval(timer)},100);
 })();
 </script>
