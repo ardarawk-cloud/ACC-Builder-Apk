@@ -3,6 +3,9 @@ const NO_CACHE={"Cache-Control":"no-store, private, max-age=0","X-Robots-Tag":"n
 function cors() {return {...NO_CACHE,"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"}}
 function json(v,status=200,extra={}){return new Response(JSON.stringify(v),{status,headers:{...NO_CACHE,...extra,"Content-Type":"application/json;charset=utf-8"}})}
 function secureCompare(a,b){a=String(a||"");b=String(b||"");let diff=a.length^b.length;for(let i=0;i<Math.max(a.length,b.length);i++)diff|=(a.charCodeAt(i)||0)^(b.charCodeAt(i)||0);return diff===0&&a.length>0}
+const PUBLISH_HASH='299f735b27e003920890906eadf07a44b06d3bf3d72c21b66272e3848afbaa5a';
+const VIEW_HASH='640b10ab57f5f6746486c1cbb33f203e8d46ca09ac4a9cd113bc7916bf1258cd';
+async function tokenDigest(v){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v||'')));return Array.from(new Uint8Array(buf)).map(x=>x.toString(16).padStart(2,'0')).join('')}
 const html=String.raw`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Papa Sauce | Laporan Owner</title><style>
 :root{font-family:system-ui,Segoe UI,Arial,sans-serif;color:#241a1e;background:#f9f6f4}*{box-sizing:border-box}body{margin:0}header{background:linear-gradient(110deg,#700b2b,#ae1745);padding:25px max(18px,calc((100% - 1150px)/2));color:#fff}header h1{margin:0;font-size:clamp(23px,3vw,34px)}header p{margin:5px 0;color:#ffe4e9}main{max-width:1150px;margin:auto;padding:22px 16px 60px}.bar{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}.tag{display:inline-block;padding:6px 12px;border-radius:20px;background:#ffe6ea;color:#802037;font-size:12px;font-weight:800}.notice{background:#fff8e8;border:1px solid #eed5a5;border-radius:12px;padding:12px 15px;font-size:13px;margin:16px 0}.hidden{display:none!important}.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.metric{border:1px solid #efdedf;background:#fff;border-radius:14px;padding:16px;box-shadow:0 6px 18px #41121b08}.metric b{display:block;color:#891532;font-size:clamp(18px,2.5vw,26px);margin-top:8px}.metric span{font-size:12px;color:#766a6d}.panel{background:#fff;border:1px solid #efe4e3;border-radius:16px;padding:17px;margin:16px 0;overflow:auto}h2{font-size:18px;margin:0 0 14px}h3{font-size:15px;margin:14px 0}input,select{border:1px solid #d8c5c8;border-radius:8px;background:#fff;padding:10px;font-size:14px}label{font-size:13px}table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}td,th{padding:10px 7px;border-bottom:1px solid #f0e8e8;text-align:right}th:first-child,td:first-child{text-align:left}th{background:#fff4f5;color:#7b203a}tbody tr:nth-child(even){background:#fdfaf9}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.controls label{display:flex;gap:6px;align-items:center}.small{font-size:12px;color:#756d6f}.warn{color:#a54c16;font-weight:700}footer{margin-top:25px;color:#7a6b70;font-size:12px}@media(max-width:700px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.panel{padding:12px}.metric{padding:12px}}
 </style></head><body><header><h1>PAPA SAUCE LAB</h1><p>Dashboard Laporan Operasional · Hanya Baca</p></header><main><div class="bar"><span class="tag">AKSES BOS · READ ONLY</span><span id="updated" class="small">Menunggu data...</span></div>
@@ -54,7 +57,7 @@ export default {
   if(p==='/api/publish'){
     const supplied=(request.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();
     if(request.method!=='POST')return json({error:'Method not allowed'},405,cors());
-    if(!secureCompare(supplied,env.PUBLISH_TOKEN))return json({error:'Unauthorized'},401,cors());
+    if(!secureCompare(await tokenDigest(supplied),PUBLISH_HASH))return json({error:'Unauthorized'},401,cors());
     const len=Number(request.headers.get('content-length')||0);
     if(len>950000)return json({error:'Payload too large'},413,cors());
     let data;
@@ -65,11 +68,11 @@ export default {
     data.publishedAt=new Date().toISOString();
     data.source='Papa Sauce Lab APK';
     await env.REPORT_KV.put('psl/latest',JSON.stringify(data));
-    return json({ok:true,publishedAt:data.publishedAt,shareUrl:url.origin+'/?key='+env.VIEW_TOKEN},200,cors());
+    return json({ok:true,publishedAt:data.publishedAt,baseUrl:url.origin+'/'},200,cors());
   }
   if(p==='/api/report'){
    const key=url.searchParams.get('key')||'';
-   if(!secureCompare(key,env.VIEW_TOKEN))return json({error:'No access'},403);
+   if(!secureCompare(await tokenDigest(key),VIEW_HASH))return json({error:'No access'},403);
    const latest=await env.REPORT_KV.get('psl/latest');
    if(!latest)return json({error:'No report published yet'},404);
    return new Response(latest,{headers:{...NO_CACHE,'Content-Type':'application/json;charset=utf-8'}});
