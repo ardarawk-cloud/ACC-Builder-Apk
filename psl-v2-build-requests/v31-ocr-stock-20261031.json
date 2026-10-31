@@ -1,0 +1,7 @@
+{
+  "request_id": "psl-v31-outlet-stock-ocr",
+  "project_id": "papa-sauce-lab",
+  "version": 31,
+  "mode": "stable_signed_update",
+  "reason": "Read 31 Oct PSK PSP PSB WhatsApp stock reports accurately; require manual review for missing OCR values; allow direct WA text paste."
+}
