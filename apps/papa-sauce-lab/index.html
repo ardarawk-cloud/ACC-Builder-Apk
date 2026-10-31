@@ -3421,6 +3421,7 @@ window.PSLLocalDate = function(d){
   const allSnaps=async()=>await dbGetAll('snapshots');
   const allPeriods=async()=>await dbGetAll('periods');
   const isClosed=async d=>(await allSnaps()).some(s=>s&&s.date===d&&s.type!=='period_end');
+  const hasClosedFrom=async d=>(await allSnaps()).some(s=>s&&s.date>=d&&s.type!=='period_end');
   function atomic(stores,fn){
     return new Promise((resolve,reject)=>{
       let tx;
@@ -3442,7 +3443,7 @@ window.PSLLocalDate = function(d){
     });
     return levels;
   }
-  Stock.getLevels=async function(){return movementsLevel(await allMoves())};
+  Stock.getLevels=async function(){return movementsLevel(await allMoves(),date())};
   async function refresh(){
     await UI.updateDashboard();
     await UI.renderStock();
@@ -3487,7 +3488,7 @@ window.PSLLocalDate = function(d){
     if(!m||!active(m))return alert('Pergerakan stok sudah tidak aktif.');
     if(m.smartSale||m.linkedSaleId)return alert('Stok ini terhubung ke Smart Sale. Koreksi harus dilakukan bersama transaksi penjualan; koreksi stok terpisah diblokir.');
     if(m.distributionId)return alert('Bagian dari nota distribusi. Koreksi seluruh nota melalui fitur pembatalan nota agar tidak terpisah.');
-    if(await isClosed(m.date))return alert('Tanggal CLOSED. Gunakan Buka Tanggal lebih dulu.');
+    if(await hasClosedFrom(m.date))return alert('Tanggal ini atau hari setelahnya sudah CLOSED. Buka dari hari terakhir dahulu.');
     const options=PRODUCTS30().map(p=>'<option value="'+esc(p)+'"'+(p===m.product?' selected':'')+'>'+esc(p)+'</option>').join('');
     show('Koreksi Stock', '<div class="psl30-form"><p>Transaksi asli tetap tersimpan dalam jejak audit. Mengedit tidak menambah produksi fiktif.</p><label>Produk</label><select id="psl30-edit-product">'+options+'</select><label>Jumlah pax</label><input id="psl30-edit-qty" type="number" step="1" min="1" value="'+Number(m.qty||0)+'"><label>Tanggal Bisnis</label><input id="psl30-edit-date" type="date" value="'+esc(m.date)+'"><label>Outlet (jika Stock Out)</label><select id="psl30-edit-outlet"><option value="">LAB / tidak ada outlet</option>'+CANON.map(o=>'<option value="'+o+'"'+(m.outlet===o?' selected':'')+'>'+LABEL[o]+'</option>').join('')+'</select><label>Alasan koreksi</label><input id="psl30-edit-reason" placeholder="Alasan wajib diisi"><button class="btn btn-primary btn-block" onclick="PSL30.saveEdit(\''+esc(id)+'\',false)">Simpan Koreksi</button><button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="PSL30.saveEdit(\''+esc(id)+'\',true)">Batalkan Transaksi Ini</button></div>');
   }
@@ -3502,7 +3503,7 @@ window.PSLLocalDate = function(d){
     const reason=String(document.getElementById('psl30-edit-reason')?.value||'').trim();
     if(reason.length<5)return alert('Alasan minimal 5 karakter.');
     if(!voidOnly&&(!PRODUCTS30().includes(product)||!integer(qty)||qty<1||!validDate(target)))return alert('Produk, jumlah, atau tanggal tidak valid.');
-    if(await isClosed(old.date)||(!voidOnly&&await isClosed(target)))return alert('Tanggal masih CLOSED. Buka tanggal terlebih dahulu.');
+    if(await hasClosedFrom(old.date)||(!voidOnly&&await hasClosedFrom(target)))return alert('Tanggal ini atau tanggal setelahnya masih CLOSED. Buka seluruh tanggal terkait lebih dulu.');
     if(!voidOnly&&old.type==='stockout'&&old.outlet&&!CANON.includes(outlet))return alert('Pilih outlet tujuan.');
     if(!confirm(voidOnly?'Batalkan pergerakan '+old.qty+' pax?':'Simpan koreksi '+old.product+' '+old.qty+' → '+product+' '+qty+' pax?'))return;
     const changeId=uid(),now=new Date().toISOString();
@@ -3582,7 +3583,7 @@ window.PSLLocalDate = function(d){
   async function calculate(){
     const d=String(document.getElementById('psl30-distribute-date')?.value||date());
     if(!validDate(d))return alert('Tanggal tidak valid');
-    if(await isClosed(d))return alert('Tanggal CLOSED. Buka dahulu sebelum distribusi.');
+    if(await hasClosedFrom(d))return alert('Tanggal ini atau hari sesudahnya CLOSED. Distribusi historis ditolak sampai periode dibuka berurutan.');
     const moves=await allMoves(),lab=movementsLevel(moves,d),entries=[];
     for(let i=0;i<PRODUCTS30().length;i++){
       const p=PRODUCTS30()[i];
@@ -3607,7 +3608,7 @@ window.PSLLocalDate = function(d){
     if(!preview)return alert('Hitung dulu pembagian.');
     const entries=preview.entries.map((x,i)=>({...x,split:CANON.map((_,j)=>Number(document.getElementById('psl30-allot-'+i+'-'+j)?.value))}));
     if(entries.some(x=>x.split.some(n=>!integer(n))||x.split.reduce((a,n)=>a+n,0)!==x.qty))return alert('Jumlah per outlet harus sama dengan total stok yang dibagi.');
-    if(await isClosed(preview.date))return alert('Tanggal sudah CLOSED.');
+    if(await hasClosedFrom(preview.date))return alert('Tanggal ini atau sesudahnya sudah CLOSED.');
     if(!confirm('Simpan 1 nota distribusi untuk '+entries.reduce((s,x)=>s+x.qty,0)+' pax? Produksi tidak akan bertambah.'))return;
     busy=true;
     try{
@@ -3631,7 +3632,7 @@ window.PSLLocalDate = function(d){
     if(!OWNER())return alert('Hanya OWNER.');
     const note=await dbGet('corrections',id);
     if(!note||note.action!=='DISTRIBUTION_NOTE'||note.status!=='CONFIRMED')return alert('Nota tidak aktif.');
-    if(await isClosed(note.date))return alert('Buka tanggal terlebih dulu.');
+    if(await hasClosedFrom(note.date))return alert('Buka tanggal nota dan tanggal setelahnya terlebih dahulu.');
     const reason=prompt('Alasan membatalkan seluruh nota:');
     if(reason===null)return;
     if(reason.trim().length<5)return alert('Alasan minimal 5 karakter.');
@@ -3723,6 +3724,25 @@ window.PSLLocalDate = function(d){
     const oldStock=UI.renderStock?.bind(UI);
     if(oldStock)UI.renderStock=async function(){await oldStock();await render()};
     console.log(MARK+' installed');
+  }
+  // Block financial edits on closed dates: legacy v10 explicitly allowed
+  // edits while preserving a stale snapshot, making boss reports inconsistent.
+  let financialEditId30=null;
+  const oldShow30=UI.showCorrection?.bind(UI);
+  if(oldShow30){
+    UI.showCorrection=async function(id){
+      financialEditId30=id;
+      await oldShow30(id);
+    };
+  }
+  const oldFinancialCorrect30=Transactions.correct?.bind(Transactions);
+  if(oldFinancialCorrect30){
+    Transactions.correct=async function(){
+      const row=financialEditId30?await dbGet('transactions',financialEditId30):null;
+      if(!row)return alert('Buka transaksi yang ingin dikoreksi terlebih dahulu.');
+      if(await hasClosedFrom(row.date))return alert('Tanggal transaksi atau tanggal berikutnya sudah CLOSED. Buka tanggal terbaru secara berurutan sebelum koreksi finansial.');
+      return oldFinancialCorrect30();
+    };
   }
   window.PSL30={edit:editMovement,saveEdit,reopen,calculate,commitDistribution,cancelNote,shareNote,stockCard,shareCard,parseText,allocations};
   let tries=0;const timer=setInterval(()=>{tries++;if(typeof db!=='undefined'&&db&&document.getElementById('tab-stock')){clearInterval(timer);install().catch(console.error);}else if(tries>=100)clearInterval(timer)},100);
