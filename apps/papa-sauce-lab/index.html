@@ -3815,5 +3815,118 @@ window.PSLLocalDate = function(d){
   let tries=0;const timer=setInterval(()=>{tries++;if(typeof db!=='undefined'&&db&&document.getElementById('tab-stock')){clearInterval(timer);install().catch(console.error);}else if(tries>=100)clearInterval(timer)},100);
 })();
 </script>
+
+<style id="PSL_V32_MONTHLY_CARD_STYLE">
+.psl32-filter{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.psl32-filter label{font-size:11px;color:#786b6c;display:block}
+.psl32-filter select,.psl32-filter input{display:block;width:100%;min-width:0;box-sizing:border-box;margin-top:5px;padding:10px;border:1px solid #dbc9ca;border-radius:9px;background:white;color:#222;font-size:14px}
+.psl32-note{font-size:12px;line-height:1.45;color:#716669;margin:10px 0}
+.psl32-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:10px 0}
+.psl32-metric{border:1px solid #e4d7d8;border-radius:9px;padding:7px 3px;text-align:center}
+.psl32-metric small{display:block;color:#817074;font-size:9px}
+.psl32-metric strong{font-size:16px;color:#8a1536}
+.psl32-card-head{text-align:center;font-weight:800;padding:12px 0 4px}
+.psl32-card{border:1px solid #e3d5d6;background:#fff;border-radius:12px;overflow:hidden;margin:12px 0}
+.psl32-card-info{padding:5px 12px 10px;font-size:12px}
+.psl32-table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+.psl32-table th{color:#7a1432;background:#fff3f4;padding:9px 4px}
+.psl32-table td{padding:7px 4px;text-align:center;border-top:1px solid #eee}
+.psl32-table tbody tr:nth-child(even){background:#fcf8f8}
+.psl32-warning{padding:10px;color:#8c550e;background:#fff4d9;font-size:12px}
+.psl32-action-row{display:flex;gap:8px}
+.psl32-action-row .btn{flex:1 1 0}
+</style>
+<script id="PSL_V32_MONTHLY_STOCK_CARD">
+(function(){
+ 'use strict';
+ const LABELS32={restock:'Produksi',stockout:'Keluar'};
+ const esc32=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const valid32=m=>m&&m.status!=='CORRECTED'&&m.status!=='CANCELLED'&&m.status!=='VOID'&&['restock','stockout'].includes(m.type);
+ const pad32=n=>String(n).padStart(2,'0');
+ function monthly32(all,product,month,cutoff){
+   if(!/^\d{4}-\d{2}$/.test(month))throw Error('Format bulan tidak valid');
+   const [yr,mon]=month.split('-').map(Number);
+   if(yr<2020||yr>2100||mon<1||mon>12)throw Error('Bulan di luar rentang');
+   if(!product)throw Error('Pilih produk');
+   const first=month+'-01',end=month+'-'+pad32(new Date(Date.UTC(yr,mon,0)).getUTCDate());
+   if(month>cutoff.slice(0,7))throw Error('Bulan mendatang belum bisa dilaporkan');
+   const rows=[];
+   const moves=(all||[]).filter(m=>valid32(m)&&m.product===product&&typeof m.date==='string');
+   const opening=moves.filter(m=>m.date<first).reduce((sum,m)=>sum+(m.type==='restock'?1:-1)*Number(m.qty||0),0);
+   const last=end<cutoff?end:cutoff;
+   let remaining=opening,totalIn=0,totalOut=0,negative=opening<0;
+   for(let day=1;day<=Number(last.slice(-2));day++){
+     const dayText=month+'-'+pad32(day);
+     const movesDay=moves.filter(m=>m.date===dayText);
+     const incoming=movesDay.filter(m=>m.type==='restock').reduce((n,m)=>n+Number(m.qty||0),0);
+     const outgoing=movesDay.filter(m=>m.type==='stockout').reduce((n,m)=>n+Number(m.qty||0),0);
+     totalIn+=incoming;totalOut+=outgoing;remaining+=incoming-outgoing;
+     if(remaining<0)negative=true;
+     rows.push({date:dayText,day:pad32(day),incoming,outgoing,remaining});
+   }
+   return {product,month,first,end,last,opening,totalIn,totalOut,closing:remaining,negative,rows};
+ }
+ const products32=()=>Array.from(PRODUCTS||[]);
+ let lastReport32=null;
+ function display32(r){
+    const metrics=[
+       ['Awal',r.opening],['Masuk',r.totalIn],['Keluar',r.totalOut],['Sisa',r.closing]
+    ].map(([name,value])=>'<div class="psl32-metric"><small>'+name+'</small><strong>'+value+'</strong></div>').join('');
+    const rows=r.rows.map(row=>'<tr><td>'+row.day+'</td><td>'+(row.incoming||'–')+'</td><td>'+(row.outgoing||'–')+'</td><td><b>'+row.remaining+'</b></td></tr>').join('');
+    const panel=document.getElementById('psl32-output');
+    if(!panel)return;
+    panel.innerHTML='<div class="psl32-card"><div class="psl32-card-head">KARTU STOK BARANG — LAB</div><div class="psl32-card-info"><b>'+esc32(r.product)+'</b> · '+esc32(r.month)+'</div><div class="psl32-summary" style="margin:8px">'+metrics+'</div><table class="psl32-table"><thead><tr><th>Tgl.</th><th>Masuk</th><th>Keluar</th><th>Sisa</th></tr></thead><tbody>'+rows+'</tbody></table>'+(r.negative?'<div class="psl32-warning">Saldo negatif terdeteksi. Perlu audit dan koreksi transaksi; jangan menambah produksi fiktif.</div>':'')+'</div><p class="psl32-note">Berdasarkan transaksi yang tercatat di APK, bukan hasil stok opname fisik. Koreksi transaksi akan dihitung ulang saat kartu dibuka kembali.</p><div class="psl32-action-row"><button class="btn btn-secondary" onclick="PSL32.copy()">Salin Kartu</button><button class="btn btn-primary" onclick="PSL32.share()">Bagikan</button></div>';
+ }
+ function toText32(r){
+   const titles=['Tgl','Masuk','Keluar','Sisa'];
+   const lines=['PAPA SAUCE LAB — KARTU STOK BULANAN','Produk: '+r.product,'Bulan: '+r.month,'Stok Awal: '+r.opening,'',titles.join(' | ')];
+   for(const row of r.rows)lines.push([row.day,row.incoming||'-',row.outgoing||'-',row.remaining].join(' | '));
+   lines.push('','Total Masuk (Produksi): '+r.totalIn,'Total Keluar: '+r.totalOut,'Stok Sisa: '+r.closing);
+   if(r.negative)lines.push('PERLU AUDIT: stok negatif terdeteksi');
+   lines.push('Sumber: transaksi Papa Sauce Lab; perlu cocokkan dengan stok fisik.');
+   return lines.join('\n');
+ }
+ function open32(){
+    const today=PSLLocalDate(),month=today.slice(0,7),options=products32().map(p=>'<option value="'+esc32(p)+'">'+esc32(p)+'</option>').join('');
+    const body=document.getElementById('detailContent'),title=document.getElementById('detailTitle');
+    if(!body||!title)return;
+    title.textContent='Kartu Stok Bulanan';
+    body.innerHTML='<div class="psl32-note">Seperti kartu stok kertas: per produk, per tanggal, hanya Masuk (Produksi), Keluar dan Sisa. Tidak perlu input kartu lagi.</div><div class="psl32-filter"><label>Produk<select id="psl32-product">'+options+'</select></label><label>Bulan<input id="psl32-month" type="month" value="'+month+'" max="'+month+'"></label></div><button class="btn btn-primary btn-block" onclick="PSL32.generate()">Tampilkan Kartu Stok</button><div id="psl32-output"></div>';
+    UI.showModal('detail');
+ }
+ async function generate32(){
+    try{
+      const product=document.getElementById('psl32-product')?.value||'';
+      const month=document.getElementById('psl32-month')?.value||'';
+      const r=monthly32(await dbGetAll('stock_movements'),product,month,PSLLocalDate());
+      lastReport32=r;
+      display32(r);
+    }catch(e){alert('Kartu stok gagal: '+(e.message||e))}
+ }
+ async function copy32(){
+   if(!lastReport32)return alert('Tampilkan kartu stok dahulu');
+   const text=toText32(lastReport32);
+   try{
+     if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);alert('Kartu stok disalin');return}
+   }catch(e){}
+   try{
+     const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();
+     const success=document.execCommand('copy');area.remove();
+     if(success){alert('Kartu stok disalin');return}
+   }catch(e){}
+   const panel=document.getElementById('psl32-output');
+   if(panel)panel.insertAdjacentHTML('beforeend','<textarea style="width:100%;min-height:150px" readonly>'+esc32(text)+'</textarea>');
+   alert('Pilih lalu salin teks kartu stok yang ditampilkan');
+ }
+ async function share32(){
+   if(!lastReport32)return alert('Tampilkan kartu stok dahulu');
+   const text=toText32(lastReport32);
+   if(navigator.share)try{await navigator.share({title:'Kartu Stok '+lastReport32.product+' '+lastReport32.month,text});return}catch(e){if(e.name==='AbortError')return}
+   await copy32();
+ }
+ window.PSL32={open:open32,generate:generate32,copy:copy32,share:share32,monthly:monthly32,toText:toText32};
+ if(window.PSL30){window.PSL30.stockCard=open32;window.PSL30.shareCard=share32}
+})();
+</script>
 </body>
 </html>
