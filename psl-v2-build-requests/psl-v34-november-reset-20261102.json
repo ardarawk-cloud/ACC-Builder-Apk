@@ -1,0 +1,10 @@
+{
+  "request_id": "psl-v34-november-reset-20261102",
+  "project_id": "papa-sauce-lab",
+  "version": 34,
+  "release_channel": "V2_STABLE",
+  "action": "build_existing",
+  "requested_at": "2026-11-02",
+  "scope": "Add Owner-only reset of November 2026 data, zero November opening stock and house bank, preserve October and in-app backup/audit.",
+  "signing": "Existing pinned V2 signer only; no fallback or new certificate."
+}
