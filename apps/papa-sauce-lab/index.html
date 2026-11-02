@@ -623,6 +623,7 @@ window.PSLLocalDate = function(d){
         // Database
         const DB_NAME = 'PapaSauceLab';
         const DB_VERSION = 1;
+        function PSL34Boundary(date){const b=localStorage.getItem('PSL_V34_RESET_BOUNDARY');return b&&typeof date==='string'&&date>=b?b:null;}
         let db = null;
         let currentRole = 'STAFF';
         let selectedChannel = 'cash';
@@ -1548,6 +1549,8 @@ window.PSLLocalDate = function(d){
   async function isClosedV5(date){ return !!(await snapshotV5(date)); }
   async function activeTxV5(date){ return (await Transactions.getByDate(date)).filter(x=>x.status!=='CORRECTED'); }
   async function openingBaseV5(date){
+    const b=PSL34Boundary(date);
+    if(b&&prevDateV5(date)<b){const tx=await activeTxV5(date);return tx.filter(x=>x.type==='hb_initial').reduce((a,x)=>a+Number(x.amount||0),0);}
     const prev=await snapshotV5(prevDateV5(date));
     if(prev) return Number(prev.closingRegister ?? prev.totalRegister ?? 0);
     const tx=await activeTxV5(date);
@@ -1567,7 +1570,7 @@ window.PSLLocalDate = function(d){
   }
   async function stockAtV5(date){
     const all=await dbGetAll('stock_movements'), levels={}; PRODUCTS.forEach(p=>levels[p]=0);
-    all.filter(x=>x.date<=date && x.status!=='CORRECTED').forEach(x=>{ if(!(x.product in levels)) levels[x.product]=0; levels[x.product]+=x.type==='restock'?Number(x.qty||0):-Number(x.qty||0); });
+    all.filter(x=>x.date<=date && x.status!=='CORRECTED' && (!PSL34Boundary(date)||x.date>=PSL34Boundary(date))).forEach(x=>{ if(!(x.product in levels)) levels[x.product]=0; levels[x.product]+=x.type==='restock'?Number(x.qty||0):-Number(x.qty||0); });
     return levels;
   }
   async function stockDayV5(date){ const all=(await dbGetAll('stock_movements')).filter(x=>x.date===date && x.status!=='CORRECTED'); return {all,inQty:all.filter(x=>x.type==='restock').reduce((a,x)=>a+Number(x.qty||0),0),outQty:all.filter(x=>x.type==='stockout').reduce((a,x)=>a+Number(x.qty||0),0)}; }
@@ -1668,7 +1671,7 @@ window.PSLLocalDate = function(d){
   UI.drillDown=async function(type){ const c=await calcV5(operationalDateV5), levels=await stockAtV5(operationalDateV5);let title='Detail',html='';if(type==='houseBank'){title='Detail House Bank';html=`<div class="report-row"><span>HB Awal</span><b>${rupiahV5(c.openingHB)}</b></div>${c.adds.map(x=>`<div class="report-row"><span>Tambah HB · ${escV5(x.note||'')}</span><b>${rupiahV5(x.amount)}</b></div>`).join('')}<div class="report-row"><span>House Bank Efektif</span><b>${rupiahV5(c.houseBank)}</b></div>`;}else if(type==='totalRegister'){title='Rumus Total Register';html=`<div class="report-row"><span>House Bank</span><b>${rupiahV5(c.houseBank)}</b></div><div class="report-row"><span>+ Sales</span><b>${rupiahV5(c.totalSales)}</b></div><div class="report-row"><span>- Out</span><b>${rupiahV5(c.totalOut)}</b></div><div class="report-row"><span>Total Register</span><b>${rupiahV5(c.totalRegister)}</b></div>`;}else if(type==='totalStock'){title='Stock '+operationalDateV5;html=PRODUCTS.map(p=>`<div class="report-row"><span>${p}</span><b>${levels[p]||0}</b></div>`).join('');}else{const list=type==='totalSales'?c.sales:type==='totalOut'?c.expenses:c.sales.filter(x=>x.channel===type);title='Detail '+type;html=list.map(x=>`<div class="report-row"><span>${escV5(x.note||x.category||x.channel||'')}</span><b>${rupiahV5(x.amount)}</b></div>`).join('')||'<p>Tidak ada transaksi.</p>';}detailTitle.textContent=title;detailContent.innerHTML=html;UI.showModal('detail');};
   UI.tutupHari=async function(){ if(currentRole!=='OWNER')return alert('Hanya OWNER yang bisa Tutup Hari'); if(await isClosedV5(operationalDateV5))return alert('Tanggal ini sudah CLOSED. Snapshot tidak ditimpa.'); const c=await calcV5(operationalDateV5), sm=await stockDayV5(operationalDateV5), open=await stockAtV5(prevDateV5(operationalDateV5)), end=await stockAtV5(operationalDateV5), openTotal=Object.values(open).reduce((a,x)=>a+Number(x||0),0), endTotal=Object.values(end).reduce((a,x)=>a+Number(x||0),0); let actual=prompt('Register expected '+rupiahV5(c.totalRegister)+'\nMasukkan register aktual:',String(c.totalRegister));if(actual===null)return;actual=Number(actual);if(!Number.isFinite(actual))return alert('Register aktual tidak valid'); await dbPut('snapshots',{id:'daily-'+operationalDateV5,date:operationalDateV5,type:'daily',openingHB:c.openingHB,hbAdd:c.hbAdd,houseBank:c.houseBank,cash:c.cash,qris:c.qris,gojek:c.gojek,grab:c.grab,totalSales:c.totalSales,totalOut:c.totalOut,closingRegister:c.totalRegister,openingStock:openTotal,restock:sm.inQty,stockOut:sm.outQty,endingStock:endTotal,actualRegister:actual,variance:actual-c.totalRegister,timestamp:new Date().toISOString(),closedBy:currentRole}); alert('Tutup Hari '+operationalDateV5+' berhasil.\nRegister '+rupiahV5(c.totalRegister)+' menjadi HB '+nextDateV5(operationalDateV5)); const n=nextDateV5(operationalDateV5);if(n<=TODAY()){operationalDateV5=n;document.getElementById('operationalDateV5').value=n;}syncDatesV5();await refreshV5(); };
 
-  Reports.generate=async function(){ const date=reportDate.value||operationalDateV5,c=await calcV5(date),sn=await snapshotV5(date),sm=await stockDayV5(date),open=await stockAtV5(prevDateV5(date)),end=await stockAtV5(date),openTotal=Object.values(open).reduce((a,x)=>a+Number(x||0),0),endTotal=Object.values(end).reduce((a,x)=>a+Number(x||0),0); reportContent.innerHTML=`<div class="report-section"><div class="card-title">Laporan Harian ${date}</div><div class="report-row"><span>HB Awal</span><b>${rupiahV5(c.openingHB)}</b></div><div class="report-row"><span>Tambah HB</span><b>${rupiahV5(c.hbAdd)}</b></div><div class="report-row"><span>House Bank</span><b>${rupiahV5(c.houseBank)}</b></div><div class="report-row"><span>Cash</span><b>${rupiahV5(c.cash)}</b></div><div class="report-row"><span>QRIS</span><b>${rupiahV5(c.qris)}</b></div><div class="report-row"><span>Gojek</span><b>${rupiahV5(c.gojek)}</b></div><div class="report-row"><span>Grab</span><b>${rupiahV5(c.grab)}</b></div><div class="report-row"><span>Total Sales</span><b>${rupiahV5(c.totalSales)}</b></div><div class="report-row"><span>Total Out</span><b>${rupiahV5(c.totalOut)}</b></div><div class="report-row"><span>Total Register</span><b>${rupiahV5(c.totalRegister)}</b></div><div class="report-row"><span>Stock Awal</span><b>${openTotal}</b></div><div class="report-row"><span>Restock / Keluar</span><b>+${sm.inQty} / -${sm.outQty}</b></div><div class="report-row"><span>Closing Stock</span><b>${endTotal}</b></div><div class="report-row"><span>Aktual</span><b>${sn?rupiahV5(sn.actualRegister):'-'}</b></div><div class="report-row"><span>Selisih</span><b>${sn?rupiahV5(sn.variance):'-'}</b></div></div><div style="display:flex;gap:8px"><button class="btn btn-secondary btn-sm" onclick="window.print()">PDF</button><button class="btn btn-success btn-sm" onclick="Export.whatsapp('${date}')">WhatsApp</button><button class="btn btn-primary btn-sm" onclick="Export.csv('${date}')">CSV</button></div>`; };
+  Reports.generate=async function(){ const date=reportDate.value||operationalDateV5,c=await calcV5(date),sn=await snapshotV5(date),sm=await stockDayV5(date),open=PSL34Boundary(date)===date?Object.fromEntries(PRODUCTS.map(p=>[p,0])):await stockAtV5(prevDateV5(date)),end=await stockAtV5(date),openTotal=Object.values(open).reduce((a,x)=>a+Number(x||0),0),endTotal=Object.values(end).reduce((a,x)=>a+Number(x||0),0); reportContent.innerHTML=`<div class="report-section"><div class="card-title">Laporan Harian ${date}</div><div class="report-row"><span>HB Awal</span><b>${rupiahV5(c.openingHB)}</b></div><div class="report-row"><span>Tambah HB</span><b>${rupiahV5(c.hbAdd)}</b></div><div class="report-row"><span>House Bank</span><b>${rupiahV5(c.houseBank)}</b></div><div class="report-row"><span>Cash</span><b>${rupiahV5(c.cash)}</b></div><div class="report-row"><span>QRIS</span><b>${rupiahV5(c.qris)}</b></div><div class="report-row"><span>Gojek</span><b>${rupiahV5(c.gojek)}</b></div><div class="report-row"><span>Grab</span><b>${rupiahV5(c.grab)}</b></div><div class="report-row"><span>Total Sales</span><b>${rupiahV5(c.totalSales)}</b></div><div class="report-row"><span>Total Out</span><b>${rupiahV5(c.totalOut)}</b></div><div class="report-row"><span>Total Register</span><b>${rupiahV5(c.totalRegister)}</b></div><div class="report-row"><span>Stock Awal</span><b>${openTotal}</b></div><div class="report-row"><span>Restock / Keluar</span><b>+${sm.inQty} / -${sm.outQty}</b></div><div class="report-row"><span>Closing Stock</span><b>${endTotal}</b></div><div class="report-row"><span>Aktual</span><b>${sn?rupiahV5(sn.actualRegister):'-'}</b></div><div class="report-row"><span>Selisih</span><b>${sn?rupiahV5(sn.variance):'-'}</b></div></div><div style="display:flex;gap:8px"><button class="btn btn-secondary btn-sm" onclick="window.print()">PDF</button><button class="btn btn-success btn-sm" onclick="Export.whatsapp('${date}')">WhatsApp</button><button class="btn btn-primary btn-sm" onclick="Export.csv('${date}')">CSV</button></div>`; };
 
   UI.showSettings=function(){ detailTitle.textContent='Pengaturan';detailContent.innerHTML=`<div class="form-group"><label class="form-label">Role</label><select class="form-select" id="settingRole" onchange="Settings.setRole(this.value)"><option value="OWNER" ${currentRole==='OWNER'?'selected':''}>OWNER</option><option value="STAFF" ${currentRole==='STAFF'?'selected':''}>STAFF</option></select></div><p style="font-size:12px;color:#666">HB Awal dan Tambah HB sekarang dicatat dari Dashboard per tanggal, bukan overwrite global.</p><hr style="margin:16px 0"><button class="btn btn-secondary btn-block" onclick="Export.jsonBackup()">Export JSON Backup</button><p style="font-size:11px;color:#666;margin-top:10px">Cloud: NOT CONNECTED sampai Supabase dikonfigurasi.</p>`;UI.showModal('detail');};
 
@@ -1980,7 +1983,7 @@ window.PSLLocalDate = function(d){
   }
   async function stock11(product,date){
     const all=await dbGetAll('stock_movements');
-    return all.filter(x=>x&&x.product===product&&x.date<=date&&x.status!=='CORRECTED').reduce((n,x)=>n+(x.type==='restock'?Number(x.qty||0):-Number(x.qty||0)),0);
+    return all.filter(x=>x&&x.product===product&&x.date<=date&&x.status!=='CORRECTED'&&(!PSL34Boundary(date)||x.date>=PSL34Boundary(date))).reduce((n,x)=>n+(x.type==='restock'?Number(x.qty||0):-Number(x.qty||0)),0);
   }
   async function refresh11(){
     try{await UI.updateDashboard();await UI.renderTodayTransactions();await UI.renderStock();await UI.renderHistory();}catch(e){console.error('PSL v11 refresh',e);}
@@ -2061,7 +2064,7 @@ window.PSLLocalDate = function(d){
   async function allMoves12(){try{return await dbGetAll('stock_movements')}catch(e){console.error(e);return []}}
   async function levels12(date){
     const levels={};(PRODUCTS||[]).forEach(p=>levels[p]=0);
-    (await allMoves12()).filter(x=>x&&x.date<=date&&x.status!=='CORRECTED').forEach(x=>{
+    (await allMoves12()).filter(x=>x&&x.date<=date&&x.status!=='CORRECTED'&&(!PSL34Boundary(date)||x.date>=PSL34Boundary(date))).forEach(x=>{
       if(!(x.product in levels))levels[x.product]=0;
       levels[x.product]+=x.type==='restock'?Number(x.qty||0):-Number(x.qty||0);
     });
@@ -2115,7 +2118,7 @@ window.PSLLocalDate = function(d){
   const oldDrill12=UI.drillDown?.bind(UI);
   UI.drillDown=async function(type){
     if(type!=='totalStock')return oldDrill12?oldDrill12(type):undefined;
-    const date=date12(),open=await levels12(prev12(date)),end=await levels12(date),moves=await dayMoves12(date);
+    const date=date12(),open=PSL34Boundary(date)===date?Object.fromEntries(PRODUCTS.map(p=>[p,0])):await levels12(prev12(date)),end=await levels12(date),moves=await dayMoves12(date);
     const total=Object.values(end).reduce((a,x)=>a+Number(x||0),0);
     const inQty=moves.filter(x=>x.type==='restock').reduce((a,x)=>a+Number(x.qty||0),0);
     const outQty=moves.filter(x=>x.type==='stockout').reduce((a,x)=>a+Number(x.qty||0),0);
@@ -2247,8 +2250,8 @@ window.PSLLocalDate = function(d){
     const products=new Set([...(window.PRODUCTS||[])]);(mv||[]).forEach(x=>x?.product&&products.add(x.product));
     const per={};for(const p of products)per[p]={production:0,out:0,opening:0,closing:0};
     const apply=(obj,x,sign)=>{if(!x?.product)return;if(!obj[x.product])obj[x.product]={production:0,out:0,opening:0,closing:0};const q=Number(x.qty||0);if(x.type==='restock')obj[x.product][sign]+=q;if(x.type==='stockout')obj[x.product][sign]-=q};
-    for(const x of (mv||[]).filter(x=>x&&x.status!=='CORRECTED'&&x.date<start))apply(per,x,'opening');
-    for(const x of (mv||[]).filter(x=>x&&x.status!=='CORRECTED'&&x.date<=end))apply(per,x,'closing');
+    for(const x of (mv||[]).filter(x=>x&&x.status!=='CORRECTED'&&x.date<start&&(!PSL34Boundary(start)||x.date>=PSL34Boundary(start))))apply(per,x,'opening');
+    for(const x of (mv||[]).filter(x=>x&&x.status!=='CORRECTED'&&x.date<=end&&(!PSL34Boundary(end)||x.date>=PSL34Boundary(end))))apply(per,x,'closing');
     for(const x of moves){if(!per[x.product])per[x.product]={production:0,out:0,opening:0,closing:0};if(x.type==='restock')per[x.product].production+=Number(x.qty||0);if(x.type==='stockout')per[x.product].out+=Number(x.qty||0)}
     const production=moves.filter(x=>x.type==='restock').reduce((a,x)=>a+Number(x.qty||0),0),stockOut=moves.filter(x=>x.type==='stockout').reduce((a,x)=>a+Number(x.qty||0),0);
     const openingStock=Object.values(per).reduce((a,x)=>a+Number(x.opening||0),0),closingStock=Object.values(per).reduce((a,x)=>a+Number(x.closing||0),0);
@@ -2507,6 +2510,12 @@ window.PSLLocalDate = function(d){
       .filter(x=>x&&x.type!=='period_end'&&x.date<date)
       .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
     const active=(tx||[]).filter(x=>x&&x.status!=='CORRECTED');
+    const b=PSL34Boundary(date);
+    if(b){const fresh=daily.filter(x=>x.date>=b);const last=fresh.length?fresh[fresh.length-1]:null;
+      let balance=last?Number(last.closingRegister??last.totalRegister??0):0;
+      for(const x of active.filter(x=>x.date>=b&&x.date<date&&(!last||x.date>last.date))){if(x.type==='hb_initial')balance=Number(x.amount||0);else if(x.type==='hb_add'||x.type==='sales')balance+=Number(x.amount||0);else if(x.type==='expense')balance-=Number(x.amount||0);}
+      return balance;
+    }
 
     // Source of truth for opening period balance:
     // latest closed balance before the period + any still-open ledger movement after it.
@@ -3437,7 +3446,7 @@ window.PSLLocalDate = function(d){
   function movementsLevel(moves,until){
     const levels={};
     PRODUCTS30().forEach(p=>levels[p]=0);
-    moves.filter(active).filter(x=>!until||x.date<=until).forEach(x=>{
+    moves.filter(active).filter(x=>(!until||x.date<=until)&&(!PSL34Boundary(until||date())||x.date>=PSL34Boundary(until||date()))).forEach(x=>{
       if(!x.product||!['restock','stockout'].includes(x.type))return;
       levels[x.product]=(levels[x.product]||0)+(x.type==='restock'?Number(x.qty||0):-Number(x.qty||0));
     });
@@ -3723,7 +3732,7 @@ window.PSLLocalDate = function(d){
     else show('Salin Nota','<textarea rows="15" style="width:100%">'+esc(text)+'</textarea>');
   }
   async function stockCard(){
-    const d=date(),list=(await allMoves()).filter(x=>x.date<=d).sort((a,b)=>String(a.date).localeCompare(b.date)||String(a.datetime).localeCompare(b.datetime));
+    const d=date(),list=(await allMoves()).filter(x=>x.date<=d&&(!PSL34Boundary(d)||x.date>=PSL34Boundary(d))).sort((a,b)=>String(a.date).localeCompare(b.date)||String(a.datetime).localeCompare(b.datetime));
     const sums={};PRODUCTS30().forEach(p=>sums[p]=0);
     const rows=[];
     list.forEach(x=>{
@@ -3852,7 +3861,7 @@ window.PSLLocalDate = function(d){
    if(month>cutoff.slice(0,7))throw Error('Bulan mendatang belum bisa dilaporkan');
    const rows=[];
    const moves=(all||[]).filter(m=>valid32(m)&&m.product===product&&typeof m.date==='string');
-   const opening=moves.filter(m=>m.date<first).reduce((sum,m)=>sum+(m.type==='restock'?1:-1)*Number(m.qty||0),0);
+   const opening=moves.filter(m=>m.date<first&&(!PSL34Boundary(first)||m.date>=PSL34Boundary(first))).reduce((sum,m)=>sum+(m.type==='restock'?1:-1)*Number(m.qty||0),0);
    const last=end<cutoff?end:cutoff;
    let remaining=opening,totalIn=0,totalOut=0,negative=opening<0;
    for(let day=1;day<=Number(last.slice(-2));day++){
@@ -3950,7 +3959,7 @@ window.PSLLocalDate = function(d){
     for(const t of ts)monthsSet.add(t.date.slice(0,7));
     for(const m of ms)monthsSet.add(m.date.slice(0,7));
     const monthsList=Array.from(monthsSet).sort().reverse().slice(0,36).sort();
-    const result={schema:'psl-boss-v1',appVersion:33,generatedAt:new Date().toISOString(),asOf,months:{},quality:'UNVERIFIED_PHYSICAL_STOCK'};
+    const result={schema:'psl-boss-v1',appVersion:34,generatedAt:new Date().toISOString(),asOf,months:{},quality:'UNVERIFIED_PHYSICAL_STOCK'};
     for(const mon of monthsList){
       const [year,month]=mon.split('-').map(Number);
       const last=mon===asOf.slice(0,7)?Number(asOf.slice(-2)):new Date(Date.UTC(year,month,0)).getUTCDate();
@@ -3968,7 +3977,7 @@ window.PSLLocalDate = function(d){
       const outletTotals={};
       for(const p of products()){
         const allProduct=ms.filter(x=>x.product===p);
-        const opening=allProduct.filter(x=>x.date<first).reduce((n,x)=>n+(x.type==='restock'?1:-1)*safeNum(x.qty),0);
+        const opening=allProduct.filter(x=>x.date<first&&(!PSL34Boundary(first)||x.date>=PSL34Boundary(first))).reduce((n,x)=>n+(x.type==='restock'?1:-1)*safeNum(x.qty),0);
         const inMonth=allProduct.filter(x=>x.date.startsWith(mon));
         let balance=opening,incTotal=0,outTotal=0,negative=opening<0;
         const rows=[];
@@ -4067,5 +4076,66 @@ window.PSLLocalDate = function(d){
 })();
 
 </script>
+
+<style id="PSL_V34_NOV_RESET_STYLE">
+#psl34-nov-reset{padding:14px;margin:12px 0;background:#fff8f9;border:1px solid #e9ccd3;border-radius:13px}
+#psl34-nov-reset h3{font-size:14px;color:#a61735;margin:0 0 6px}
+#psl34-nov-reset p{font-size:12px;color:#6a5b61;line-height:1.5;margin:0 0 10px}
+</style>
+<script id="PSL_V34_NOV_RESET">
+(function(){
+'use strict';
+const FIRST='2026-11-01',LAST='2026-11-30',NEXT='2026-12-01';
+const STORES=['transactions','stock_movements','snapshots','periods','corrections'];
+const match=x=>x&&[x.date,x.startDate,x.endDate,x.start,x.end].some(d=>typeof d==='string'&&d>=FIRST&&d<=LAST);
+const id=()=>('nov-reset-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9));
+async function run(){
+ if(currentRole!=='OWNER')return alert('Reset hanya boleh dilakukan OWNER.');
+ if(!db)return alert('Database belum siap');
+ const all={},affected={};
+ for(const store of STORES){all[store]=await dbGetAll(store);affected[store]=all[store].filter(x=>match(x)&&x.action!=='RESET_NOVEMBER_2026')}
+ if(['transactions','stock_movements','snapshots','periods'].some(store=>all[store].some(x=>x&&[x.date,x.startDate,x.endDate,x.start,x.end].some(d=>typeof d==='string'&&d>=NEXT))))
+   return alert('Ada data bulan Desember atau lebih baru. Reset ditahan agar rantai stok dan HB tidak rusak.');
+ const counts=STORES.map(k=>k+': '+affected[k].length).join('\n');
+ if(!confirm('RESET SEMUA CATATAN NOVEMBER 2026?\n\n'+counts+'\n\nOktober TIDAK dihapus. Saldo awal stok dan House Bank November = 0.\nBackup JSON akan diunduh sebelum reset.'))return;
+ try{await Export.jsonBackup()}catch(e){return alert('Backup gagal, reset dihentikan: '+String(e.message||e))}
+ if(!confirm('Pastikan backup JSON berhasil tersimpan di HP sebelum lanjut. Data November akan diarsipkan dalam audit dan dihapus dari laporan aktif. Lanjut?'))return;
+ if(prompt('Ketik RESET NOVEMBER untuk lanjut:','')!=='RESET NOVEMBER')return alert('Dibatalkan.');
+ const audit={id:id(),date:FIRST,startDate:FIRST,endDate:LAST,action:'RESET_NOVEMBER_2026',time:new Date().toISOString(),user:currentRole,archive:affected,note:'November 2026 zero baseline; October preserved'};
+ try{
+  await new Promise((resolve,reject)=>{
+   let tx;
+   try{
+    tx=db.transaction(STORES,'readwrite');
+    for(const store of STORES)for(const row of affected[store])tx.objectStore(store).delete(row.id);
+    tx.objectStore('corrections').put(audit);
+    tx.oncomplete=()=>resolve(true);
+    tx.onerror=()=>reject(tx.error||new Error('Gagal menyimpan'));
+    tx.onabort=()=>reject(tx.error||new Error('Transaksi dibatalkan'));
+   }catch(e){if(tx)try{tx.abort()}catch(_){}reject(e)}
+  });
+  localStorage.setItem('PSL_V34_RESET_BOUNDARY',FIRST);
+  localStorage.setItem('PSL_OPERATIONAL_DATE_V27',FIRST);
+  const el=document.getElementById('operationalDateV5');
+  if(el){el.value=FIRST;el.dispatchEvent(new Event('change',{bubbles:true}))}
+  if(UI.updateDashboard)await UI.updateDashboard();
+  if(UI.renderStock)await UI.renderStock();
+  if(UI.renderHistory)await UI.renderHistory();
+  if(UI.renderTodayTransactions)await UI.renderTodayTransactions();
+  alert('Reset November selesai! Semua angka November awalnya 0. Oktober tetap tersimpan. Input ulang mulai 1 November.');
+ }catch(e){console.error('PSL34 reset',e);alert('Reset gagal: '+String(e.message||e))}
+}
+function install(){
+ const parent=document.getElementById('tab-transaksi');
+ if(!parent||document.getElementById('psl34-nov-reset'))return;
+ const el=document.createElement('div');el.id='psl34-nov-reset';el.className='owner-only';
+ el.innerHTML='<h3>Reset November 2026</h3><p>Hapus catatan 1–30 November saja. Oktober aman, saldo awal November nol. Backup dilakukan sebelum reset.</p><button class="btn btn-danger btn-block" onclick="PSL34ResetNovember.run()">RESET NOVEMBER 2026</button>';
+ parent.appendChild(el);
+}
+window.PSL34ResetNovember={run};
+let tries=0;const timer=setInterval(()=>{if(typeof db!=='undefined'&&db&&document.getElementById('tab-transaksi')){clearInterval(timer);install()}else if(++tries>100)clearInterval(timer)},100);
+})();
+</script>
+
 </body>
 </html>
