@@ -4137,5 +4137,77 @@ let tries=0;const timer=setInterval(()=>{if(typeof db!=='undefined'&&db&&documen
 })();
 </script>
 
+
+<style id="PSL_V35_BOSS_STYLE">
+.psl35-wrap{border:1px solid #e8d9dc;border-radius:14px;padding:14px;background:#fff}
+.psl35-intro{margin:0 0 12px;font-size:13px;color:#585054;line-height:1.55}
+.psl35-small{font-size:11px;color:#70666a;line-height:1.5;margin-top:10px}
+.psl35-state{font-size:12px;padding:10px;background:#f6f7f8;border-radius:9px;margin:10px 0;color:#5d555a}
+.psl35-space{margin-top:12px}
+</style>
+<script id="PSL_V35_BOSS_QUICK_SHARE">
+(function(){
+'use strict';
+const PUB='PSL_BOSS_V33_PUBLISH_CODE', VIEW='PSL_BOSS_V33_VIEW_CODE',LAST='PSL_BOSS_V33_LAST_SEND';
+const configured=()=>!!(localStorage.getItem(PUB)&&localStorage.getItem(VIEW));
+const dateFmt=v=>{try{return new Date(v).toLocaleString('id-ID',{timeZone:'Asia/Makassar'})}catch(e){return 'belum pernah'}};
+function setupView(force=false){
+ if(currentRole!=='OWNER')return alert('Hanya OWNER yang dapat menerbitkan laporan.');
+ const title=document.getElementById('detailTitle'),body=document.getElementById('detailContent');
+ if(!title||!body)return;
+ const ready=configured(),showSetup=!ready||force,last=localStorage.getItem(LAST);
+ title.textContent=showSetup?'Aktivasi Laporan Bos (Sekali Saja)':'Laporan Bos · Kirim & Bagikan';
+ if(showSetup){
+  body.innerHTML='<div class="psl35-wrap"><p class="psl35-intro">Pertama kali, sambungkan HP pemilik dengan laporan privat. Kode Owner dan kode akses dari pengaturan NADMO hanya dimasukkan sekali di HP ini; setelah tersimpan, cukup satu tombol. Bos tidak perlu login atau mengetik kode.</p>'+
+  '<label class="form-label">Kode Kirim · khusus Owner</label><input class="form-input" id="psl33-publish" type="password" placeholder="'+(ready?'Kosongkan untuk memakai kode yang tersimpan':'Masukkan kode kirim Owner')+'" autocomplete="off" autocapitalize="off">'+
+  '<label class="form-label psl35-space">Kode Akses Link Bos</label><input class="form-input" id="psl33-view" type="password" placeholder="'+(ready?'Kosongkan untuk memakai kode yang tersimpan':'Masukkan kode akses laporan')+'" autocomplete="off" autocapitalize="off">'+
+  '<p class="psl35-small">Kode kirim melindungi laporan dari perubahan oleh orang lain. Kode baca berada di link rahasia, jadi penerima langsung melihat dashboard. Jangan kirim kode Owner ke bos.</p>'+
+  '<button class="btn btn-primary btn-block psl35-space" id="psl33-send" onclick="PSLBoss35.sendAndShare()">AKTIFKAN, KIRIM & BAGIKAN</button>'+
+  '<div id="psl33-message" class="psl35-small"></div>'+
+  (ready?'<button class="btn btn-secondary btn-block psl35-space" onclick="PSLBoss35.open()">Kembali</button>':'')+
+  '</div>';
+ }else{
+  body.innerHTML='<div class="psl35-wrap"><p class="psl35-intro">Laporan siap dibagikan. Bos cukup membuka link yang dikirim; tidak ada halaman login atau kode yang harus diketik.</p>'+
+  '<div class="psl35-state">Terakhir dikirim: '+(last?dateFmt(last):'Belum pernah dikirim')+'<br>Hanya data yang sudah dikirim yang terlihat oleh bos.</div>'+
+  '<input type="hidden" id="psl33-publish" value=""><input type="hidden" id="psl33-view" value="">'+
+  '<button class="btn btn-primary btn-block" id="psl33-send" onclick="PSLBoss35.sendAndShare()">KIRIM LAPORAN & BAGIKAN LINK</button>'+
+  '<div id="psl33-message" class="psl35-small"></div>'+
+  '<button class="btn btn-secondary btn-block psl35-space" onclick="PSLBoss33.share()">BAGIKAN LINK YANG ADA</button>'+
+  '<button class="btn btn-secondary btn-block psl35-space" onclick="PSLBoss35.open(true)">Ubah pengaturan privat</button>'+
+  '</div>';
+ }
+ UI.showModal('detail');
+}
+async function sendAndShare(){
+ if(currentRole!=='OWNER')return alert('Hanya OWNER.');
+ const before=localStorage.getItem(LAST)||'';
+ await window.PSLBoss33.send();
+ const after=localStorage.getItem(LAST)||'';
+ if(after&&after!==before){
+  await window.PSLBoss33.share();
+ }else if(after&&after===before){
+  const status=document.getElementById('psl33-message');
+  if(status&&!status.textContent.includes('GAGAL'))status.textContent='Belum ada laporan baru yang terkirim. Link lama dapat dibagikan lewat tombol di bawah.';
+ }
+}
+function polish(){
+ const card=document.getElementById('psl33-boss');
+ if(!card)return;
+ const title=card.querySelector('.card-title');if(title)title.textContent='Dashboard Laporan Bos · Link Sekali Klik';
+ const p=card.querySelector('p');if(p)p.textContent='Kirim laporan dari HP, lalu bos cukup klik link privat tanpa login. Kode hanya untuk aktivasi awal di HP Owner.';
+ const btn=card.querySelector('button');if(btn){btn.textContent='KIRIM LAPORAN / BAGIKAN LINK';btn.setAttribute('onclick','PSLBoss35.open()')}
+ const shareBtn=document.getElementById('psl35-share-btn');
+ if(!shareBtn){
+  const b=document.createElement('button');b.id='psl35-share-btn';b.className='btn btn-secondary btn-block';b.style.marginTop='8px';
+  b.textContent='BAGIKAN LINK BOS';b.onclick=()=>{if(!configured())return setupView();return window.PSLBoss33.share()};
+  card.insertBefore(b,document.getElementById('psl33-sync-last'));
+ }
+}
+window.PSLBoss35={open:setupView,sendAndShare};
+if(window.PSLBoss33)window.PSLBoss33.open=setupView;
+let n=0;const timer=setInterval(()=>{if(typeof db!=='undefined'&&db&&document.getElementById('psl33-boss')){clearInterval(timer);polish()}else if(++n>120)clearInterval(timer)},100);
+})();
+</script>
+
 </body>
 </html>
