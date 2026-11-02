@@ -1,0 +1,10 @@
+{
+  "request_id": "psl-v35-boss-easy-share-20261102",
+  "project_id": "papa-sauce-lab",
+  "version": 35,
+  "release_channel": "V2_STABLE",
+  "action": "build_existing",
+  "requested_at": "2026-11-02",
+  "scope": "Owner first-time private pairing; afterwards one-click report send and private boss link share; no viewer password prompt; preserve local October/November and V2 stable signature",
+  "signing": "Use existing canonical signed V2 release only"
+}
