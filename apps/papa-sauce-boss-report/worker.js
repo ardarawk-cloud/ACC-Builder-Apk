@@ -28,6 +28,7 @@ async function deviceRoutes(request,env,url){
   if(!SAFE_DEVICE.test(data.deviceId)||!validPublicJwk(data.publicKey)||!(/^[a-f0-9]{64}$/i).test(data.viewHash||''))return json({error:'Invalid device details'},422,cors());
   const owner=await env.REPORT_KV.get(OWNER_DEVICE_KEY,'json');
   if(owner?.deviceId===data.deviceId)return json({ok:true,status:'APPROVED'},200,cors());
+  if(owner)return json({error:'An Owner device is already active. Contact administrator for replacement.'},403,cors());
   const pending={deviceId:data.deviceId,publicKey:{kty:'EC',crv:'P-256',x:data.publicKey.x,y:data.publicKey.y,ext:true,key_ops:['verify']},viewHash:data.viewHash,requestedAt:new Date().toISOString()};
   await env.REPORT_KV.put('psl/pending/'+data.deviceId,JSON.stringify(pending),{expirationTtl:604800});
   return json({ok:true,status:'PENDING',deviceId:data.deviceId},202,cors());
