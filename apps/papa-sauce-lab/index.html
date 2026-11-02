@@ -4209,5 +4209,149 @@ let n=0;const timer=setInterval(()=>{if(typeof db!=='undefined'&&db&&document.ge
 })();
 </script>
 
+
+<style id="PSL_V36_BOSS_STYLE">
+.psl36-card{border:1px solid #edd9de;background:#fff9fa;border-radius:13px;padding:15px}
+.psl36-note{font-size:12px;color:#65545b;line-height:1.5;margin:0 0 12px}
+.psl36-status{background:#f1f3f5;border-radius:10px;padding:11px;font-size:12px;line-height:1.5;margin:10px 0}
+.psl36-space{margin-top:10px}
+</style>
+<script id="PSL_V36_BOSS_DEVICE">
+(function(){
+ 'use strict';
+ const BASE='https://laporanpapa.nadmo.id';
+ const AUTH_DB='PSL_BOSS_OWNER_AUTH_V36';
+ const LAST='PSL_BOSS_V33_LAST_SEND',VIEW='PSL_BOSS_V33_VIEW_CODE',OLDPUB='PSL_BOSS_V33_PUBLISH_CODE';
+ const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+ const random=()=>b64(crypto.getRandomValues(new Uint8Array(32)));
+ const hex=b=>Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');
+ const escapeHTML=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;'}[c]));
+ let loading=false;
+ function store(){
+  return new Promise((resolve,reject)=>{
+   const request=indexedDB.open(AUTH_DB,1);
+   request.onupgradeneeded=()=>request.result.createObjectStore('identity',{keyPath:'id'});
+   request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
+  });
+ }
+ async function findIdentity(dbAuth){
+  return new Promise((resolve,reject)=>{
+   const tx=dbAuth.transaction('identity','readonly'),req=tx.objectStore('identity').get('owner');
+   req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);
+  });
+ }
+ async function saveIdentity(dbAuth,value){
+  return new Promise((resolve,reject)=>{
+   const tx=dbAuth.transaction('identity','readwrite');tx.objectStore('identity').put(value);
+   tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+  });
+ }
+ async function identity(){
+  if(!crypto?.subtle||!crypto?.getRandomValues)throw Error('WebView belum mendukung keamanan perangkat.');
+  const idb=await store();let owner=await findIdentity(idb);
+  if(!owner){
+   const keys=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},false,['sign','verify']);
+   owner={id:'owner',deviceId:(crypto.randomUUID?crypto.randomUUID():[random().slice(0,16),random().slice(16,32)].join('-')).toLowerCase(),privateKey:keys.privateKey,publicKey:keys.publicKey,viewerToken:random()};
+   await saveIdentity(idb,owner);
+  }
+  if(owner.viewerToken)localStorage.setItem(VIEW,owner.viewerToken);
+  idb.close();return owner;
+ }
+ const info=()=>document.getElementById('psl36-info');
+ const setInfo=(message)=>{if(info())info().textContent=message};
+ async function response(path,opts){
+  const r=await fetch(BASE+path,{cache:'no-store',...opts});
+  const data=await r.json().catch(()=>({error:'Respons server tidak valid'}));
+  if(!r.ok&&r.status!==202)throw Error(data.error||'HTTP '+r.status);
+  return data;
+ }
+ async function currentState(o){
+  return response('/api/device/status?id='+encodeURIComponent(o.deviceId));
+ }
+ async function enroll(){
+  if(currentRole!=='OWNER')return alert('Hanya OWNER.');
+  if(loading)return;loading=true;setInfo('Mendaftarkan HP kamu...');
+  try{
+   const o=await identity();
+   const jwk=await crypto.subtle.exportKey('jwk',o.publicKey);
+   const hash=hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(o.viewerToken)));
+   const r=await response('/api/device/enroll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({deviceId:o.deviceId,publicKey:jwk,viewHash:hash})});
+   setInfo(r.status==='APPROVED'?'HP sudah aktif. Kamu bisa mengirim laporan.':'Permintaan HP sudah masuk. Menunggu persetujuan satu kali dari NADMO. Setelah itu tidak ada kode lagi.');
+   updateButtons(r.status==='APPROVED');
+  }catch(e){setInfo('Gagal aktivasi: '+String(e.message||e))}
+  finally{loading=false}
+ }
+ function updateButtons(active){
+  const send=document.getElementById('psl36-send'),setup=document.getElementById('psl36-enroll'),share=document.getElementById('psl36-share');
+  if(send)send.disabled=!active;if(setup)setup.style.display=active?'none':'block';if(share)share.disabled=!active;
+ }
+ async function check(){
+  if(loading)return;loading=true;setInfo('Mengecek persetujuan perangkat...');
+  try{
+   const o=await identity(),r=await currentState(o);
+   const active=r.status==='APPROVED';
+   setInfo(active?'HP Owner sudah aktif. Kirim laporan dan bagikan link sekarang.':r.status==='PENDING'?'Permintaan aktivasi sudah tercatat. Menunggu persetujuan NADMO.':'Belum ada permintaan. Tekan Aktifkan HP ini.');
+   updateButtons(active);
+  }catch(e){setInfo('Gagal memeriksa: '+String(e.message||e))}
+  finally{loading=false}
+ }
+ async function send(){
+  if(currentRole!=='OWNER')return alert('Hanya OWNER.');
+  if(loading)return;loading=true;const btn=document.getElementById('psl36-send');if(btn)btn.disabled=true;
+  setInfo('Menyusun laporan dari database lokal...');
+  try{
+   const owner=await identity(),state=await currentState(owner);
+   if(state.status!=='APPROVED')throw Error('HP belum disetujui.');
+   const [tx,moves]=await Promise.all([dbGetAll('transactions'),dbGetAll('stock_movements')]);
+   if(!tx.length&&!moves.length)throw Error('Belum ada data laporan yang bisa dikirim.');
+   const payload=window.PSLBoss33.buildPayload(tx,moves,PSLLocalDate());
+   const raw=JSON.stringify(payload),time=String(Date.now());
+   const signature=await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},owner.privateKey,new TextEncoder().encode(time+'\n'+raw));
+   setInfo('Mengirim laporan privat ke website...');
+   const result=await response('/api/device/publish',{method:'POST',headers:{'Content-Type':'application/json','x-psl-device':owner.deviceId,'x-psl-timestamp':time,'x-psl-signature':b64(signature)},body:raw});
+   localStorage.setItem(LAST,result.publishedAt);
+   const stamp=document.getElementById('psl33-sync-last');if(stamp)stamp.textContent='Terakhir dikirim: '+new Date(result.publishedAt).toLocaleString('id-ID');
+   setInfo('Laporan berhasil dikirim. Link privat siap dibagikan.');
+   await window.PSLBoss33.share();
+  }catch(e){setInfo('GAGAL: '+String(e.message||e)+'. Data HP tetap tersimpan.')}
+  finally{loading=false;if(btn)btn.disabled=false}
+ }
+ async function share(){
+  if(currentRole!=='OWNER')return alert('Hanya OWNER.');
+  try{
+   const owner=await identity(),state=await currentState(owner);
+   if(state.status!=='APPROVED')return alert('HP belum diaktifkan.');
+   if(!localStorage.getItem(LAST))return alert('Kirim laporan dulu sebelum membagikan link.');
+   await window.PSLBoss33.share();
+  }catch(e){alert('Gagal bagikan: '+String(e.message||e))}
+ }
+ function open(){
+  if(currentRole!=='OWNER')return alert('Hanya OWNER.');
+  // Devices paired through the previous private code system keep working.
+  if(localStorage.getItem(OLDPUB)&&localStorage.getItem(VIEW)&&window.PSLBoss35)return window.PSLBoss35.open();
+  const title=document.getElementById('detailTitle'),body=document.getElementById('detailContent');
+  if(!title||!body)return;
+  title.textContent='Laporan Bos · Tanpa Kode';
+  body.innerHTML='<div class="psl36-card"><p class="psl36-note">APK hanya digunakan Owner. HP didaftarkan satu kali, lalu tombol Kirim Laporan dan Bagikan Link dapat dipakai tanpa memasukkan kode. Bos cukup klik link privat untuk membaca.</p>'+
+   '<div class="psl36-status" id="psl36-info">Mengecek status HP...</div>'+
+   '<button class="btn btn-primary btn-block" id="psl36-enroll" onclick="PSLBoss36.enroll()">AKTIFKAN HP INI TANPA KODE</button>'+
+   '<button class="btn btn-secondary btn-block psl36-space" onclick="PSLBoss36.check()">CEK STATUS AKTIVASI</button>'+
+   '<button class="btn btn-primary btn-block psl36-space" id="psl36-send" disabled onclick="PSLBoss36.send()">KIRIM LAPORAN & BAGIKAN LINK</button>'+
+   '<button class="btn btn-secondary btn-block psl36-space" id="psl36-share" disabled onclick="PSLBoss36.share()">BAGIKAN LINK BOS</button>'+
+   '<p class="psl36-note psl36-space">Pemilik harus menyetujui pendaftaran HP satu kali. Tidak ada kode yang harus diketik. Jangan bagikan link ke orang di luar penerima laporan.</p></div>';
+  UI.showModal('detail');check();
+ }
+ function install(){
+  const card=document.getElementById('psl33-boss');if(!card)return;
+  const desc=card.querySelector('p');if(desc)desc.textContent='Kamu mengirim laporan dengan satu tombol. Bos cukup membuka link privat tanpa login. Aktivasi HP Owner dilakukan satu kali tanpa mengetik kode.';
+  const b=card.querySelector('button');if(b){b.textContent='KIRIM LAPORAN / LINK BOS';b.setAttribute('onclick','PSLBoss36.open()')}
+  const share=document.getElementById('psl35-share-btn');if(share)share.onclick=()=>PSLBoss36.open();
+ }
+ window.PSLBoss36={open,enroll,check,send,share};
+ if(window.PSLBoss33)window.PSLBoss33.open=open;
+ let attempts=0;const timer=setInterval(()=>{if(document.getElementById('psl33-boss')&&window.PSLBoss33){clearInterval(timer);install()}else if(++attempts>140)clearInterval(timer)},100);
+})();
+</script>
+
 </body>
 </html>
