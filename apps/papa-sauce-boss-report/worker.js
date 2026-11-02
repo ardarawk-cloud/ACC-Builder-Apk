@@ -1,11 +1,65 @@
 // Papa Sauce Lab — Owner-published, read-only boss report (no automatic data exfiltration).
 const NO_CACHE={"Cache-Control":"no-store, private, max-age=0","X-Robots-Tag":"noindex, nofollow, noarchive","Referrer-Policy":"no-referrer","X-Content-Type-Options":"nosniff"};
-function cors() {return {...NO_CACHE,"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"}}
+function cors() {return {...NO_CACHE,"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, content-type, x-psl-device, x-psl-timestamp, x-psl-signature","Access-Control-Allow-Methods":"POST, OPTIONS"}}
 function json(v,status=200,extra={}){return new Response(JSON.stringify(v),{status,headers:{...NO_CACHE,...extra,"Content-Type":"application/json;charset=utf-8"}})}
 function secureCompare(a,b){a=String(a||"");b=String(b||"");let diff=a.length^b.length;for(let i=0;i<Math.max(a.length,b.length);i++)diff|=(a.charCodeAt(i)||0)^(b.charCodeAt(i)||0);return diff===0&&a.length>0}
 const PUBLISH_HASH='299f735b27e003920890906eadf07a44b06d3bf3d72c21b66272e3848afbaa5a';
 const VIEW_HASH='640b10ab57f5f6746486c1cbb33f203e8d46ca09ac4a9cd113bc7916bf1258cd';
 async function tokenDigest(v){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v||'')));return Array.from(new Uint8Array(buf)).map(x=>x.toString(16).padStart(2,'0')).join('')}
+
+// V36: one-time Owner-approved device enrollment. No shared secret embedded in public APK.
+const OWNER_DEVICE_KEY='psl/owner-device';
+const SAFE_DEVICE=/^[a-f0-9-]{24,50}$/i;
+function bytesFromBase64Url(v){const txt=String(v||'').replace(/-/g,'+').replace(/_/g,'/');const padded=txt+'='.repeat((4-txt.length%4)%4);return Uint8Array.from(atob(padded),c=>c.charCodeAt(0))}
+function validPublicJwk(k){return !!k&&k.kty==='EC'&&k.crv==='P-256'&&typeof k.x==='string'&&typeof k.y==='string'&&!k.d&&k.x.length>=40&&k.y.length>=40}
+async function publishSnapshot(env,data,origin){
+ if(data.schema!=='psl-boss-v1'||!data.months||typeof data.months!=='object'||!Object.keys(data.months).length)return json({error:'Invalid report schema'},422,cors());
+ const keys=Object.keys(data.months);if(keys.length>36||keys.some(k=>!/^\d{4}-\d{2}$/.test(k)))return json({error:'Invalid report month count'},422,cors());
+ data.publishedAt=new Date().toISOString();data.source='Papa Sauce Lab APK';
+ await env.REPORT_KV.put('psl/latest',JSON.stringify(data));
+ return json({ok:true,publishedAt:data.publishedAt,baseUrl:origin+'/'},200,cors());
+}
+async function deviceRoutes(request,env,url){
+ const p=url.pathname;
+ if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors()});
+ if(p==='/api/device/enroll'){
+  if(request.method!=='POST')return json({error:'Method not allowed'},405,cors());
+  let data;try{const raw=await request.text();if(raw.length>5000)throw Error();data=JSON.parse(raw)}catch(e){return json({error:'Invalid enrollment data'},400,cors())}
+  if(!SAFE_DEVICE.test(data.deviceId)||!validPublicJwk(data.publicKey)||!(/^[a-f0-9]{64}$/i).test(data.viewHash||''))return json({error:'Invalid device details'},422,cors());
+  const owner=await env.REPORT_KV.get(OWNER_DEVICE_KEY,'json');
+  if(owner?.deviceId===data.deviceId)return json({ok:true,status:'APPROVED'},200,cors());
+  const pending={deviceId:data.deviceId,publicKey:{kty:'EC',crv:'P-256',x:data.publicKey.x,y:data.publicKey.y,ext:true,key_ops:['verify']},viewHash:data.viewHash,requestedAt:new Date().toISOString()};
+  await env.REPORT_KV.put('psl/pending/'+data.deviceId,JSON.stringify(pending),{expirationTtl:604800});
+  return json({ok:true,status:'PENDING',deviceId:data.deviceId},202,cors());
+ }
+ if(p==='/api/device/status'){
+  const id=url.searchParams.get('id')||'';
+  if(!SAFE_DEVICE.test(id))return json({error:'Invalid device id'},400,cors());
+  const owner=await env.REPORT_KV.get(OWNER_DEVICE_KEY,'json');
+  if(owner?.deviceId===id)return json({status:'APPROVED'},200,cors());
+  const pending=await env.REPORT_KV.get('psl/pending/'+id);
+  return json({status:pending?'PENDING':'NOT_REGISTERED'},200,cors());
+ }
+ if(p==='/api/device/publish'){
+  if(request.method!=='POST')return json({error:'Method not allowed'},405,cors());
+  const id=request.headers.get('x-psl-device')||'',stamp=request.headers.get('x-psl-timestamp')||'',sig=request.headers.get('x-psl-signature')||'';
+  const owner=await env.REPORT_KV.get(OWNER_DEVICE_KEY,'json');
+  if(!owner||owner.deviceId!==id)return json({error:'Device not approved'},403,cors());
+  const ms=Number(stamp);
+  if(!Number.isFinite(ms)||Math.abs(Date.now()-ms)>300000)return json({error:'Device time invalid'},401,cors());
+  const raw=await request.text();if(raw.length>950000)return json({error:'Payload too large'},413,cors());
+  let ok=false;
+  try{
+   const key=await crypto.subtle.importKey('jwk',owner.publicKey,{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
+   ok=await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},key,bytesFromBase64Url(sig),new TextEncoder().encode(stamp+'\n'+raw));
+  }catch(e){return json({error:'Signature error'},401,cors())}
+  if(!ok)return json({error:'Signature rejected'},401,cors());
+  let data;try{data=JSON.parse(raw)}catch(e){return json({error:'Invalid report'},400,cors())}
+  return publishSnapshot(env,data,url.origin);
+ }
+ return json({error:'Not found'},404,cors());
+}
+
 const html=String.raw`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Papa Sauce | Laporan Owner</title><style>
 :root{font-family:system-ui,Segoe UI,Arial,sans-serif;color:#241a1e;background:#f9f6f4}*{box-sizing:border-box}body{margin:0}header{background:linear-gradient(110deg,#700b2b,#ae1745);padding:25px max(18px,calc((100% - 1150px)/2));color:#fff}header h1{margin:0;font-size:clamp(23px,3vw,34px)}header p{margin:5px 0;color:#ffe4e9}main{max-width:1150px;margin:auto;padding:22px 16px 60px}.bar{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}.tag{display:inline-block;padding:6px 12px;border-radius:20px;background:#ffe6ea;color:#802037;font-size:12px;font-weight:800}.notice{background:#fff8e8;border:1px solid #eed5a5;border-radius:12px;padding:12px 15px;font-size:13px;margin:16px 0}.hidden{display:none!important}.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.metric{border:1px solid #efdedf;background:#fff;border-radius:14px;padding:16px;box-shadow:0 6px 18px #41121b08}.metric b{display:block;color:#891532;font-size:clamp(18px,2.5vw,26px);margin-top:8px}.metric span{font-size:12px;color:#766a6d}.panel{background:#fff;border:1px solid #efe4e3;border-radius:16px;padding:17px;margin:16px 0;overflow:auto}h2{font-size:18px;margin:0 0 14px}h3{font-size:15px;margin:14px 0}input,select{border:1px solid #d8c5c8;border-radius:8px;background:#fff;padding:10px;font-size:14px}label{font-size:13px}table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}td,th{padding:10px 7px;border-bottom:1px solid #f0e8e8;text-align:right}th:first-child,td:first-child{text-align:left}th{background:#fff4f5;color:#7b203a}tbody tr:nth-child(even){background:#fdfaf9}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.controls label{display:flex;gap:6px;align-items:center}.small{font-size:12px;color:#756d6f}.warn{color:#a54c16;font-weight:700}footer{margin-top:25px;color:#7a6b70;font-size:12px}@media(max-width:700px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.panel{padding:12px}.metric{padding:12px}}
 </style></head><body><header><h1>PAPA SAUCE LAB</h1><p>Dashboard Laporan Operasional · Hanya Baca</p></header><main><div class="bar"><span class="tag">AKSES BOS · READ ONLY</span><span id="updated" class="small">Menunggu data...</span></div>
@@ -53,6 +107,7 @@ function render(){
 export default {
  async fetch(request,env){
   const url=new URL(request.url),p=url.pathname;
+  if(p.startsWith('/api/device/'))return deviceRoutes(request,env,url);
   if(request.method==='OPTIONS'&&p==='/api/publish')return new Response(null,{status:204,headers:cors()});
   if(p==='/api/publish'){
     const supplied=(request.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();
@@ -72,7 +127,9 @@ export default {
   }
   if(p==='/api/report'){
    const key=url.searchParams.get('key')||'';
-   if(!secureCompare(await tokenDigest(key),VIEW_HASH))return json({error:'No access'},403);
+   const owner=await env.REPORT_KV.get(OWNER_DEVICE_KEY,'json');
+   const digest=await tokenDigest(key);
+   if(!secureCompare(digest,VIEW_HASH)&&!secureCompare(digest,owner?.viewHash))return json({error:'No access'},403);
    const latest=await env.REPORT_KV.get('psl/latest');
    if(!latest)return json({error:'No report published yet'},404);
    return new Response(latest,{headers:{...NO_CACHE,'Content-Type':'application/json;charset=utf-8'}});
