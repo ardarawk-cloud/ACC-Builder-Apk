@@ -1,0 +1,10 @@
+{
+  "request_id": "psl-v36-device-pair-20261102",
+  "project_id": "papa-sauce-lab",
+  "version": 36,
+  "release_channel": "V2_STABLE",
+  "action": "build_existing",
+  "requested_at": "2026-11-02",
+  "scope": "Owner-only code-free device registration with manual account approval, device-bound ECDSA signed report publishing, no manual viewer code, preserve existing V2 data and signature",
+  "signing": "Use canonical V2 signer; fail on key mismatch"
+}
