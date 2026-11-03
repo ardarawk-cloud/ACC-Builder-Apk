@@ -1,0 +1,10 @@
+{
+  "request_id": "psl-v38-monthly-distribution-20261104",
+  "project_id": "papa-sauce-lab",
+  "version": 38,
+  "release_channel": "V2_STABLE",
+  "action": "build_existing",
+  "requested_at": "2026-11-04",
+  "scope": "Fix accumulated outlet distribution totals in report; show only selected day/week/month LAB-to-outlet transfers, each new month naturally zero, no historical carry, preserve all records",
+  "signing": "canonical PSL V2 certificate and package id; must preserve device data and Owner enrollment"
+}
