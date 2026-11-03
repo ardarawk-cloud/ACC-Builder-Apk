@@ -539,7 +539,6 @@ window.PSLLocalDate = function(d){
                     <option>Babi Rica</option>
                     <option>Babi Kecap</option>
                     <option>Sup Brenebone</option>
-                    <option>Sup Grangasem</option>
                 </select>
             </div>
             <div class="form-group">
@@ -565,7 +564,6 @@ window.PSLLocalDate = function(d){
                     <option>Babi Rica</option>
                     <option>Babi Kecap</option>
                     <option>Sup Brenebone</option>
-                    <option>Sup Grangasem</option>
                 </select>
             </div>
             <div class="form-group">
@@ -623,13 +621,19 @@ window.PSLLocalDate = function(d){
         // Database
         const DB_NAME = 'PapaSauceLab';
         const DB_VERSION = 1;
-        function PSL34Boundary(date){const b=localStorage.getItem('PSL_V34_RESET_BOUNDARY');return b&&typeof date==='string'&&date>=b?b:null;}
+        function PSL34Boundary(date){
+ if(typeof date!=='string')return null;
+ const keys=[],old=localStorage.getItem('PSL_V34_RESET_BOUNDARY');
+ if(/^\d{4}-\d{2}-01$/.test(old||''))keys.push(old);
+ try{const saved=JSON.parse(localStorage.getItem('PSL_RESET_BOUNDARIES_V37')||'[]');if(Array.isArray(saved))for(const d of saved)if(typeof d==='string'&&/^\d{4}-\d{2}-01$/.test(d))keys.push(d)}catch(e){console.warn('Reset periods',e)}
+ return keys.filter(x=>x<=date).sort().pop()||null;
+}
         let db = null;
         let currentRole = 'STAFF';
         let selectedChannel = 'cash';
         let correctionId = null;
 
-        const PRODUCTS = ['Ayam Woku', 'Cumi', 'Tongkol', 'Babi Rica', 'Babi Kecap', 'Sup Brenebone', 'Sup Grangasem'];
+        const PRODUCTS = ['Ayam Woku', 'Cumi', 'Tongkol', 'Babi Rica', 'Babi Kecap', 'Sup Brenebone'];
         const CHANNELS = { cash: '💵 Cash', qris: '📱 QRIS', gojek: '🟢 Gojek', grab: '🔵 Grab' };
         const CATEGORIES = ['bahan baku', 'packaging', 'operasional', 'transport', 'kebersihan', 'peralatan', 'lainnya'];
 
@@ -1971,7 +1975,7 @@ window.PSLLocalDate = function(d){
 (() => {
   const uid11=()=>Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
   const date11=()=>document.getElementById('operationalDateV5')?.value || PSLLocalDate();
-  const products11=()=>{ try{return Array.from(PRODUCTS||[]);}catch(e){return ['Ayam Woku','Cumi','Tongkol','Babi Rica','Babi Kecap','Sup Brenebone','Sup Grangasem'];} };
+  const products11=()=>{ try{return Array.from(PRODUCTS||[]);}catch(e){return ['Ayam Woku','Cumi','Tongkol','Babi Rica','Babi Kecap','Sup Brenebone'];} };
   const esc11=v=>String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
   function toast11(msg){
     let t=document.getElementById('pslFastToast');
@@ -3536,7 +3540,6 @@ window.PSLLocalDate = function(d){
     if(/cumi|squid/.test(l))return 'Cumi';
     if(/tongkol|cakalang/.test(l))return 'Tongkol';
     if(/bren[ae]bon(?:e)?|bren[a-z]{1,5}bon(?:e)?/.test(l))return 'Sup Brenebone';
-    if(/grangasem/.test(l))return 'Sup Grangasem';
     return '';
   }
   function parseText(text){
@@ -3636,7 +3639,7 @@ window.PSLLocalDate = function(d){
     }
   }
   function fillUnlisted31(){
-    if(!confirm('Set 0 hanya untuk menu TAMBAHAN yang tidak disebut (Sup Grangasem). Enam menu utama tetap wajib dicek.'))return;
+    if(!confirm('Set 0 untuk menu tambahan yang belum disebut. Semua enam menu utama wajib dicek.'))return;
     CANON.forEach(o=>PRODUCTS30().forEach((p,i)=>{
       if(REQUIRED31.includes(p))return;
       const el=document.getElementById('psl30-outlet-'+o+'-'+i);
@@ -3782,7 +3785,7 @@ window.PSLLocalDate = function(d){
     installed=true;
     const b=document.createElement('div');b.id='psl30-root';b.className='psl30-box';
     const opts=PRODUCTS30().map((p,i)=>'<tr><td>'+esc(p)+'</td>'+CANON.map(o=>'<td><input type="number" min="0" step="1" value="" placeholder="?" id="psl30-outlet-'+o+'-'+i+'"></td>').join('')+'<td><input type="number" min="0" step="1" value="0" id="psl30-lab-'+i+'"></td></tr>').join('');
-    b.innerHTML='<h3>Smart Bagi Stok — LAB ke 3 Outlet</h3><p>Masukkan foto stok PSK, PSP, PSB. OCR membantu membaca angka, lalu Owner wajib cek hasilnya. Pembagian hanya dicatat setelah satu kali konfirmasi.</p><label>Tanggal distribusi</label><input id="psl30-distribute-date" type="date" value="'+esc(date())+'"><div class="psl30-grid">'+CANON.map(o=>'<label>Foto '+LABEL[o]+'<input type="file" accept="image/*" id="psl30-photo-'+o+'"></label>').join('')+'</div>'+CANON.map(o=>'<div id="psl31-status-'+o+'" class="psl30-small">'+LABEL[o]+': belum dibaca</div><details><summary>Tempel teks laporan '+LABEL[o]+' dari WhatsApp</summary><textarea rows="5" id="psl31-text-'+o+'" style="width:100%"></textarea><button class="btn btn-secondary btn-sm" onclick="PSL30.readText31(\''+o+'\')">Baca Teks</button></details>').join('')+'<p id="psl30-scan-note" class="psl30-small">Foto atau teks WhatsApp dapat dibaca. Angka ? belum terbaca, bukan 0.</p><p id="psl30-lab-status" class="psl30-small"></p><div style="max-width:100%;overflow-x:auto"><table class="psl30-table"><tr><th>Produk</th><th>PSK</th><th>PSP</th><th>PSB</th><th>LAB Dibagi</th></tr>'+opts+'</table></div><p class="psl30-warn">Stok pada foto adalah hasil laporan outlet, bukan stok real-time. Periksa foto dan tanggalnya. Jumlah LAB Dibagi tidak boleh melebihi saldo aplikasi.</p><button class="btn btn-secondary btn-sm" onclick="PSL30.fillUnlisted31()">Isi nol untuk menu tambahan tak tercantum</button><label style="display:block;margin:12px 0"><input id="psl31-review" type="checkbox"> Saya sudah mencocokkan seluruh angka dengan foto. Kolom Babi = Babi Rica.</label><button class="btn btn-primary btn-block" onclick="PSL30.calculate()">Hitung & Preview Nota</button><div id="psl30-preview" style="margin-top:12px"></div>';
+    b.innerHTML='<h3>Smart Bagi Stok — LAB ke 3 Outlet</h3><p>Masukkan foto stok PSK, PSP, PSB. OCR membantu membaca angka, lalu Owner wajib cek hasilnya. Pembagian hanya dicatat setelah satu kali konfirmasi.</p><label>Tanggal distribusi</label><input id="psl30-distribute-date" type="date" value="'+esc(date())+'"><div class="psl30-grid">'+CANON.map(o=>'<label>Foto '+LABEL[o]+'<input type="file" accept="image/*" id="psl30-photo-'+o+'"></label>').join('')+'</div>'+CANON.map(o=>'<div id="psl31-status-'+o+'" class="psl30-small">'+LABEL[o]+': belum dibaca</div><details><summary>Tempel teks laporan '+LABEL[o]+' dari WhatsApp</summary><textarea rows="5" id="psl31-text-'+o+'" style="width:100%"></textarea><button class="btn btn-secondary btn-sm" onclick="PSL30.readText31(\''+o+'\')">Baca Teks</button></details>').join('')+'<p id="psl30-scan-note" class="psl30-small">Foto atau teks WhatsApp dapat dibaca. Angka ? belum terbaca, bukan 0.</p><p id="psl30-lab-status" class="psl30-small"></p><div style="max-width:100%;overflow-x:auto"><table class="psl30-table"><tr><th>Produk</th><th>PSK</th><th>PSP</th><th>PSB</th><th>LAB Dibagi</th></tr>'+opts+'</table></div><p class="psl30-warn">Stok pada foto adalah hasil laporan outlet, bukan stok real-time. Periksa foto dan tanggalnya. Jumlah LAB Dibagi tidak boleh melebihi saldo aplikasi.</p><label style="display:block;margin:12px 0"><input id="psl31-review" type="checkbox"> Saya sudah mencocokkan seluruh angka dengan foto. Kolom Babi = Babi Rica.</label><button class="btn btn-primary btn-block" onclick="PSL30.calculate()">Hitung & Preview Nota</button><div id="psl30-preview" style="margin-top:12px"></div>';
     tab.insertBefore(b,tab.children[1]||null);
     CANON.forEach(o=>document.getElementById('psl30-photo-'+o)?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)readPhoto(o,f)}));
     b.addEventListener('input',e=>{if(e.target.id==='psl31-review'||e.target.closest('#psl30-preview'))return;invalidate31()});
@@ -4077,63 +4080,73 @@ window.PSLLocalDate = function(d){
 
 </script>
 
-<style id="PSL_V34_NOV_RESET_STYLE">
-#psl34-nov-reset{padding:14px;margin:12px 0;background:#fff8f9;border:1px solid #e9ccd3;border-radius:13px}
-#psl34-nov-reset h3{font-size:14px;color:#a61735;margin:0 0 6px}
-#psl34-nov-reset p{font-size:12px;color:#6a5b61;line-height:1.5;margin:0 0 10px}
+<style id="PSL_V37_MONTH_RESET_STYLE">
+.psl37-box{padding:14px;margin:12px 0;background:#fff8f9;border:1px solid #e9ccd3;border-radius:13px}
+.psl37-box h3{font-size:15px;color:#a61735;margin:0 0 6px}
+.psl37-box p{font-size:12px;color:#69555d;line-height:1.5;margin:0 0 12px}
+.psl37-box input{padding:11px;width:100%;background:#fff;color:#222;border:1px solid #d9c8cb;border-radius:9px;margin:5px 0 11px;font-size:15px}
 </style>
-<script id="PSL_V34_NOV_RESET">
+<script id="PSL_V37_MONTH_RESET">
 (function(){
-'use strict';
-const FIRST='2026-11-01',LAST='2026-11-30',NEXT='2026-12-01';
-const STORES=['transactions','stock_movements','snapshots','periods','corrections'];
-const match=x=>x&&[x.date,x.startDate,x.endDate,x.start,x.end].some(d=>typeof d==='string'&&d>=FIRST&&d<=LAST);
-const id=()=>('nov-reset-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9));
-async function run(){
- if(currentRole!=='OWNER')return alert('Reset hanya boleh dilakukan OWNER.');
- if(!db)return alert('Database belum siap');
- const all={},affected={};
- for(const store of STORES){all[store]=await dbGetAll(store);affected[store]=all[store].filter(x=>match(x)&&x.action!=='RESET_NOVEMBER_2026')}
- if(['transactions','stock_movements','snapshots','periods'].some(store=>all[store].some(x=>x&&[x.date,x.startDate,x.endDate,x.start,x.end].some(d=>typeof d==='string'&&d>=NEXT))))
-   return alert('Ada data bulan Desember atau lebih baru. Reset ditahan agar rantai stok dan HB tidak rusak.');
- const counts=STORES.map(k=>k+': '+affected[k].length).join('\n');
- if(!confirm('RESET SEMUA CATATAN NOVEMBER 2026?\n\n'+counts+'\n\nOktober TIDAK dihapus. Saldo awal stok dan House Bank November = 0.\nBackup JSON akan diunduh sebelum reset.'))return;
- try{await Export.jsonBackup()}catch(e){return alert('Backup gagal, reset dihentikan: '+String(e.message||e))}
- if(!confirm('Pastikan backup JSON berhasil tersimpan di HP sebelum lanjut. Data November akan diarsipkan dalam audit dan dihapus dari laporan aktif. Lanjut?'))return;
- if(prompt('Ketik RESET NOVEMBER untuk lanjut:','')!=='RESET NOVEMBER')return alert('Dibatalkan.');
- const audit={id:id(),date:FIRST,startDate:FIRST,endDate:LAST,action:'RESET_NOVEMBER_2026',time:new Date().toISOString(),user:currentRole,archive:affected,note:'November 2026 zero baseline; October preserved'};
- try{
-  await new Promise((resolve,reject)=>{
-   let tx;
+ 'use strict';
+ const STORES=['transactions','stock_movements','snapshots','periods','corrections'];
+ const monthValid=x=>/^\d{4}-(0[1-9]|1[0-2])$/.test(x);
+ const dateFields=x=>[x?.date,x?.startDate,x?.endDate,x?.start,x?.end].filter(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x));
+ const ending=mon=>{const [y,m]=mon.split('-').map(Number);return mon+'-'+String(new Date(Date.UTC(y,m,0)).getUTCDate()).padStart(2,'0')};
+ const id=()=>('month-reset-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9));
+ const activeAudit=x=>!['RESET_NOVEMBER_2026','RESET_MONTH'].includes(x?.action);
+ async function reset(){
+  if(currentRole!=='OWNER')return alert('Reset bulan hanya untuk OWNER.');
+  if(!db)return alert('Database belum siap.');
+  const mon=String(document.getElementById('psl37-month')?.value||''),now=PSLLocalDate();
+  if(!monthValid(mon)||mon>now.slice(0,7))return alert('Pilih bulan yang benar, tidak boleh bulan mendatang.');
+  const start=mon+'-01',end=ending(mon),all={},affected={};
+  for(const store of STORES)all[store]=await dbGetAll(store);
+  // A month with later financial or stock events cannot safely be reset in isolation.
+  if(['transactions','stock_movements','snapshots','periods'].some(k=>all[k].some(x=>dateFields(x).some(d=>d>end))))
+   return alert('Ada data setelah bulan '+mon+'. Reset diblokir agar bulan berikutnya tidak rusak. Gunakan fitur Koreksi/Buka Tanggal untuk perbaikan.');
+  if(all.periods.some(x=>dateFields(x).some(d=>d>=start&&d<=end)&&dateFields(x).some(d=>d<start||d>end)))
+   return alert('Terdapat periode lintas bulan. Reset ditahan agar catatan lain aman.');
+  for(const store of STORES)affected[store]=all[store].filter(x=>x&&(store!=='corrections'||activeAudit(x))&&dateFields(x).some(d=>d>=start&&d<=end));
+  const rows=STORES.map(k=>k+': '+affected[k].length).join('\n');
+  if(!confirm('RESET BULAN '+mon+'?\n\n'+rows+'\n\nData bulan lain tidak dihapus. Saldo awal stok dan House Bank bulan ini akan 0.\n\nLanjut unduh backup JSON?'))return;
+  try{await Export.jsonBackup()}catch(e){return alert('Backup gagal. Tidak jadi reset: '+String(e.message||e))}
+  if(!confirm('PASTIKAN file backup JSON sudah tersimpan di HP. Lanjut kosongkan '+mon+'?'))return;
+  if(prompt('Ketik RESET untuk lanjut:','')!=='RESET')return alert('Reset dibatalkan.');
+  const audit={id:id(),date:start,startDate:start,endDate:end,month:mon,action:'RESET_MONTH',time:new Date().toISOString(),user:currentRole,archive:affected,openingStock:0,openingHB:0};
+  try{
+   await new Promise((resolve,reject)=>{
+    let tx;try{
+     tx=db.transaction(STORES,'readwrite');
+     for(const store of STORES)for(const item of affected[store])tx.objectStore(store).delete(item.id);
+     tx.objectStore('corrections').add(audit);
+     tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error||new Error('DB error'));tx.onabort=()=>reject(tx.error||new Error('DB aborted'));
+    }catch(e){if(tx)try{tx.abort()}catch(_){}reject(e)}
+   });
+   let prev=[];try{const v=JSON.parse(localStorage.getItem('PSL_RESET_BOUNDARIES_V37')||'[]');if(Array.isArray(v))prev=v}catch(e){}
+   localStorage.setItem('PSL_RESET_BOUNDARIES_V37',JSON.stringify([...new Set([...prev,start])].sort()));
+   localStorage.setItem('PSL_OPERATIONAL_DATE_V27',start);
+   const el=document.getElementById('operationalDateV5');if(el){el.value=start;el.dispatchEvent(new Event('change',{bubbles:true}))}
    try{
-    tx=db.transaction(STORES,'readwrite');
-    for(const store of STORES)for(const row of affected[store])tx.objectStore(store).delete(row.id);
-    tx.objectStore('corrections').put(audit);
-    tx.oncomplete=()=>resolve(true);
-    tx.onerror=()=>reject(tx.error||new Error('Gagal menyimpan'));
-    tx.onabort=()=>reject(tx.error||new Error('Transaksi dibatalkan'));
-   }catch(e){if(tx)try{tx.abort()}catch(_){}reject(e)}
-  });
-  localStorage.setItem('PSL_V34_RESET_BOUNDARY',FIRST);
-  localStorage.setItem('PSL_OPERATIONAL_DATE_V27',FIRST);
-  const el=document.getElementById('operationalDateV5');
-  if(el){el.value=FIRST;el.dispatchEvent(new Event('change',{bubbles:true}))}
-  if(UI.updateDashboard)await UI.updateDashboard();
-  if(UI.renderStock)await UI.renderStock();
-  if(UI.renderHistory)await UI.renderHistory();
-  if(UI.renderTodayTransactions)await UI.renderTodayTransactions();
-  alert('Reset November selesai! Semua angka November awalnya 0. Oktober tetap tersimpan. Input ulang mulai 1 November.');
- }catch(e){console.error('PSL34 reset',e);alert('Reset gagal: '+String(e.message||e))}
-}
-function install(){
- const parent=document.getElementById('tab-transaksi');
- if(!parent||document.getElementById('psl34-nov-reset'))return;
- const el=document.createElement('div');el.id='psl34-nov-reset';el.className='owner-only';
- el.innerHTML='<h3>Reset November 2026</h3><p>Hapus catatan 1–30 November saja. Oktober aman, saldo awal November nol. Backup dilakukan sebelum reset.</p><button class="btn btn-danger btn-block" onclick="PSL34ResetNovember.run()">RESET NOVEMBER 2026</button>';
- parent.appendChild(el);
-}
-window.PSL34ResetNovember={run};
-let tries=0;const timer=setInterval(()=>{if(typeof db!=='undefined'&&db&&document.getElementById('tab-transaksi')){clearInterval(timer);install()}else if(++tries>100)clearInterval(timer)},100);
+    await UI.updateDashboard?.();
+    await UI.renderStock?.();
+    await UI.renderHistory?.();
+    await UI.renderTodayTransactions?.();
+   }catch(e){console.error('Reset refresh',e)}
+   alert('Reset bulan '+mon+' selesai. Silakan input ulang mulai '+start+'. Jika laporan bos sudah pernah dikirim, sinkronkan lagi.');
+  }catch(e){console.error('Reset month',e);alert('Gagal reset: '+String(e.message||e))}
+ }
+ function install(){
+  const root=document.getElementById('tab-transaksi');if(!root||document.getElementById('psl37-reset-box'))return;
+  const month=PSLLocalDate().slice(0,7),box=document.createElement('div');box.id='psl37-reset-box';box.className='owner-only psl37-box';
+  box.innerHTML='<h3>Reset Bulan (Opsional)</h3><p>Pilih bulan jika salah input. Data bulan lain tidak dihapus. Jika ada data bulan berikutnya, reset ditolak untuk menjaga saldo.</p>'+
+   '<label class="form-label" for="psl37-month">Pilih bulan</label><input id="psl37-month" type="month" max="'+month+'" value="'+month+'">'+
+   '<button class="btn btn-danger btn-block" onclick="PSLMonthlyReset37.run()">RESET BULAN TERPILIH</button>'+
+   '<p style="margin-top:8px">Backup dan konfirmasi wajib. Tidak ada reset otomatis.</p>';
+  root.appendChild(box);
+ }
+ window.PSLMonthlyReset37={run:reset};
+ let n=0;const timer=setInterval(()=>{if(typeof db!=='undefined'&&db&&document.getElementById('tab-transaksi')){clearInterval(timer);install()}else if(++n>120)clearInterval(timer)},100);
 })();
 </script>
 
