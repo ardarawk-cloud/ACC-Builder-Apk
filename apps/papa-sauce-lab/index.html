@@ -2346,11 +2346,13 @@ window.PSLLocalDate = function(d){
 
   async function summary16(start,end){
     const all=await dbGetAll('stock_movements');
-    const moves=(all||[]).filter(x=>x&&x.type==='stockout'&&x.status!=='CORRECTED'&&x.date>=start&&x.date<=end);
+    const moves=(all||[]).filter(x=>x&&x.type==='stockout'&&!['CORRECTED','CANCELLED','VOID'].includes(x.status)&&x.date>=start&&x.date<=end);
     const outlets={PSK:0,PSP:0,PSBK:0,OTHER:0};
     const per={};
     for(const x of moves){
-      const o=OUTLETS16.includes(x.outlet)?x.outlet:'OTHER',q=Number(x.qty||0),p=x.product||'Tanpa Produk';
+      const rawOutlet=x.destinationOutlet||x.outlet||'';
+      const normalized=rawOutlet==='PSB'?'PSBK':rawOutlet;
+      const o=OUTLETS16.includes(normalized)?normalized:'OTHER',q=Number(x.qty||0),p=x.product||'Tanpa Produk';
       outlets[o]+=q;
       if(!per[p])per[p]={PSK:0,PSP:0,PSBK:0,OTHER:0};
       per[p][o]+=q;
@@ -2361,7 +2363,7 @@ window.PSLLocalDate = function(d){
   function outletBox16(m,title='Distribusi Stock Out per Outlet'){
     const rows=Object.entries(m.per).filter(([,v])=>v.PSK||v.PSP||v.PSBK).sort((a,b)=>a[0].localeCompare(b[0])).map(([p,v])=>`<div class="psl16-outlet-table"><span>${esc16(p)}</span><b>${v.PSK}</b><b>${v.PSP}</b><b>${v.PSBK}</b></div>`).join('')||'<div class="empty-state" style="padding:18px">Belum ada distribusi ke outlet pada periode ini.</div>';
     const other=m.outlets.OTHER?`<div class="report-row"><span>Non-outlet / data lama</span><b>${m.outlets.OTHER}</b></div>`:'';
-    return `<div class="psl16-outlet-box"><div class="psl16-outlet-title">${esc16(title)}</div><div class="psl16-outlet-grid"><div class="psl16-outlet-kpi"><span>PSK</span><b>${m.outlets.PSK}</b></div><div class="psl16-outlet-kpi"><span>PSP</span><b>${m.outlets.PSP}</b></div><div class="psl16-outlet-kpi"><span>PSBK</span><b>${m.outlets.PSBK}</b></div></div>${other}<div class="psl16-outlet-table" style="font-size:9px;font-weight:900;text-transform:uppercase;color:#7b6e70"><span>Produk</span><b>PSK</b><b>PSP</b><b>PSBK</b></div>${rows}</div>`;
+    return `<div class="psl16-outlet-box"><div class="psl16-outlet-title">${esc16(title)}</div><p style="font-size:11px;line-height:1.5;color:#72666a;margin:4px 0 12px">Jumlah stok yang dikirim LAB pada periode terpilih, bukan stok atau penjualan milik outlet. Akumulasi tidak dibawa ke bulan berikutnya.</p><div class="psl16-outlet-grid"><div class="psl16-outlet-kpi"><span>PSK</span><b>${m.outlets.PSK}</b></div><div class="psl16-outlet-kpi"><span>PSP</span><b>${m.outlets.PSP}</b></div><div class="psl16-outlet-kpi"><span>PSBK</span><b>${m.outlets.PSBK}</b></div></div>${other}<div class="psl16-outlet-table" style="font-size:9px;font-weight:900;text-transform:uppercase;color:#7b6e70"><span>Produk</span><b>PSK</b><b>PSP</b><b>PSBK</b></div>${rows}</div>`;
   }
   async function appendReport16(start,end,title){
     const root=document.getElementById('reportContent');if(!root)return;
@@ -2374,25 +2376,26 @@ window.PSLLocalDate = function(d){
     if(oldDaily16)await oldDaily16();
     const d=opDate16();
     const rd=document.getElementById('reportDate');if(rd)rd.value=d;
-    await appendReport16(d,d,'Distribusi Outlet · Harian');
+    await appendReport16(d,d,'Pengiriman LAB ke Outlet · Harian '+d);
   };
   const oldWeekly16=Reports.generateWeekly?.bind(Reports);
   Reports.generateWeekly=async function(){
     if(oldWeekly16)await oldWeekly16();
-    const anchor=opDate16(),d=new Date(anchor+'T12:00:00'),day=d.getDay(),delta=day===0?-6:1-day,startD=new Date(d);startD.setDate(d.getDate()+delta);const endD=new Date(startD);endD.setDate(startD.getDate()+6);
-    await appendReport16(fmt16(startD),fmt16(endD),'Distribusi Outlet · Mingguan');
+    const anchor=document.getElementById('reportDate')?.value||opDate16(),d=new Date(anchor+'T12:00:00'),day=d.getDay(),delta=day===0?-6:1-day,startD=new Date(d);startD.setDate(d.getDate()+delta);const endD=new Date(startD);endD.setDate(startD.getDate()+6);
+    await appendReport16(fmt16(startD),fmt16(endD),'Pengiriman LAB ke Outlet · Mingguan');
   };
   const oldMonthly16=Reports.generateMonthly?.bind(Reports);
   Reports.generateMonthly=async function(){
     if(oldMonthly16)await oldMonthly16();
-    const anchor=opDate16(),[y,m]=anchor.split('-').map(Number),start=`${y}-${String(m).padStart(2,'0')}-01`,end=fmt16(new Date(y,m,0,12));
-    await appendReport16(start,end,'Distribusi Outlet · Bulanan');
+    const anchor=document.getElementById('reportDate')?.value||opDate16(),[y,m]=anchor.split('-').map(Number),start=`${y}-${String(m).padStart(2,'0')}-01`,end=fmt16(new Date(y,m,0,12));
+    await appendReport16(start,end,'Pengiriman LAB ke Outlet · Bulan '+anchor.slice(0,7));
   };
   const oldAll16=Reports.generateAll?.bind(Reports);
   Reports.generateAll=async function(){
     if(oldAll16)await oldAll16();
-    const all=await dbGetAll('stock_movements'),dates=(all||[]).map(x=>x?.date).filter(Boolean).sort(),end=opDate16(),start=dates[0]||end;
-    await appendReport16(start,end,'Distribusi Outlet · Semua Data');
+    const anchor=document.getElementById('reportDate')?.value||opDate16();
+    const start=anchor.slice(0,7)+'-01';
+    await appendReport16(start,anchor,'Pengiriman LAB ke Outlet · Bulan Berjalan '+anchor.slice(0,7));
   };
 
   const oldStock16=UI.renderStock?.bind(UI);
@@ -2401,7 +2404,7 @@ window.PSLLocalDate = function(d){
     const root=document.getElementById('stockLevels');if(!root)return;
     root.querySelectorAll('.psl16-stock-outlets').forEach(x=>x.remove());
     const m=await summary16(opDate16(),opDate16());
-    const el=document.createElement('div');el.className='psl16-stock-outlets';el.innerHTML=outletBox16(m,'Oper ke Outlet · Hari Terpilih');
+    const el=document.createElement('div');el.className='psl16-stock-outlets';el.innerHTML=outletBox16(m,'Pengiriman LAB ke Outlet · Hari Terpilih');
     root.prepend(el);
   };
 
