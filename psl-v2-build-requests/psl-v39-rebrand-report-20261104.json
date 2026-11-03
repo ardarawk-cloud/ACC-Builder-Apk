@@ -1,0 +1,10 @@
+{
+  "request_id": "psl-v39-rebrand-report-20261104",
+  "project_id": "papa-sauce-lab",
+  "version": 39,
+  "release_channel": "V2_STABLE",
+  "action": "build_existing",
+  "requested_at": "2026-11-04",
+  "scope": "Switch dashboard API and share links to https://laporanpsl.nadmo.id/; remove Access Bos Read Only badge and Hanya Baca text from Worker; keep old links redirected and retain same device pairing",
+  "signing": "Preserve canonical V2 signer and package; no data loss"
+}
