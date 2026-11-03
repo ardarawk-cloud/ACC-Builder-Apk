@@ -1,0 +1,10 @@
+{
+  "request_id": "psl-v37-menu-month-reset-20261103",
+  "project_id": "papa-sauce-lab",
+  "version": 37,
+  "release_channel": "V2_STABLE",
+  "action": "build_existing",
+  "requested_at": "2026-11-03",
+  "scope": "Remove Sup Grangasem from selectable products; replace November reset with month selector reset available for any month, backup first, preserve older audit/transactions, protect later months",
+  "signing": "Existing canonical V2 signature only. Never switch package, signing key, or data storage."
+}
