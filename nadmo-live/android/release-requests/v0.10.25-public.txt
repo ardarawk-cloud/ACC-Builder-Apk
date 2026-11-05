@@ -1,0 +1,5 @@
+NADMO LIVE public signed beta release request
+versionName=0.10.25
+versionCode=44
+package=id.nadmo.live
+Maintain existing original signing certificate. Release only after verification.
