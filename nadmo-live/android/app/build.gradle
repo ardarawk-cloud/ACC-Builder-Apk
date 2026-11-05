@@ -1,4 +1,4 @@
-plugins { id 'com.android.application' }
+plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
 android {
   namespace 'id.nadmo.live'
   compileSdk 35
@@ -6,8 +6,8 @@ android {
     applicationId 'id.nadmo.live'
     minSdk 26
     targetSdk 35
-    versionCode 32
-    versionName '0.10.13-beta'
+    versionCode 44
+    versionName '0.10.25'
   }
   signingConfigs {
     release {
@@ -31,10 +31,12 @@ android {
       shrinkResources false
     }
   }
+  buildFeatures { buildConfig true }
   compileOptions {
     sourceCompatibility JavaVersion.VERSION_17
     targetCompatibility JavaVersion.VERSION_17
   }
+  kotlinOptions { jvmTarget = '17' }
 }
 dependencies {
   implementation 'androidx.webkit:webkit:1.12.1'

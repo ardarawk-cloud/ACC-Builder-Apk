@@ -1,0 +1,21 @@
+name: NADMO LIVE real native GAME connection QA
+on:
+  push:
+    branches: ['feat/nadmo-radio-open-music-camera-stage-20261012']
+    paths:
+      - 'nadmo-live/android/qa/game-native-live-room-probe.mjs'
+      - '.github/workflows/nadmo-live-native-room-probe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  game-room:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --prefix nadmo-live/android/qa --no-save --no-audit --no-fund ws@8
+      - name: Test real GAME host create and leave, official Worker, matching OkHttp Origin
+        run: node nadmo-live/android/qa/game-native-live-room-probe.mjs

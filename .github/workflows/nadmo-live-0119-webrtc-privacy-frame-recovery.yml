@@ -1,0 +1,121 @@
+name: NADMO LIVE v0.10.19 WebRTC native frame ownership repair beta
+on:
+  push:
+    branches: ['feat/nadmo-radio-open-music-camera-stage-20261012']
+    paths: ['.github/workflows/nadmo-live-0119-webrtc-privacy-frame-recovery.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: nadmo-live-v01019-radio-release
+  cancel-in-progress: false
+jobs:
+  radio-beta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with: {packages: ''}
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.10.2'}
+      - name: Verify RADIO OPEN MUSIC native privacy and GAME control compatibility
+        run: |
+          node nadmo-live/android/qa/radio-open-music-contract.mjs
+          node nadmo-live/android/qa/game-background-contract.mjs
+          node nadmo-live/android/qa/game-floating-privacy-contract.mjs
+          node nadmo-live/android/qa/offgrid-local-contract.mjs
+          node nadmo-live/android/qa/webview-document-contract.mjs
+      - name: Verify Android status event feedback regression in JVM
+        run: gradle -p nadmo-live/android :app:testDebugUnitTest --no-daemon --tests id.nadmo.live.LiveStatusPolicyTest
+      - name: Regression reproduce 50,000 native privacy buffers plus staggered release
+        run: gradle -p nadmo-live/android :app:testDebugUnitTest --no-daemon --tests id.nadmo.live.PrivacyFrameOwnershipTest
+      - name: Verify real GAME host creates a room on live.nadmo.id
+        run: |
+          npm install --prefix nadmo-live/android/qa --no-save --no-audit --no-fund ws@8 puppeteer-core@24
+          node nadmo-live/android/qa/game-native-live-room-probe.mjs
+      - name: Verify actual viewer receives GAME video and audio tracks via live server
+        run: |
+          CHROME_BIN="$(command -v google-chrome || command -v chromium)"
+          test -n "$CHROME_BIN"
+          export CHROME_BIN
+          node nadmo-live/android/qa/game-native-media-e2e.cjs
+      - name: Require original owner signing material
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.NADMO_LIVE_KEYSTORE_B64 }}
+          STORE_PASS: ${{ secrets.NADMO_LIVE_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.NADMO_LIVE_RELEASE_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.NADMO_LIVE_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_B64"
+          test -n "$STORE_PASS"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASS"
+          umask 077
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/nadmo-release.jks"
+          test -s "$RUNNER_TEMP/nadmo-release.jks"
+          echo "NADMO_LIVE_RELEASE_STORE_FILE=$RUNNER_TEMP/nadmo-release.jks" >> "$GITHUB_ENV"
+          echo "NADMO_LIVE_RELEASE_STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
+          echo "NADMO_LIVE_RELEASE_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "NADMO_LIVE_RELEASE_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+      - name: Assemble signed install-over beta
+        run: gradle -p nadmo-live/android :app:assembleRelease --no-daemon
+      - name: Confirm APK versionCode38, original certificate and package identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE=nadmo-live/android/app/build/outputs/apk/release/app-release.apk
+          test -s "$SOURCE"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          SIGN="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          META=$("$AAPT" dump badging "$SOURCE" | head -1)
+          printf '%s\n' "$META"
+          printf '%s\n' "$META" | grep -F "name='id.nadmo.live'"
+          printf '%s\n' "$META" | grep -F "versionCode='38'"
+          printf '%s\n' "$META" | grep -F "versionName='0.10.19-beta'"
+          VERIFY=$("$SIGN" verify --verbose --print-certs "$SOURCE")
+          printf '%s\n' "$VERIFY"
+          printf '%s\n' "$VERIFY" | grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true'
+          EXPECTED=$(jq -r '.certificate_sha256' nadmo-live/android/release-identity.json)
+          ACTUAL=$(printf '%s\n' "$VERIFY" | sed -n 's/.*Signer #1 certificate SHA-256 digest: //p' | head -1)
+          test -n "$EXPECTED"
+          test "$EXPECTED" = "$ACTUAL"
+          if unzip -l "$SOURCE" | grep -Fq 'nadmo-release.jks';then echo 'Keystore leakage';exit 1;fi
+          mkdir -p qa-signed
+          cp "$SOURCE" qa-signed/NADMO-LIVE-v0.10.19-beta.apk
+          (cd qa-signed && sha256sum NADMO-LIVE-v0.10.19-beta.apk > SHA256SUMS.txt)
+          echo "PASS: original certificate, code38 upgrade, unchanged package ID"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nadmo-live-v01019-radio-signed-beta
+          path: qa-signed/*
+          retention-days: 14
+          if-no-files-found: error
+      - name: Publish direct APK as beta prerelease for owner QA (optional, artifact remains)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG=nadmo-live-v0.10.19-beta
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1;then
+            echo "::error::Signed beta tag already exists; never overwrite."
+            exit 1
+          fi
+          gh release create "$TAG" qa-signed/NADMO-LIVE-v0.10.19-beta.apk qa-signed/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "NADMO LIVE v0.10.19-beta — native WebRTC privacy frame memory safety (owner test)" \
+            --notes "OWNER-TEST BETA (NOT CONFIRMED ON DEVICE). Root cause found via source/history: cached JavaI420Buffer backing pixels were freed after first privacy frame (VideoFrame takes buffer ownership), reused for every subsequent frame, risking native memory crash. Fix: retain a separate reference for each frame, preserve cache ref, release on resize/shutdown. 50k JVM frame regression PASS. Other protections retained. Previous change fixed Android STATUS(starting) -> ACTION_PAUSE -> STATUS(starting) infinite broadcast feedback cycle. Activity now pauses only valid LIVE state; repeated service PAUSE is idempotent and covered by a 10,000-iteration JVM unit test. Previous fixes retained for GAME drop after tapping BUKA GAME: no forced disconnect on transient Android network handover, delayed first video frame does not destroy a valid room, secure floating RESUME is required and shown immediately; RADIO uses same safe external-app flow. Retains 12-second room ACK limit, native status recovery and privacy masking. Native screen privacy remains fail-closed. Web TALK stage stays camera-size even after an audio guest joins. Radio host can choose music using OPEN MUSIC. Viewer full camera-size RADIO cover is delivered by the matching NADMO LIVE Cloudflare web beta. Android may block music apps' internal playback capture; only rights-cleared music can be rebroadcast. GAME privacy pause, phone VOICE full-camera layout via live.nadmo.id, original id.nadmo.live signing preserved; signed code38 installs over code37 with NO UNINSTALL. Report regressions before wider distribution." \
+            --prerelease --latest=false
+          echo "Signed direct download: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/NADMO-LIVE-v0.10.19-beta.apk" >> "$GITHUB_STEP_SUMMARY"
+      - name: Wipe sensitive signing file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/nadmo-release.jks"
