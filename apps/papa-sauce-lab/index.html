@@ -3128,6 +3128,7 @@ window.PSLLocalDate = function(d){
           if(!file)return;
           const title=document.getElementById('detailTitle'),body=document.getElementById('detailContent');
           if(title&&body){title.textContent='Membaca Foto';body.innerHTML='<div class="empty-state">OCR sedang membaca tulisan di gambar...</div>';UI.showModal('detail');}
+          O25.batchId='';O25.reviewed=false;
           try{
             O25.lastDataUrl=await readFile25(file);
             O25.lastBase64=O25.lastDataUrl.split(',')[1]||'';
@@ -3162,13 +3163,14 @@ window.PSLLocalDate = function(d){
       try{await runOCR25(O25.rotation===90?270:90)}
       catch(e){O25.warnings=['Baca ulang gagal: '+String(e?.message||e)+'. Coba perbaiki teks atau tambah barang manual.'];render25()}
     },
-    setNote:function(i,v){if(O25.rows[i])O25.rows[i].note=v;},
-    setAmount:function(i,v){if(O25.rows[i])O25.rows[i].amount=Number(v||0);updateTotal25();},
-    setCat:function(i,v){if(O25.rows[i]&&CATS25.includes(v))O25.rows[i].category=v;},
+    setNote:function(i,v){if(O25.rows[i])O25.rows[i].note=v;O25.reviewed=false;const c=document.getElementById('psl25-reviewed');if(c)c.checked=false;},
+    setAmount:function(i,v){if(O25.rows[i])O25.rows[i].amount=Number(v||0);O25.reviewed=false;const c=document.getElementById('psl25-reviewed');if(c)c.checked=false;updateTotal25();},
+    setCat:function(i,v){if(O25.rows[i]&&CATS25.includes(v))O25.rows[i].category=v;O25.reviewed=false;const c=document.getElementById('psl25-reviewed');if(c)c.checked=false;},
     save:async function(){
       const date=opDate25();
       if(currentRole!=='OWNER')return alert('Hanya OWNER dapat impor nota.');
       if(!O25.reviewed)return alert('Centang konfirmasi bahwa nota sudah dicocokkan sebelum disimpan.');
+      if(!O25.batchId)return alert('Foto belum siap. Pilih foto lagi sebelum menyimpan.');
       if(await closed25(date))return alert('Tanggal '+date+' sudah CLOSED. Import foto diblokir supaya snapshot lama tidak berubah.');
       const existing=await dbGetAll('transactions');
       if((existing||[]).some(function(x){return x&&x.ocrBatchId===O25.batchId&&x.status!=='CORRECTED';})){
