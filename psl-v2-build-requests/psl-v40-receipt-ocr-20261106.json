@@ -1,0 +1,10 @@
+{
+  "request_id": "psl-v40-receipt-ocr-20261106",
+  "project_id": "papa-sauce-lab",
+  "version": 40,
+  "release_channel": "V2_STABLE",
+  "action": "build_existing",
+  "requested_at": "2026-11-06",
+  "scope": "Receipt OCR allows amounts without Rp and column separated handwritten receipts; retry rotated photos; offer manual correction/review and safeguards for total mismatch/duplicates; preserve all data and existing code-free Owner enrollment",
+  "signing": "Use existing canonical V2 signing key and package com.nadmo.papasaucelab; abort on signing mismatch"
+}
