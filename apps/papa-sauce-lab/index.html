@@ -2893,7 +2893,7 @@ window.PSLLocalDate = function(d){
 <script id="PSL_V25_OCR_EXPENSE_IMPORT">
 (function(){
   const CATS25=['bahan baku','packaging','operasional','transport','kebersihan','peralatan','lainnya'];
-  const O25={rows:[],batchId:'',rawText:''};
+  const O25={rows:[],batchId:'',rawText:'',declaredTotal:null,warnings:[],imageUrl:'',lastDataUrl:'',lastBase64:'',reviewed:false,rotation:0,source:''};
 
   function opDate25(){
     return document.getElementById('operationalDateV5')?.value || PSLLocalDate();
@@ -2914,55 +2914,118 @@ window.PSLLocalDate = function(d){
     if(/listrik|gas|pulsa|admin|operasional/.test(t))return 'operasional';
     return 'bahan baku';
   }
+  function amount25(token){
+    let s=String(token||'').trim().replace(/^\s*Rp\.?\s*/i,'').replace(/\s*(?:,-|\/-)\s*$/,'');
+    if(/^\d{1,3}\s*[kK]$/.test(s))return Number(s.replace(/[^\d]/g,''))*1000;
+    if(!/^\d[\d.,\s]*$/.test(s))return null;
+    s=s.replace(/[.,\s]/g,'');
+    const n=Number(s);
+    return Number.isSafeInteger(n)&&n>=100&&n<=100000000?n:null;
+  }
+  function note25(line){
+    return String(line||'').replace(/^[\d\s.)-]{0,5}(?=[A-Za-z])/,'').replace(/[-:.,\s]+$/,'').trim();
+  }
+  const meta25=/^(?:tuan|toko|not[ae]|jumlah|harga|nama\s*(?:barang)?|total|subtotal|grand\s*total|kembali|bayar|tunai|diskon|tanggal|tgl|format|tanda\s*terima|no\.?)(?:\s|:|$)/i;
   function parse25(text){
-    const out=[];
+    const out=[],names=[],prices=[],warnings=[];
+    let statedTotal=null;
     String(text||'').split(/\r?\n/).forEach(function(line){
-      let x=line.replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
+      const x=String(line||'').replace(/[–—]/g,'-').replace(/[ \t]+/g,' ').trim();
       if(!x)return;
-
-      // Accept both "... Rp 90.000" and "... 190.000".
-      // Without "Rp", only a money-looking final token is accepted so qty like 2kg/250gr is not mistaken for price.
-      let m=x.match(/\bRp\.?\s*([0-9][0-9.,]*)\s*$/i);
-      if(!m)m=x.match(/(?:^|\s)([0-9]{1,3}(?:[.,][0-9]{3})+|[0-9]{4,})\s*$/);
-      if(!m)return;
-
-      const amount=Number(String(m[1]).replace(/\D/g,''));
-      if(!amount)return;
-      const note=x.slice(0,m.index).replace(/[-:]+$/,'').trim();
-      if(!note)return;
-      out.push({note:note,amount:amount,category:autoCat25(note),use:true});
+      const totalLine=/\b(?:grand\s*total|sub\s*total|total|jumlah\s*rp|jumlah\s*harga)\b/i.test(x);
+      const ending=x.match(/(?:^|[\s:=])(?:Rp\.?\s*)?(\d{1,3}(?:[., ]\d{3})+|\d{4,9}|\d{1,3}\s*[kK])(?:\s*(?:,-|\/-))?\s*$/i);
+      if(totalLine){if(ending){const a=amount25(ending[1]);if(a)statedTotal=a}return}
+      if(meta25.test(x)||/^\s*(?:0?[1-9]|[12]\d|3[01])[\/-](?:0?[1-9]|1[0-2])[\/-]\d{2,4}/.test(x))return;
+      if(ending){
+        const value=amount25(ending[1]);
+        const rawNote=note25(x.slice(0,ending.index));
+        if(!value)return;
+        if(rawNote&&/[a-z]{2}/i.test(rawNote)&&!meta25.test(rawNote)){
+          out.push({note:rawNote,amount:value,category:autoCat25(rawNote),use:true,confidence:'row'});
+          return;
+        }
+        if(!rawNote)prices.push(value);
+      }else if(/[A-Za-z]{2,}/.test(x)&&!/\bRp\b/i.test(x)&&!/\d{4}/.test(x)){
+        names.push(note25(x));
+      }
     });
-    return out;
+    if(!out.length&&names.length>=2&&names.length===prices.length&&names.length<=50){
+      warnings.push('OCR membaca nama dan angka pada kolom terpisah. Periksa pasangannya satu per satu sebelum mencentang.');
+      names.forEach(function(name,i){
+        out.push({note:name,amount:prices[i],category:autoCat25(name),use:false,confidence:'column'});
+      });
+    }
+    return {rows:out,declaredTotal:statedTotal,warnings};
+  }
+  function alignColumns25(lines){
+    const parts=(lines||[]).filter(x=>x&&x.bbox&&String(x.text||'').trim())
+      .map(x=>({text:String(x.text).trim(),x:Number(x.bbox.x0||0),y:(Number(x.bbox.y0||0)+Number(x.bbox.y1||0))/2,h:Math.max(7,Number(x.bbox.y1||0)-Number(x.bbox.y0||0))}))
+      .sort((a,b)=>a.y-b.y||a.x-b.x);
+    if(parts.length<2)return '';
+    const sortedH=parts.map(x=>x.h).sort((a,b)=>a-b),midH=sortedH[Math.floor(sortedH.length/2)]||16;
+    const tolerance=Math.max(6,Math.min(24,midH*0.48));
+    const groups=[];
+    for(const item of parts){
+      let best=null,diff=Infinity;
+      for(const g of groups){const d=Math.abs(g.y-item.y);if(d<=tolerance&&d<diff){best=g;diff=d}}
+      if(best){best.items.push(item);best.y=(best.y*(best.items.length-1)+item.y)/best.items.length}
+      else groups.push({y:item.y,items:[item]});
+    }
+    return groups.sort((a,b)=>a.y-b.y).map(g=>g.items.sort((a,b)=>a.x-b.x).map(x=>x.text).join('   ')).join('\n');
+  }
+  function parsedOCR25(res){
+    const visual=alignColumns25(res&&res.lines),byVisual=visual?parse25(visual):{rows:[]};
+    const byText=parse25(res&&res.text||'');
+    const chosen=(byVisual.rows||[]).length>(byText.rows||[]).length?byVisual:byText;
+    if(chosen.declaredTotal==null&&byText.declaredTotal!=null)chosen.declaredTotal=byText.declaredTotal;
+    if(!chosen.warnings)chosen.warnings=[];
+    return chosen;
   }
   function total25(){
     return O25.rows.reduce(function(a,r){return a+(r.use?Number(r.amount||0):0);},0);
   }
   function render25(){
-    const title=document.getElementById('detailTitle'), body=document.getElementById('detailContent');
+    const title=document.getElementById('detailTitle'),body=document.getElementById('detailContent');
     if(!title||!body)return;
-    title.textContent='Review Import Foto';
+    title.textContent='Review Foto Belanja';
     const rows=O25.rows.map(function(r,i){
       return '<div class="psl25-ocr-row">'+
         '<div class="psl25-ocr-top">'+
-          '<input type="checkbox" '+(r.use?'checked':'')+' onchange="PSLOCR25.setUse('+i+',this.checked)">'+
-          '<input class="psl25-ocr-note" value="'+esc25(r.note)+'" oninput="PSLOCR25.setNote('+i+',this.value)">'+
-          '<input type="number" class="psl25-ocr-amount" value="'+Number(r.amount||0)+'" oninput="PSLOCR25.setAmount('+i+',this.value)">'+
+          '<input aria-label="Sertakan baris" type="checkbox" '+(r.use?'checked':'')+' onchange="PSLOCR25.setUse('+i+',this.checked)">'+
+          '<input aria-label="Nama barang" class="psl25-ocr-note" value="'+esc25(r.note)+'" oninput="PSLOCR25.setNote('+i+',this.value)" placeholder="Nama barang">'+
+          '<input aria-label="Nominal rupiah" type="number" min="0" inputmode="numeric" class="psl25-ocr-amount" value="'+Number(r.amount||0)+'" oninput="PSLOCR25.setAmount('+i+',this.value)" placeholder="Nominal">'+
         '</div>'+
         '<select class="psl25-ocr-cat" onchange="PSLOCR25.setCat('+i+',this.value)">'+
           CATS25.map(function(c){return '<option value="'+c+'" '+(c===r.category?'selected':'')+'>'+c+'</option>';}).join('')+
         '</select>'+
       '</div>';
     }).join('');
+    const help=O25.warnings.map(x=>'<div class="psl25-ocr-info" style="color:#8a3c16">'+esc25(x)+'</div>').join('');
+    const totalWarn=O25.declaredTotal!==null&&Math.abs(O25.declaredTotal-total25())>0?
+      '<div class="psl25-ocr-info" style="color:#9b2739"><b>Perhatian:</b> Total nota terbaca '+rupiah25(O25.declaredTotal)+', sedangkan baris dipilih '+rupiah25(total25())+'. Cocokkan dengan nota sebelum menyimpan.</div>':'';
     body.innerHTML=
-      '<div class="psl25-ocr-info"><b>Foto sudah dibaca.</b> Cek dulu hasilnya sebelum disimpan. Setiap baris akan dibuat sebagai pengeluaran terpisah pada tanggal operasional <b>'+esc25(opDate25())+'</b>. Foto yang sama tidak bisa diimpor dua kali.</div>'+
-      '<div id="psl25OcrPreview">'+rows+'</div>'+
-      '<div class="psl25-ocr-total"><span>Total dipilih</span><b id="psl25OcrTotal">'+rupiah25(total25())+'</b></div>'+
-      '<button class="btn btn-primary btn-block" onclick="PSLOCR25.save()">Simpan Semua yang Dipilih</button>'+
+      '<div class="psl25-ocr-info"><b>Periksa foto sebelum simpan.</b> Angka boleh tanpa Rp, misalnya 32.000 atau 32000. Catatan dari nota tangan tidak selalu terbaca sempurna. Tanggal pengeluaran: <b>'+esc25(opDate25())+'</b>.</div>'+
+      (O25.imageUrl?'<img src="'+O25.imageUrl+'" alt="Foto nota terpilih" style="width:100%;max-height:180px;object-fit:contain;border:1px solid #eee;border-radius:9px;margin-bottom:9px">':'')+
+      help+
+      '<div id="psl25OcrPreview">'+(rows||'<p class="psl25-ocr-info">Belum ada pasangan barang dan harga yang pasti. Tambahkan baris atau koreksi hasil bacaan di bawah.</p>')+'</div>'+
+      '<button class="btn btn-secondary btn-block" style="margin-top:10px" onclick="PSLOCR25.addRow()">+ Tambah Barang Manual</button>'+
+      '<div class="psl25-ocr-total"><span>Total yang dipilih</span><b id="psl25OcrTotal">'+rupiah25(total25())+'</b></div>'+
+      '<div id="psl25-compare">'+totalWarn+'</div>'+
+      '<label class="psl25-ocr-info" style="display:block"><input type="checkbox" id="psl25-reviewed" onchange="PSLOCR25.setReviewed(this.checked)"> Saya sudah cocokkan nama barang, jumlah, dan total dengan foto nota.</label>'+
+      '<button class="btn btn-primary btn-block" onclick="PSLOCR25.save()">Simpan Pengeluaran yang Dipilih</button>'+
+      '<details style="margin:12px 0"><summary style="font-size:12px">Perbaiki hasil tulisan OCR / nota tanpa format Rp</summary>'+
+      '<p class="psl25-ocr-info" style="margin-top:8px">Bisa ditulis satu baris: Merah 32000, Putih 35000, atau Bimoli 48.600. Jika angka dan nama terpisah, edit teks lalu tekan Proses.</p>'+
+      '<textarea id="psl25-raw-text" rows="8" style="width:100%;box-sizing:border-box;padding:9px;font-size:13px">'+esc25(O25.rawText)+'</textarea>'+
+      '<button class="btn btn-secondary btn-block" onclick="PSLOCR25.reprocess()">Proses Teks yang Diperbaiki</button></details>'+
+      '<button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="PSLOCR25.retryRotation()">Baca Ulang Foto Diputar 90°</button>'+
       '<button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="PSLOCR25.pick()">Pilih Foto Lain</button>';
     UI.showModal('detail');
   }
   function updateTotal25(){
     const el=document.getElementById('psl25OcrTotal');if(el)el.textContent=rupiah25(total25());
+    const compared=document.getElementById('psl25-compare');
+    if(compared&&O25.declaredTotal!==null)compared.innerHTML=Math.abs(O25.declaredTotal-total25())>0?
+      '<div class="psl25-ocr-info" style="color:#9b2739"><b>Perhatian:</b> Total nota '+rupiah25(O25.declaredTotal)+' berbeda dari jumlah dipilih '+rupiah25(total25())+'. Cocokkan dulu.</div>':'';
   }
   async function closed25(date){
     const snaps=await dbGetAll('snapshots');
@@ -3002,19 +3065,57 @@ window.PSLLocalDate = function(d){
     if(!window.Tesseract)throw new Error('OCR tidak tersedia');
     return window.Tesseract;
   }
-  async function recognize25(dataUrl,base64){
-    const plugin=plugin25();
-    if(plugin&&typeof plugin.detectText==='function'){
-      try{
-        const result=await plugin.detectText({base64Image:base64,rotation:0});
-        if(result&&result.text)return result.text;
-      }catch(e){console.warn('Native OCR fallback',e);}
-    }
-    const T=await loadTesseract25();
-    const result=await T.recognize(dataUrl,'eng');
-    return result&&result.data&&result.data.text?result.data.text:'';
+  async function rotate25(dataUrl,angle){
+    return await new Promise(function(resolve,reject){
+      const img=new Image();
+      img.onload=function(){
+        try{
+          const originalW=img.naturalWidth,originalH=img.naturalHeight;
+          const scale=Math.min(1,2200/Math.max(originalW,originalH));
+          const w=Math.max(1,Math.round(originalW*scale)),h=Math.max(1,Math.round(originalH*scale));
+          const swap=angle%180!==0,canvas=document.createElement('canvas');
+          canvas.width=swap?h:w;canvas.height=swap?w:h;
+          const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Rotasi gambar gagal');
+          ctx.translate(canvas.width/2,canvas.height/2);
+          ctx.rotate(angle*Math.PI/180);
+          ctx.drawImage(img,-w/2,-h/2,w,h);
+          resolve(canvas.toDataURL('image/jpeg',0.93));
+          canvas.width=1;canvas.height=1;
+        }catch(e){reject(e)}
+      };
+      img.onerror=function(){reject(new Error('Foto tidak bisa diputar'))};img.src=dataUrl;
+    });
   }
-
+  async function recognize25(dataUrl,base64,angle){
+    const T=await loadTesseract25();
+    // Native MLKit first on normal photo, fall back to Tesseract with line geometry.
+    if(!angle){
+      const plugin=plugin25();
+      if(plugin&&typeof plugin.detectText==='function'){
+        try{
+          const result=await plugin.detectText({base64Image:base64,rotation:0});
+          const parsed=parse25(result?.text||'');
+          if(parsed.rows.length>=2)return {text:result.text,lines:[],source:'MLKit'};
+        }catch(e){console.warn('Native OCR fallback',e)}
+      }
+    }
+    const img=angle?await rotate25(dataUrl,angle):dataUrl;
+    const result=await T.recognize(img,'eng');
+    return {text:result?.data?.text||'',lines:result?.data?.lines||[],source:'Tesseract'};
+  }
+  async function runOCR25(angle){
+    const title=document.getElementById('detailTitle'),body=document.getElementById('detailContent');
+    if(title)title.textContent='Membaca Foto';
+    if(body)body.innerHTML='<div class="empty-state">Membaca nota... '+(angle?'Foto diputar '+angle+'°':'Mendeteksi nama dan kolom nominal')+'. Jangan tutup aplikasi.</div>';
+    const result=await recognize25(O25.lastDataUrl,O25.lastBase64,angle);
+    O25.source=result.source;O25.rotation=angle;
+    const parsed=parsedOCR25(result);
+    O25.rawText=result.text;O25.rows=parsed.rows;O25.declaredTotal=parsed.declaredTotal;
+    O25.warnings=parsed.warnings;
+    if(parsed.rows.length===0)O25.warnings.push('Tulisan di foto belum bisa dipasangkan. Kamu masih bisa mengisi manual atau memperbaiki teks OCR tanpa mengambil foto lagi.');
+    O25.reviewed=false;
+    render25();
+  }
   window.PSLOCR25={
     pick:function(){
       let input=document.getElementById('psl25OcrFile');
@@ -3028,31 +3129,46 @@ window.PSLLocalDate = function(d){
           const title=document.getElementById('detailTitle'),body=document.getElementById('detailContent');
           if(title&&body){title.textContent='Membaca Foto';body.innerHTML='<div class="empty-state">OCR sedang membaca tulisan di gambar...</div>';UI.showModal('detail');}
           try{
-            const dataUrl=await readFile25(file);
-            const base64=dataUrl.split(',')[1]||'';
-            O25.rawText=await recognize25(dataUrl,base64);
-            O25.rows=parse25(O25.rawText);
-            O25.batchId='ocr-'+hash25(base64);
-            if(!O25.rows.length){
-              if(body)body.innerHTML='<div class="empty-state">Tulisan terbaca, tapi belum menemukan baris dengan format nama + Rp nominal. Coba screenshot/foto yang lebih jelas.</div><button class="btn btn-primary btn-block" onclick="PSLOCR25.pick()">Pilih Foto Lagi</button>';
-              return;
-            }
-            render25();
+            O25.lastDataUrl=await readFile25(file);
+            O25.lastBase64=O25.lastDataUrl.split(',')[1]||'';
+            if(O25.imageUrl)URL.revokeObjectURL(O25.imageUrl);
+            O25.imageUrl=URL.createObjectURL(file);
+            O25.batchId='ocr-'+hash25(O25.lastBase64);
+            await runOCR25(0);
+            if(!O25.rows.length)await runOCR25(90);
           }catch(err){
             console.error('PSL OCR error',err);
-            if(body)body.innerHTML='<div class="empty-state">Gagal membaca foto: '+esc25(err&&err.message?err.message:String(err))+'</div><button class="btn btn-primary btn-block" onclick="PSLOCR25.pick()">Coba Lagi</button>';
+            O25.rows=[];O25.warnings=['Otomatisasi foto gagal: '+String(err?.message||err)+'. Kamu tetap dapat mengisi baris manual.'];
+            render25();
           }
         });
         document.body.appendChild(input);
       }
       input.click();
     },
-    setUse:function(i,v){if(O25.rows[i])O25.rows[i].use=!!v;updateTotal25();},
+    setUse:function(i,v){if(O25.rows[i])O25.rows[i].use=!!v;O25.reviewed=false;const c=document.getElementById('psl25-reviewed');if(c)c.checked=false;updateTotal25();},
+    setReviewed:function(v){O25.reviewed=!!v;},
+    addRow:function(){
+      O25.rows.push({note:'',amount:0,category:'bahan baku',use:true,confidence:'manual'});
+      O25.reviewed=false;render25();
+    },
+    reprocess:function(){
+      O25.rawText=document.getElementById('psl25-raw-text')?.value||'';
+      const p=parse25(O25.rawText);O25.rows=p.rows;O25.declaredTotal=p.declaredTotal;O25.warnings=p.warnings;
+      O25.reviewed=false;render25();
+    },
+    retryRotation:async function(){
+      if(!O25.lastDataUrl)return alert('Pilih foto terlebih dahulu.');
+      try{await runOCR25(O25.rotation===90?270:90)}
+      catch(e){O25.warnings=['Baca ulang gagal: '+String(e?.message||e)+'. Coba perbaiki teks atau tambah barang manual.'];render25()}
+    },
     setNote:function(i,v){if(O25.rows[i])O25.rows[i].note=v;},
     setAmount:function(i,v){if(O25.rows[i])O25.rows[i].amount=Number(v||0);updateTotal25();},
     setCat:function(i,v){if(O25.rows[i]&&CATS25.includes(v))O25.rows[i].category=v;},
     save:async function(){
       const date=opDate25();
+      if(currentRole!=='OWNER')return alert('Hanya OWNER dapat impor nota.');
+      if(!O25.reviewed)return alert('Centang konfirmasi bahwa nota sudah dicocokkan sebelum disimpan.');
       if(await closed25(date))return alert('Tanggal '+date+' sudah CLOSED. Import foto diblokir supaya snapshot lama tidak berubah.');
       const existing=await dbGetAll('transactions');
       if((existing||[]).some(function(x){return x&&x.ocrBatchId===O25.batchId&&x.status!=='CORRECTED';})){
@@ -3060,7 +3176,11 @@ window.PSLLocalDate = function(d){
       }
       const rows=O25.rows.filter(function(r){return r.use&&Number(r.amount)>0&&String(r.note||'').trim();});
       if(!rows.length)return alert('Tidak ada baris yang dipilih.');
-      if(!confirm('Simpan '+rows.length+' pengeluaran dengan total '+rupiah25(rows.reduce(function(a,r){return a+Number(r.amount||0);},0))+'?'))return;
+      const selectedTotal=rows.reduce(function(a,r){return a+Number(r.amount||0);},0);
+      if(O25.declaredTotal!==null&&Math.abs(O25.declaredTotal-selectedTotal)>0){
+        if(!confirm('PERHATIAN! Total nota terbaca '+rupiah25(O25.declaredTotal)+' tapi item yang dipilih '+rupiah25(selectedTotal)+'. Pastikan sudah dikoreksi. Tetap simpan?'))return;
+      }
+      if(!confirm('Simpan '+rows.length+' pengeluaran dengan total '+rupiah25(selectedTotal)+'?'))return;
       const stamp=Date.now();
       for(let i=0;i<rows.length;i++){
         const r=rows[i];
