@@ -3656,28 +3656,52 @@ window.PSLLocalDate = function(d){
     await refresh();
     alert(voidOnly?'Stok keluar/masuk salah dibatalkan, tanpa produksi tambahan.':'Koreksi stok berhasil. Saldo dan laporan dihitung ulang.');
   }
+  // PSL v42 — Outlet text format is the source of truth; never treat "?" as 0.
+  // Examples from actual PSK/PSP/PSBK WhatsApp stock reports:
+  // "Babi kecap: kosong" => 0; "Soup brenabone: 3prt" => 3;
+  // "Cumi hitam: 2pax" => 2.
   function normalizeProduct(label){
-    const l=String(label||'').toLowerCase().replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();
-    if(/babi.*kecap|pork.*soy/.test(l))return 'Babi Kecap';
-    if(/babi.*rica/.test(l))return 'Babi Rica';
-    if(/(?:^|\s)babi(?:\s|$)/.test(l))return 'Babi Rica'; // Label Babi dari outlet, tetap wajib verifikasi Owner
-    if(/woku/.test(l))return 'Ayam Woku';
-    if(/cumi|squid/.test(l))return 'Cumi';
-    if(/tongkol|cakalang/.test(l))return 'Tongkol';
-    if(/bren[ae]bon(?:e)?|bren[a-z]{1,5}bon(?:e)?/.test(l))return 'Sup Brenebone';
+    const l=String(label||'').toLowerCase()
+      .replace(/[0]/g,'o').replace(/[^a-z ]/g,' ')
+      .replace(/\s+/g,' ').trim();
+    const compact=l.replace(/\s/g,'');
+    if(/\b(?:babi|pork)\b.*\b(?:kecap|kcp|soy)\b/.test(l))return 'Babi Kecap';
+    if(/\b(?:babi|pork)\b.*\b(?:rica|richa)\b/.test(l))return 'Babi Rica';
+    if(/\bbabi\b/.test(l))return 'Babi Rica'; // Outlet shorthand "Babi" = Rica, verify by Owner.
+    if(/\bwoku\b/.test(l))return 'Ayam Woku';
+    if(/\bcumi\b|\bsquid\b/.test(l))return 'Cumi';
+    if(/\btongkol\b|\bcakalang\b/.test(l))return 'Tongkol';
+    if(/br[eai]n[aeiou]?b[ao]n(?:e)?/.test(compact)||
+       /br[eai]n[a-z]{0,5}b[ao]n(?:e)?/.test(compact)||
+       /(sou?p|sup)[a-z]*br[eai]n[a-z]*b[ao]n/.test(compact))return 'Sup Brenebone';
     return '';
   }
   function parseText(text){
-    const result={};const seen=[];
+    const result={},unmatched=[],conflicts=[];
+    const units='(?:pax|pcs|pack|port(?:ion)?s?|porsi|pors|prt|prs|porsil|porsion)';
+    const qtyRE=new RegExp('^(.+?)(?:\\s*[:=\\-]\\s*|\\s+)(\\d{1,4})\\s*'+units+'?\\s*[.!]?\\s*$','i');
+    const emptyRE=/^(.+?)(?:\s*[:=\-]\s*|\s+)(?:k[o0]s[o0]ng|habis|nihil|nol|zero)\s*[.!]?\s*$/i;
     String(text||'').split(/\r?\n/).forEach(line=>{
-      const x=line.trim().replace(/pax|pcs|pack|port(?:ion)?s?|porsi/gi,'').trim();
-      const m=x.match(/^(.+?)[\s:=\-]+(\d+)\s*$/);
-      if(!m)return;
-      const p=normalizeProduct(m[1]);
-      if(!p){seen.push(line);return;}
-      result[p]=Number(m[2]);
+      const x=String(line||'').replace(/[–—：]/g,c=>c==='：'?':':'-')
+        .replace(/\s+/g,' ').trim();
+      if(!x)return;
+      const qm=x.match(qtyRE),em=qm?null:x.match(emptyRE);
+      if(!qm&&!em){
+        // A label recognised without a trustworthy number MUST remain unknown.
+        if(/(?:ayam|woku|cumi|tongkol|babi|soup|sup|bren|cakalang)/i.test(x))unmatched.push(line);
+        return;
+      }
+      const product=normalizeProduct((qm||em)[1]);
+      if(!product){unmatched.push(line);return}
+      const qty=qm?Number(qm[2]):0;
+      if(!Number.isSafeInteger(qty)||qty<0||qty>9999){unmatched.push(line);return}
+      if(Object.prototype.hasOwnProperty.call(result,product)&&result[product]!==qty){
+        // Ambiguous OCR duplicates aren't allowed to silently overwrite one another.
+        delete result[product];conflicts.push(product);return;
+      }
+      if(!conflicts.includes(product))result[product]=qty;
     });
-    return {result,unmatched:seen};
+    return {result,unmatched,conflicts};
   }
   const scan={PSK:{},PSP:{},PSBK:{}},fileKeys={};
   const REQUIRED31=['Ayam Woku','Cumi','Tongkol','Babi Rica','Babi Kecap','Sup Brenebone'];
