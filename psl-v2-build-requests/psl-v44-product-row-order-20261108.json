@@ -1,0 +1,10 @@
+{
+  "request_id": "psl-v44-product-row-order-20261108",
+  "project_id": "papa-sauce-lab",
+  "version": 44,
+  "release_channel": "V2_STABLE",
+  "action": "build_existing",
+  "requested_at": "2026-11-08",
+  "scope": "UI display only: unify monthly LAB reports and outlet distribution table product row order with stock list and smart split form: Ayam Woku, Cumi, Tongkol, Babi Rica, Babi Kecap, Sup Brenebone; preserve transactions, calculations and local device enrollment",
+  "signing": "Use existing canonical V2 signing key/package com.nadmo.papasaucelab; fail on mismatch"
+}
