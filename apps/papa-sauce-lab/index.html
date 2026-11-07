@@ -3678,8 +3678,12 @@ window.PSLLocalDate = function(d){
   }
   function parseText(text){
     const result={},unmatched=[],conflicts=[];
-    const units='(?:pax|pcs|pack|port(?:ion)?s?|porsi|pors|prt|prs|porsil|porsion)';
-    const qtyRE=new RegExp('^(.+?)(?:\\s*[:=\\-]\\s*|\\s+)(\\d{1,4})\\s*'+units+'?\\s*[.!]?\\s*$','i');
+    // Outlet staff use inconsistent units: "2pax", "3prt", "6ocx", "8 pcs" and
+    // even completely unknown letters. Only the integer qty matters.
+    // Require a known product on the left and a 1-4-digit integer on the
+    // right; discard any optional alphabetic unit suffix, never parse dates
+    // or a decimal price as stock.
+    const qtyRE=/^(.+?)(?:\s*[:=\-]\s*|\s+)(\d{1,4})(?:\s*[a-z]{1,15})?\s*[.!]?\s*$/i;
     const emptyRE=/^(.+?)(?:\s*[:=\-]\s*|\s+)(?:k[o0]s[o0]ng|habis|nihil|nol|zero)\s*[.!]?\s*$/i;
     String(text||'').split(/\r?\n/).forEach(line=>{
       const x=String(line||'').replace(/[–—：]/g,c=>c==='：'?':':'-')
