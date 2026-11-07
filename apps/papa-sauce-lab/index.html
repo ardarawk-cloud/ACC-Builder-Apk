@@ -3716,52 +3716,186 @@ window.PSLLocalDate = function(d){
     if(!value)return alert('Tempel teks laporan '+LABEL[outlet]+' dari WhatsApp.');
     useParsed31(outlet,parseText(value),'teks WhatsApp');
   }
-  async function readPhoto(outlet,file){
-    if(!CANON.includes(outlet)||!file)return;
-    const key=[file.name,file.size,file.lastModified].join(':');
-    if(Object.entries(fileKeys).some(([o,k])=>o!==outlet&&k===key))return alert('Foto identik dipilih untuk dua outlet berbeda. Cek kembali.');
-    const label=document.getElementById('psl31-status-'+outlet);
-    if(label)label.textContent='Memindai foto '+LABEL[outlet]+'...';
+  // PSL v41 — Decode the Android photo to a small canvas first. WebView File/Blob
+  // objects can fail in Tesseract's internal FileReader with "Code=0".
+  // Pass a base64 image string to the OCR engine instead of passing File.
+  const selectedPhoto31={PSK:null,PSP:null,PSBK:null};
+  const queuedRequest31={PSK:0,PSP:0,PSBK:0};
+  let ocrTail31=Promise.resolve(),ocrScriptPromise31=null,ocrWorkerPromise31=null;
+  function readDataURL31(file){
+    return new Promise((resolve,reject)=>{
+      const r=new FileReader();
+      r.onload=()=>resolve(String(r.result||''));
+      r.onerror=()=>reject(r.error||new Error('File Android tidak bisa dibaca'));
+      r.readAsDataURL(file);
+    });
+  }
+  function imageFromURL31(url){
+    return new Promise((resolve,reject)=>{
+      const img=new Image();
+      img.onload=()=>resolve(img);
+      img.onerror=()=>reject(new Error('Android tidak dapat membuka gambar'));
+      img.src=url;
+    });
+  }
+  async function preparePhoto31(file){
+    if(!file||!file.size)throw Error('Foto kosong. Pilih ulang gambar.');
+    if(file.size>35*1024*1024)throw Error('Ukuran foto di atas 35 MB. Gunakan screenshot yang lebih kecil.');
+    let image=null,objectUrl=null;
+    // Prefer object URLs: avoids Android FileReader.readAsArrayBuffer error Code=0.
     try{
-      if(!window.Tesseract){
-        await new Promise((resolve,reject)=>{
-          const existing=document.getElementById('psl31-tesseract-js');
-          if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});}
-          else{const sc=document.createElement('script');sc.id='psl31-tesseract-js';sc.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';sc.onload=resolve;sc.onerror=reject;document.head.appendChild(sc);}
-        });
+      objectUrl=URL.createObjectURL(file);
+      image=await imageFromURL31(objectUrl);
+    }catch(e){
+      console.warn('PSL41 object URL fallback',e);
+      const source=await readDataURL31(file);
+      image=await imageFromURL31(source);
+    }finally{
+      if(objectUrl)URL.revokeObjectURL(objectUrl);
+    }
+    const w=Number(image.naturalWidth||image.width),h=Number(image.naturalHeight||image.height);
+    if(!w||!h)throw Error('Dimensi gambar tidak terbaca');
+    const scale=Math.min(2.0,1850/Math.max(w,h));
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(w*scale));
+    canvas.height=Math.max(1,Math.round(h*scale));
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    if(!ctx)throw Error('Pemrosesan foto tidak didukung HP');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(image,0,0,canvas.width,canvas.height);
+    return canvas;
+  }
+  function contrastPhoto31(canvas){
+    const second=document.createElement('canvas');
+    second.width=canvas.width;second.height=canvas.height;
+    const ctx=second.getContext('2d',{willReadFrequently:true});
+    if(!ctx)return null;
+    ctx.drawImage(canvas,0,0);
+    const pic=ctx.getImageData(0,0,second.width,second.height),a=pic.data;
+    for(let i=0;i<a.length;i+=4){
+      const r=a[i],g=a[i+1],b=a[i+2];
+      const blue=b>r*1.25&&b>g*1.06&&b>65;
+      const gray=blue?255:(r+g+b>525?0:255);
+      a[i]=a[i+1]=a[i+2]=gray;a[i+3]=255;
+    }
+    ctx.putImageData(pic,0,0);return second;
+  }
+  function turnPhoto31(canvas){
+    const rotate=document.createElement('canvas');
+    rotate.width=canvas.height;rotate.height=canvas.width;
+    const ctx=rotate.getContext('2d');
+    if(!ctx)return null;
+    ctx.translate(rotate.width,0);ctx.rotate(Math.PI/2);
+    ctx.drawImage(canvas,0,0);
+    return rotate;
+  }
+  async function loadOCR31(){
+    if(window.Tesseract?.createWorker)return window.Tesseract;
+    if(!ocrScriptPromise31){
+      ocrScriptPromise31=new Promise((resolve,reject)=>{
+        const script=document.createElement('script');
+        script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+        script.onload=()=>window.Tesseract?.createWorker?resolve(window.Tesseract):reject(new Error('Engine OCR tidak tersedia'));
+        script.onerror=()=>reject(new Error('Gagal memuat OCR. Cek koneksi internet.'));
+        document.head.appendChild(script);
+      }).catch(e=>{ocrScriptPromise31=null;throw e});
+    }
+    return ocrScriptPromise31;
+  }
+  async function getOCRWorker31(){
+    if(!ocrWorkerPromise31){
+      ocrWorkerPromise31=loadOCR31().then(T=>T.createWorker('eng')).catch(e=>{
+        ocrWorkerPromise31=null;throw e;
+      });
+    }
+    return ocrWorkerPromise31;
+  }
+  async function recognizeCanvas31(canvas){
+    // Data URL is explicitly supported by Tesseract in browsers; never pass
+    // Android File/Blob or canvas directly into the worker.
+    const data=canvas.toDataURL('image/png');
+    if(!data.startsWith('data:image/png;base64,'))throw Error('Gagal menyiapkan gambar');
+    const worker=await getOCRWorker31();
+    const result=await worker.recognize(data);
+    return result?.data?.text||'';
+  }
+  async function recognizeNative31(canvas){
+    const plugin=window.Capacitor?.Plugins?.CapacitorPluginMlKitTextRecognition;
+    if(typeof plugin?.detectText!=='function')return '';
+    try{
+      const data=canvas.toDataURL('image/jpeg',0.9);
+      const result=await plugin.detectText({base64Image:data.split(',')[1],rotation:0});
+      return result?.text||'';
+    }catch(e){console.warn('PSL41 native OCR fallback',e);return ''}
+  }
+  async function processPhoto31(outlet,file,key,sequence){
+    const label=document.getElementById('psl31-status-'+outlet);
+    if(sequence!==queuedRequest31[outlet])return;
+    if(label)label.textContent='Membaca foto '+LABEL[outlet]+' (diproses satu per satu)...';
+    try{
+      const canvas=await preparePhoto31(file);
+      if(sequence!==queuedRequest31[outlet])return;
+      let merged={};
+      const read=async(c,source)=>{
+        if(!c)return;
+        const text=await recognizeCanvas31(c);
+        const next=parseText(text);
+        for(const [product,qty] of Object.entries(next.result)){
+          if(!(product in merged))merged[product]=qty;
+          else if(merged[product]!==qty)delete merged[product];
+        }
+        return source;
+      };
+      let readError=null;
+      try{await read(canvas,'foto')}catch(e){readError=e;console.warn('PSL41 OCR first pass',e)}
+      if(REQUIRED31.some(p=>!(p in merged))){
+        if(label)label.textContent='Memperjelas tulisan '+LABEL[outlet]+'...';
+        try{await read(contrastPhoto31(canvas),'foto kontras')}catch(e){readError=readError||e}
       }
-      if(!window.Tesseract?.recognize)throw Error('OCR belum tersedia');
-      const primary=await window.Tesseract.recognize(file,'eng');
-      const one=parseText(primary?.data?.text||'');
-      let merged={...one.result};
-      if(REQUIRED31.filter(p=>p in merged).length<6 && typeof createImageBitmap==='function'){
-        if(label)label.textContent='Membaca ulang tulisan putih di WhatsApp '+LABEL[outlet]+'...';
-        try{
-          const image=await createImageBitmap(file),scale=Math.min(2,1700/Math.max(image.width,image.height));
-          const canvas=document.createElement('canvas');canvas.width=Math.round(image.width*scale);canvas.height=Math.round(image.height*scale);
-          const ctx=canvas.getContext('2d',{willReadFrequently:true});
-          ctx.drawImage(image,0,0,canvas.width,canvas.height);
-          const picture=ctx.getImageData(0,0,canvas.width,canvas.height),a=picture.data;
-          for(let j=0;j<a.length;j+=4){
-            const r=a[j],g=a[j+1],b=a[j+2],blue=b>r*1.25&&b>g*1.06&&b>65;
-            const pixel=blue?255:(r+g+b>525?0:255);
-            a[j]=a[j+1]=a[j+2]=pixel;
-          }
-          ctx.putImageData(picture,0,0);
-          image.close?.();
-          const secondary=await window.Tesseract.recognize(canvas,'eng');
-          const two=parseText(secondary?.data?.text||'');
-          for(const [p,q] of Object.entries(two.result)){
-            if(!(p in merged))merged[p]=q;
-            else if(merged[p]!==q)delete merged[p]; // conflict => manual review, never guess
-          }
-        }catch(e){console.warn('OCR contrast retry',e);}
+      if(!Object.keys(merged).length){
+        // Retry sideways WhatsApp photos only if no usable values exist.
+        if(label)label.textContent='Mencoba orientasi foto '+LABEL[outlet]+'...';
+        try{await read(turnPhoto31(canvas),'foto diputar')}catch(e){readError=readError||e}
+      }
+      if(!Object.keys(merged).length){
+        const nativeText=await recognizeNative31(canvas);
+        if(nativeText)merged=parseText(nativeText).result;
+      }
+      if(sequence!==queuedRequest31[outlet])return;
+      if(!Object.keys(merged).length){
+        throw readError||new Error('Nama produk dan angka belum terbaca');
       }
       fileKeys[outlet]=key;
       useParsed31(outlet,{result:merged},'foto');
     }catch(e){
-      if(label)label.textContent='OCR gagal: '+String(e.message||e)+'. Tempel teks WhatsApp atau isi manual.';
+      if(sequence!==queuedRequest31[outlet])return;
+      // Never turn unreadable outlet stock into 0 or auto-save distribution.
+      delete fileKeys[outlet];
+      if(label)label.textContent='Foto '+LABEL[outlet]+' belum dapat dibaca otomatis ('+
+        String(e?.message||e)+'). Angka tetap ?. Tempel teks WhatsApp atau isi stok outlet manual lalu periksa.';
+      invalidate31();
     }
+  }
+  function readPhoto(outlet,file){
+    if(!CANON.includes(outlet)||!file)return;
+    const key=[file.name,file.size,file.lastModified].join(':');
+    if(Object.entries(fileKeys).some(([o,k])=>o!==outlet&&k===key))
+      return alert('Foto identik dipilih untuk dua outlet berbeda. Cek kembali.');
+    selectedPhoto31[outlet]=file;
+    const sequence=++queuedRequest31[outlet];
+    scan[outlet]={};delete fileKeys[outlet];
+    fillInputs(outlet);
+    const label=document.getElementById('psl31-status-'+outlet);
+    if(label)label.textContent='Foto '+LABEL[outlet]+' masuk antrean OCR...';
+    // Single reusable OCR worker; 3 outlets never spawn 3 heavy workers at once.
+    const queued=ocrTail31.catch(()=>{}).then(()=>processPhoto31(outlet,file,key,sequence));
+    ocrTail31=queued.catch(e=>console.warn('PSL41 OCR queue',e));
+    return queued;
+  }
+  function retryPhoto31(outlet){
+    const f=selectedPhoto31[outlet]||document.getElementById('psl30-photo-'+outlet)?.files?.[0];
+    if(!f)return alert('Pilih foto '+(LABEL[outlet]||outlet)+' dulu.');
+    return readPhoto(outlet,f);
   }
   function fillUnlisted31(){
     if(!confirm('Set 0 untuk menu tambahan yang belum disebut. Semua enam menu utama wajib dicek.'))return;
@@ -3910,7 +4044,7 @@ window.PSLLocalDate = function(d){
     installed=true;
     const b=document.createElement('div');b.id='psl30-root';b.className='psl30-box';
     const opts=PRODUCTS30().map((p,i)=>'<tr><td>'+esc(p)+'</td>'+CANON.map(o=>'<td><input type="number" min="0" step="1" value="" placeholder="?" id="psl30-outlet-'+o+'-'+i+'"></td>').join('')+'<td><input type="number" min="0" step="1" value="0" id="psl30-lab-'+i+'"></td></tr>').join('');
-    b.innerHTML='<h3>Smart Bagi Stok — LAB ke 3 Outlet</h3><p>Masukkan foto stok PSK, PSP, PSB. OCR membantu membaca angka, lalu Owner wajib cek hasilnya. Pembagian hanya dicatat setelah satu kali konfirmasi.</p><label>Tanggal distribusi</label><input id="psl30-distribute-date" type="date" value="'+esc(date())+'"><div class="psl30-grid">'+CANON.map(o=>'<label>Foto '+LABEL[o]+'<input type="file" accept="image/*" id="psl30-photo-'+o+'"></label>').join('')+'</div>'+CANON.map(o=>'<div id="psl31-status-'+o+'" class="psl30-small">'+LABEL[o]+': belum dibaca</div><details><summary>Tempel teks laporan '+LABEL[o]+' dari WhatsApp</summary><textarea rows="5" id="psl31-text-'+o+'" style="width:100%"></textarea><button class="btn btn-secondary btn-sm" onclick="PSL30.readText31(\''+o+'\')">Baca Teks</button></details>').join('')+'<p id="psl30-scan-note" class="psl30-small">Foto atau teks WhatsApp dapat dibaca. Angka ? belum terbaca, bukan 0.</p><p id="psl30-lab-status" class="psl30-small"></p><div style="max-width:100%;overflow-x:auto"><table class="psl30-table"><tr><th>Produk</th><th>PSK</th><th>PSP</th><th>PSB</th><th>LAB Dibagi</th></tr>'+opts+'</table></div><p class="psl30-warn">Stok pada foto adalah hasil laporan outlet, bukan stok real-time. Periksa foto dan tanggalnya. Jumlah LAB Dibagi tidak boleh melebihi saldo aplikasi.</p><label style="display:block;margin:12px 0"><input id="psl31-review" type="checkbox"> Saya sudah mencocokkan seluruh angka dengan foto. Kolom Babi = Babi Rica.</label><button class="btn btn-primary btn-block" onclick="PSL30.calculate()">Hitung & Preview Nota</button><div id="psl30-preview" style="margin-top:12px"></div>';
+    b.innerHTML='<h3>Smart Bagi Stok — LAB ke 3 Outlet</h3><p>Masukkan foto stok PSK, PSP, PSB. OCR membantu membaca angka, lalu Owner wajib cek hasilnya. Pembagian hanya dicatat setelah satu kali konfirmasi.</p><label>Tanggal distribusi</label><input id="psl30-distribute-date" type="date" value="'+esc(date())+'"><div class="psl30-grid">'+CANON.map(o=>'<label>Foto '+LABEL[o]+'<input type="file" accept="image/*" id="psl30-photo-'+o+'"></label>').join('')+'</div>'+CANON.map(o=>'<div id="psl31-status-'+o+'" class="psl30-small">'+LABEL[o]+': belum dibaca</div><button class="btn btn-secondary btn-sm" style="margin:5px 0" onclick="PSL30.retryPhoto31(\''+o+'\')">Coba Baca Ulang Foto '+LABEL[o]+'</button><details><summary>Tempel teks laporan '+LABEL[o]+' dari WhatsApp</summary><textarea rows="5" id="psl31-text-'+o+'" style="width:100%"></textarea><button class="btn btn-secondary btn-sm" onclick="PSL30.readText31(\''+o+'\')">Baca Teks</button></details>').join('')+'<p id="psl30-scan-note" class="psl30-small">Foto atau teks WhatsApp dapat dibaca. Angka ? belum terbaca, bukan 0.</p><p id="psl30-lab-status" class="psl30-small"></p><div style="max-width:100%;overflow-x:auto"><table class="psl30-table"><tr><th>Produk</th><th>PSK</th><th>PSP</th><th>PSB</th><th>LAB Dibagi</th></tr>'+opts+'</table></div><p class="psl30-warn">Stok pada foto adalah hasil laporan outlet, bukan stok real-time. Periksa foto dan tanggalnya. Jumlah LAB Dibagi tidak boleh melebihi saldo aplikasi.</p><label style="display:block;margin:12px 0"><input id="psl31-review" type="checkbox"> Saya sudah mencocokkan seluruh angka dengan foto. Kolom Babi = Babi Rica.</label><button class="btn btn-primary btn-block" onclick="PSL30.calculate()">Hitung & Preview Nota</button><div id="psl30-preview" style="margin-top:12px"></div>';
     tab.insertBefore(b,tab.children[1]||null);
     CANON.forEach(o=>document.getElementById('psl30-photo-'+o)?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)readPhoto(o,f)}));
     b.addEventListener('input',e=>{if(e.target.id==='psl31-review'||e.target.closest('#psl30-preview'))return;invalidate31()});
@@ -3948,7 +4082,7 @@ window.PSLLocalDate = function(d){
       return oldFinancialCorrect30();
     };
   }
-  window.PSL30={edit:editMovement,saveEdit,reopen,calculate,commitDistribution,cancelNote,shareNote,stockCard,shareCard,parseText,allocations,readText31,fillUnlisted31};
+  window.PSL30={edit:editMovement,saveEdit,reopen,calculate,commitDistribution,cancelNote,shareNote,stockCard,shareCard,parseText,allocations,readText31,retryPhoto31,fillUnlisted31};
   let tries=0;const timer=setInterval(()=>{tries++;if(typeof db!=='undefined'&&db&&document.getElementById('tab-stock')){clearInterval(timer);install().catch(console.error);}else if(tries>=100)clearInterval(timer)},100);
 })();
 </script>
