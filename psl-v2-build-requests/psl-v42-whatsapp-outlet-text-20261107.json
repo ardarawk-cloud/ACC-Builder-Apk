@@ -1,0 +1,10 @@
+{
+  "request_id": "psl-v42-whatsapp-outlet-text-20261107",
+  "project_id": "papa-sauce-lab",
+  "version": 42,
+  "release_channel": "V2_STABLE",
+  "action": "build_existing",
+  "requested_at": "2026-11-07",
+  "scope": "Fix missed actual WhatsApp outlet screenshot fields: kosong=0, 3prt=3, spelling variants Soup brenabone. All 18 quantities of PSK/PSP/PSBK 7 Nov pass source golden tests, ambiguous OCR remains ?, safeguards maintained. Preserve v41 file reader fixes and Owner pairing.",
+  "signing": "Use canonical V2 signing key and exact package com.nadmo.papasaucelab. Fail on mismatch; never uninstall."
+}
