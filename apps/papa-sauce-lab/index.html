@@ -2262,7 +2262,7 @@ window.PSLLocalDate = function(d){
     return {start,end,totalSales,totalOut,net:totalSales-totalOut,salesCount:sales.length,expenseCount:expenses.length,channels,production,stockOut,openingStock,closingStock,per};
   }
   function rows15(m){
-    const list=Object.entries(m.per).filter(([,v])=>v.production||v.out||v.closing).sort((a,b)=>a[0].localeCompare(b[0]));
+    const list=Object.entries(m.per).filter(([,v])=>v.production||v.out||v.closing).sort((a,b)=>{const ia=PRODUCTS.indexOf(a[0]),ib=PRODUCTS.indexOf(b[0]);return (ia<0?999:ia)-(ib<0?999:ib)||a[0].localeCompare(b[0])});
     if(!list.length)return '<div class="empty-state">Belum ada data stock.</div>';
     return `<div class="psl15-table-head"><span>Produk</span><b>Prod</b><b>Out</b><b>Sisa</b></div>`+list.map(([p,v])=>`<div class="psl15-product-row"><span>${esc15(p)}</span><b class="psl15-green">+${v.production}</b><b class="psl15-red">-${v.out}</b><b>${v.closing}</b></div>`).join('');
   }
@@ -2361,7 +2361,7 @@ window.PSLLocalDate = function(d){
   }
 
   function outletBox16(m,title='Distribusi Stock Out per Outlet'){
-    const rows=Object.entries(m.per).filter(([,v])=>v.PSK||v.PSP||v.PSBK).sort((a,b)=>a[0].localeCompare(b[0])).map(([p,v])=>`<div class="psl16-outlet-table"><span>${esc16(p)}</span><b>${v.PSK}</b><b>${v.PSP}</b><b>${v.PSBK}</b></div>`).join('')||'<div class="empty-state" style="padding:18px">Belum ada distribusi ke outlet pada periode ini.</div>';
+    const rows=Object.entries(m.per).filter(([,v])=>v.PSK||v.PSP||v.PSBK).sort((a,b)=>{const ia=PRODUCTS.indexOf(a[0]),ib=PRODUCTS.indexOf(b[0]);return (ia<0?999:ia)-(ib<0?999:ib)||a[0].localeCompare(b[0])}).map(([p,v])=>`<div class="psl16-outlet-table"><span>${esc16(p)}</span><b>${v.PSK}</b><b>${v.PSP}</b><b>${v.PSBK}</b></div>`).join('')||'<div class="empty-state" style="padding:18px">Belum ada distribusi ke outlet pada periode ini.</div>';
     const other=m.outlets.OTHER?`<div class="report-row"><span>Non-outlet / data lama</span><b>${m.outlets.OTHER}</b></div>`:'';
     return `<div class="psl16-outlet-box"><div class="psl16-outlet-title">${esc16(title)}</div><p style="font-size:11px;line-height:1.5;color:#72666a;margin:4px 0 12px">Jumlah stok yang dikirim LAB pada periode terpilih, bukan stok atau penjualan milik outlet. Akumulasi tidak dibawa ke bulan berikutnya.</p><div class="psl16-outlet-grid"><div class="psl16-outlet-kpi"><span>PSK</span><b>${m.outlets.PSK}</b></div><div class="psl16-outlet-kpi"><span>PSP</span><b>${m.outlets.PSP}</b></div><div class="psl16-outlet-kpi"><span>PSBK</span><b>${m.outlets.PSBK}</b></div></div>${other}<div class="psl16-outlet-table" style="font-size:9px;font-weight:900;text-transform:uppercase;color:#7b6e70"><span>Produk</span><b>PSK</b><b>PSP</b><b>PSBK</b></div>${rows}</div>`;
   }
