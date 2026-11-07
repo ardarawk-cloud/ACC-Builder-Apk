@@ -1,0 +1,10 @@
+{
+  "request_id": "psl-v41-outlet-ocr-webview-20261107",
+  "project_id": "papa-sauce-lab",
+  "version": 41,
+  "release_channel": "V2_STABLE",
+  "action": "build_existing",
+  "requested_at": "2026-11-07",
+  "scope": "Fix PSK, PSP, PSB photo OCR File could not be read Code=0 in Android WebView. Decode image to canvas/data URL, resize, reuse one OCR worker in serialized queue, contrast and sideways fallback, retry buttons and fail-closed missing values; retain all previous v40 features, stock data and Owner pairing.",
+  "signing": "Use canonical V2 signer com.nadmo.papasaucelab; fail on signing mismatch; do not uninstall old APK."
+}
