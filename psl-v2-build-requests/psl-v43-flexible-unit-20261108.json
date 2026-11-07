@@ -1,0 +1,10 @@
+{
+  "request_id": "psl-v43-flexible-unit-20261108",
+  "project_id": "papa-sauce-lab",
+  "version": 43,
+  "release_channel": "V2_STABLE",
+  "action": "build_existing",
+  "requested_at": "2026-11-08",
+  "scope": "Read outlet stock qty from WhatsApp screenshots regardless of staff unit suffix: 2pax, 3prt, 6ocx, 8 or arbitrary alphabetic suffix. Keep zero tokens, reject date/price/unrecognized item, do not mutate stock without Owner confirmation. Retain v42 fixes and Owner pairing.",
+  "signing": "Use canonical V2 signer, package com.nadmo.papasaucelab; fail build on mismatch."
+}
