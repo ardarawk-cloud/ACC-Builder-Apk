@@ -61,8 +61,9 @@ async function deviceRoutes(request,env,url){
  return json({error:'Not found'},404,cors());
 }
 
-const html=String.raw`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Papa Sauce | Laporan Owner</title><style>
-:root{font-family:system-ui,Segoe UI,Arial,sans-serif;color:#241a1e;background:#f9f6f4}*{box-sizing:border-box}body{margin:0}header{background:linear-gradient(110deg,#700b2b,#ae1745);padding:25px max(18px,calc((100% - 1150px)/2));color:#fff}header h1{margin:0;font-size:clamp(23px,3vw,34px)}header p{margin:5px 0;color:#ffe4e9}main{max-width:1150px;margin:auto;padding:22px 16px 60px}.bar{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}.tag{display:inline-block;padding:6px 12px;border-radius:20px;background:#ffe6ea;color:#802037;font-size:12px;font-weight:800}.notice{background:#fff8e8;border:1px solid #eed5a5;border-radius:12px;padding:12px 15px;font-size:13px;margin:16px 0}.hidden{display:none!important}.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.metric{border:1px solid #efdedf;background:#fff;border-radius:14px;padding:16px;box-shadow:0 6px 18px #41121b08}.metric b{display:block;color:#891532;font-size:clamp(18px,2.5vw,26px);margin-top:8px}.metric span{font-size:12px;color:#766a6d}.panel{background:#fff;border:1px solid #efe4e3;border-radius:16px;padding:17px;margin:16px 0;overflow:auto}h2{font-size:18px;margin:0 0 14px}h3{font-size:15px;margin:14px 0}input,select{border:1px solid #d8c5c8;border-radius:8px;background:#fff;padding:10px;font-size:14px}label{font-size:13px}table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}td,th{padding:10px 7px;border-bottom:1px solid #f0e8e8;text-align:right}th:first-child,td:first-child{text-align:left}th{background:#fff4f5;color:#7b203a}tbody tr:nth-child(even){background:#fdfaf9}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.controls label{display:flex;gap:6px;align-items:center}.small{font-size:12px;color:#756d6f}.warn{color:#a54c16;font-weight:700}footer{margin-top:25px;color:#7a6b70;font-size:12px}@media(max-width:700px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.panel{padding:12px}.metric{padding:12px}}
+const html=String.raw`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Papa Sauce Lab | Laporan Operasional</title><style>
+:root{font-family:system-ui,Segoe UI,Arial,sans-serif;color:#241a1e;background:#f9f6f4}*{box-sizing:border-box}body{margin:0}header{background:linear-gradient(110deg,#700b2b,#ae1745);padding:25px max(18px,calc((100% - 1150px)/2));color:#fff}header h1{margin:0;font-size:clamp(23px,3vw,34px)}header p{margin:5px 0;color:#ffe4e9}main{max-width:1150px;margin:auto;padding:22px 16px 60px}.bar{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}.tag{display:inline-block;padding:6px 12px;border-radius:20px;background:#ffe6ea;color:#802037;font-size:12px;font-weight:800}.notice{background:#fff8e8;border:1px solid #eed5a5;border-radius:12px;padding:12px 15px;font-size:13px;margin:16px 0}.hidden{display:none!important}.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.metric{border:1px solid #efdedf;background:#fff;border-radius:14px;padding:16px;box-shadow:0 6px 18px #41121b08}.metric b{display:block;color:#891532;font-size:clamp(18px,2.5vw,26px);margin-top:8px}.metric span{font-size:12px;color:#766a6d}.panel{background:#fff;border:1px solid #efe4e3;border-radius:16px;padding:17px;margin:16px 0;overflow:auto}h2{font-size:18px;margin:0 0 14px}h3{font-size:15px;margin:14px 0}input,select{border:1px solid #d8c5c8;border-radius:8px;background:#fff;padding:10px;font-size:14px}label{font-size:13px}table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}td,th{padding:10px 7px;border-bottom:1px solid #f0e8e8;text-align:right}th:first-child,td:first-child{text-align:left}th{background:#fff4f5;color:#7b203a}tbody tr:nth-child(even){background:#fdfaf9}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.controls label{display:flex;gap:6px;align-items:center}.small{font-size:12px;color:#756d6f}.warn{color:#a54c16;font-weight:700}footer{margin-top:25px;color:#7a6b70;font-size:12px}.compact-list{display:none}.compact-row{background:#fff;border:1px solid #f0e6e7;border-radius:11px;padding:11px 12px;min-width:0}.compact-title{font-size:14px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}.compact-details{font-size:12px;color:#635b5f;margin-top:6px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:700px){main{padding:12px 10px 36px}header{padding:20px 16px}header h1{font-size:23px}header p{font-size:13px}.kpis{grid-template-columns:minmax(0,1fr);gap:7px;margin:12px 0}.panel{padding:13px 11px;margin:11px 0;overflow:hidden;border-radius:13px}.metric{padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}.metric b{font-size:18px;margin:0;text-align:right}.metric span{font-size:13px}.controls{display:flex;flex-direction:column;align-items:stretch}.controls label{display:flex;align-items:stretch;flex-direction:column;gap:4px}.controls select{width:100%;min-height:44px}.compact-list{display:grid;grid-template-columns:minmax(0,1fr);gap:7px}.panel table{display:none}.bar{font-size:12px}h2{font-size:18px;margin-bottom:10px}}
 </style></head><body><header><h1>PAPA SAUCE LAB</h1><p>Dashboard Laporan Operasional</p></header><main><div class="bar"><span id="updated" class="small">Menunggu data...</span></div>
 <div id="error" class="notice">Membuka laporan tersimpan...</div><div id="app" class="hidden">
 <div class="panel controls"><label>Bulan <select id="month"></select></label><label>Produk Kartu Stok <select id="product"></select></label><span class="small" id="scope"></span></div><div id="audit" class="notice hidden"></div>
@@ -75,7 +76,45 @@ const html=String.raw`<!doctype html><html lang="id"><head><meta charset="utf-8"
 <script>
 const el=id=>document.getElementById(id), fmt=n=>Number(n||0).toLocaleString('id-ID'), money=n=>'Rp '+fmt(n);
 const cell=(tr,v)=>{let td=document.createElement('td');td.textContent=String(v??'–');tr.append(td)};
-function table(target,head,rows){target.replaceChildren();let t=document.createElement('table'),h=t.createTHead().insertRow();head.forEach(x=>{let th=document.createElement('th');th.textContent=x;h.append(th)});let b=t.createTBody();rows.forEach(values=>{let tr=b.insertRow();values.forEach(v=>cell(tr,v))});target.append(t)}
+const MENU_ORDER=['Ayam Woku','Cumi','Tongkol','Babi Rica','Babi Kecap','Sup Brenebone'];
+const OUTLET_ORDER=['PSK','PSP','PSB'];
+function stockOrder(a,b){const i=MENU_ORDER.indexOf(a),j=MENU_ORDER.indexOf(b);return (i<0?999:i)-(j<0?999:j)||String(a).localeCompare(String(b))}
+function table(target,head,rows,compact){
+ target.replaceChildren();
+ const t=document.createElement('table'),h=t.createTHead().insertRow();
+ head.forEach(x=>{const th=document.createElement('th');th.textContent=x;h.append(th)});
+ const body=t.createTBody();
+ rows.forEach(values=>{const tr=body.insertRow();values.forEach(v=>cell(tr,v))});
+ target.append(t);
+ const list=document.createElement('div');list.className='compact-list';
+ const items=compact||rows.map(values=>({title:values[0],details:head.slice(1).map((name,i)=>name+': '+String(values[i+1]??'–'))}));
+ items.forEach(item=>{
+  const box=document.createElement('div');box.className='compact-row';
+  const title=document.createElement('div');title.className='compact-title';title.textContent=String(item.title??'');
+  const details=document.createElement('div');details.className='compact-details';
+  details.textContent=Array.isArray(item.details)?item.details.join(' · '):String(item.details||'');
+  box.append(title,details);list.append(box);
+ });
+ if(!items.length){const empty=document.createElement('div');empty.className='small';empty.textContent='Belum ada data pada periode ini.';list.append(empty)}
+ target.append(list);
+}
+function outletCards(rows){
+ const grouped=new Map();
+ for(const x of rows){
+  const product=String(x.product||'Tanpa Produk');
+  const outlet=String(x.outlet||'').toUpperCase()==='PSBK'?'PSB':String(x.outlet||'').toUpperCase();
+  if(!grouped.has(product))grouped.set(product,new Map());
+  const counts=grouped.get(product);
+  counts.set(outlet,(counts.get(outlet)||0)+Number(x.qty||0));
+ }
+ return [...grouped.entries()].sort((a,b)=>stockOrder(a[0],b[0])).map(([name,counts])=>{
+  const extras=[...counts.keys()].filter(k=>!OUTLET_ORDER.includes(k)).sort();
+  const details=[...OUTLET_ORDER,...extras].map(k=>k+': '+fmt(counts.get(k)||0)+' pax');
+  const total=[...counts.values()].reduce((a,n)=>a+n,0);
+  details.push('Total: '+fmt(total)+' pax');
+  return {title:name,details};
+ });
+}
 let report=null;
 function render(){
  const month=el('month').value,p=el('product').value,m=report.months[month];if(!m)return;
@@ -83,9 +122,9 @@ function render(){
  el('audit').classList.toggle('hidden',!negative);if(negative)el('audit').textContent='PERLU AUDIT: terdapat saldo stok negatif atau catatan belum cocok. Jangan anggap saldo sebagai stok fisik terverifikasi.';
  const kpis=[['Produksi',m.production+' pax'],['Stock Out',m.stockOut+' pax'],['Sisa LAB',fmt(st.reduce((n,v)=>n+v.closing,0))+' pax'],['Penjualan LAB',money(m.sales)],['Pengeluaran LAB',money(m.expenses)],['Tambah Dana HB',money(m.hbAdd)],['Jumlah Distribusi',m.distributed+' pax'],['Status','Snapshot Laporan']];
  el('kpis').replaceChildren();for(const [title,value] of kpis){let a=document.createElement('div');a.className='metric';let t=document.createElement('span'),b=document.createElement('b');t.textContent=title;b.textContent=value;a.append(t,b);el('kpis').append(a)}
- table(el('stock'),['Produk','Awal','Masuk','Keluar','Sisa'],st.map(x=>[x.product,fmt(x.opening),fmt(x.incoming),fmt(x.outgoing),fmt(x.closing)]));
+ table(el('stock'),['Produk','Awal','Masuk','Keluar','Sisa'],st.slice().sort((a,b)=>stockOrder(a.product,b.product)).map(x=>[x.product,fmt(x.opening),fmt(x.incoming),fmt(x.outgoing),fmt(x.closing)]));
  const c=m.products[p];table(el('card'),['Tgl.','Masuk','Keluar','Sisa'],(c?.rows||[]).map(x=>[x.day,x.incoming||'–',x.outgoing||'–',fmt(x.remaining)]));
- table(el('outlets'),['Outlet','Produk','Pax'],(m.outlets||[]).map(x=>[x.outlet,x.product,fmt(x.qty)]));
+ table(el('outlets'),['Outlet','Produk','Pax'],(m.outlets||[]).map(x=>[x.outlet,x.product,fmt(x.qty)]),outletCards(m.outlets||[]));
  table(el('finance'),['Komponen','Nominal'],[['Penjualan LAB',money(m.sales)],['Pengeluaran LAB',money(m.expenses)],['Tambah HB',money(m.hbAdd)],...Object.entries(m.categories||{}).map(([k,v])=>['Biaya: '+k,money(v)])]);
  table(el('daily'),['Tanggal','Produksi','Keluar','Sales LAB','Expenses'],(m.daily||[]).map(x=>[x.day,x.production,x.stockOut,money(x.sales),money(x.expenses)]));
 }
@@ -98,7 +137,7 @@ function render(){
  report=await r.json();if(!report.months||!Object.keys(report.months).length)throw Error('Laporan belum tersedia.');
  const months=Object.keys(report.months).sort().reverse();
  for(const m of months){let op=document.createElement('option');op.value=m;op.textContent=m;el('month').append(op)}
- function products(){el('product').replaceChildren();for(const p of Object.keys(report.months[el('month').value].products||{})){const op=document.createElement('option');op.value=p;op.textContent=p;el('product').append(op)}}
+ function products(){el('product').replaceChildren();for(const p of Object.keys(report.months[el('month').value].products||{}).sort(stockOrder)){const op=document.createElement('option');op.value=p;op.textContent=p;el('product').append(op)}}
  el('month').addEventListener('change',()=>{products();render()});el('product').addEventListener('change',render);
  products();el('updated').textContent='Terakhir dikirim: '+new Date(report.publishedAt).toLocaleString('id-ID',{timeZone:'Asia/Makassar'});
  el('scope').textContent='Data hingga '+(report.asOf||'?');el('app').classList.remove('hidden');el('error').classList.add('hidden');render();
