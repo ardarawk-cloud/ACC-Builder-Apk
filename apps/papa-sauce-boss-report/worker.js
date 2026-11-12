@@ -76,6 +76,18 @@ const html=String.raw`<!doctype html><html lang="id"><head><meta charset="utf-8"
 .outlet-matrix tfoot td{font-weight:800;color:#821e39;border-top:2px solid #e5d7d9;background:#fff6f7}
 @media(max-width:380px){.outlet-matrix table{font-size:12px}.outlet-matrix .outlet-total strong{font-size:19px}.outlet-matrix th,.outlet-matrix td{padding:9px 4px}}
 @media(max-width:700px){main{padding:12px 10px 36px}header{padding:20px 16px}header h1{font-size:23px}header p{font-size:13px}.kpis{grid-template-columns:minmax(0,1fr);gap:7px;margin:12px 0}.panel{padding:13px 11px;margin:11px 0;overflow:hidden;border-radius:13px}.metric{padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}.metric b{font-size:18px;margin:0;text-align:right}.metric span{font-size:13px}.controls{display:flex;flex-direction:column;align-items:stretch}.controls label{display:flex;align-items:stretch;flex-direction:column;gap:4px}.controls select{width:100%;min-height:44px}.compact-list{display:grid;grid-template-columns:minmax(0,1fr);gap:7px}.panel table{display:none}.bar{font-size:12px}h2{font-size:18px;margin-bottom:10px}}
+
+/* PSL: stock summary and monthly stock card remain tables, including on phones. */
+@media(max-width:700px){
+ #stock .compact-list,#card .compact-list{display:none!important}
+ #stock table,#card table{display:table!important;width:100%;table-layout:fixed;white-space:normal;font-size:12px}
+ #stock th,#stock td,#card th,#card td{padding:10px 5px;text-align:right;overflow-wrap:anywhere}
+ #stock th:first-child,#stock td:first-child,#card th:first-child,#card td:first-child{text-align:left}
+ #stock th:first-child,#stock td:first-child{width:38%}
+ #stock th:not(:first-child),#stock td:not(:first-child){width:15.5%}
+ #card th:first-child,#card td:first-child{width:18%}
+ #card th:not(:first-child),#card td:not(:first-child){width:27.33%}
+}
 </style></head><body><header><h1>PAPA SAUCE LAB</h1><p>Dashboard Laporan Operasional</p></header><main><div class="bar"><span id="updated" class="small">Menunggu data...</span></div>
 <div id="error" class="notice">Membuka laporan tersimpan...</div><div id="app" class="hidden">
 <div class="panel controls"><label>Bulan <select id="month"></select></label><label>Produk Kartu Stok <select id="product"></select></label><span class="small" id="scope"></span></div><div id="audit" class="notice hidden"></div>
