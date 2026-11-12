@@ -63,6 +63,18 @@ async function deviceRoutes(request,env,url){
 
 const html=String.raw`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Papa Sauce Lab | Laporan Operasional</title><style>
 :root{font-family:system-ui,Segoe UI,Arial,sans-serif;color:#241a1e;background:#f9f6f4}*{box-sizing:border-box}body{margin:0}header{background:linear-gradient(110deg,#700b2b,#ae1745);padding:25px max(18px,calc((100% - 1150px)/2));color:#fff}header h1{margin:0;font-size:clamp(23px,3vw,34px)}header p{margin:5px 0;color:#ffe4e9}main{max-width:1150px;margin:auto;padding:22px 16px 60px}.bar{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}.tag{display:inline-block;padding:6px 12px;border-radius:20px;background:#ffe6ea;color:#802037;font-size:12px;font-weight:800}.notice{background:#fff8e8;border:1px solid #eed5a5;border-radius:12px;padding:12px 15px;font-size:13px;margin:16px 0}.hidden{display:none!important}.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.metric{border:1px solid #efdedf;background:#fff;border-radius:14px;padding:16px;box-shadow:0 6px 18px #41121b08}.metric b{display:block;color:#891532;font-size:clamp(18px,2.5vw,26px);margin-top:8px}.metric span{font-size:12px;color:#766a6d}.panel{background:#fff;border:1px solid #efe4e3;border-radius:16px;padding:17px;margin:16px 0;overflow:auto}h2{font-size:18px;margin:0 0 14px}h3{font-size:15px;margin:14px 0}input,select{border:1px solid #d8c5c8;border-radius:8px;background:#fff;padding:10px;font-size:14px}label{font-size:13px}table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}td,th{padding:10px 7px;border-bottom:1px solid #f0e8e8;text-align:right}th:first-child,td:first-child{text-align:left}th{background:#fff4f5;color:#7b203a}tbody tr:nth-child(even){background:#fdfaf9}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.controls label{display:flex;gap:6px;align-items:center}.small{font-size:12px;color:#756d6f}.warn{color:#a54c16;font-weight:700}footer{margin-top:25px;color:#7a6b70;font-size:12px}.compact-list{display:none}.compact-row{background:#fff;border:1px solid #f0e6e7;border-radius:11px;padding:11px 12px;min-width:0}.compact-title{font-size:14px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}.compact-details{font-size:12px;color:#635b5f;margin-top:6px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
+/* PSL dashboard v2: one compact outlet matrix, like the Android LAB report. */
+.outlet-matrix .outlet-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 14px}
+.outlet-matrix .outlet-total{border:1px solid #e7dcdc;border-radius:14px;text-align:center;padding:11px 4px;background:#fffdfa;min-width:0}
+.outlet-matrix .outlet-total span{display:block;color:#84746d;font-size:11px;font-weight:800;letter-spacing:.04em}
+.outlet-matrix .outlet-total strong{display:block;color:#841632;font-size:22px;margin-top:4px}
+.outlet-matrix .outlet-help{font-size:12px;color:#76696b;line-height:1.45;margin:0 0 12px}
+.outlet-matrix table{display:table!important;width:100%;table-layout:fixed;white-space:normal;font-size:13px}
+.outlet-matrix th,.outlet-matrix td{padding:10px 5px}
+.outlet-matrix th:first-child,.outlet-matrix td:first-child{width:43%;text-align:left;overflow-wrap:anywhere}
+.outlet-matrix th:not(:first-child),.outlet-matrix td:not(:first-child){width:19%;text-align:right}
+.outlet-matrix tfoot td{font-weight:800;color:#821e39;border-top:2px solid #e5d7d9;background:#fff6f7}
+@media(max-width:380px){.outlet-matrix table{font-size:12px}.outlet-matrix .outlet-total strong{font-size:19px}.outlet-matrix th,.outlet-matrix td{padding:9px 4px}}
 @media(max-width:700px){main{padding:12px 10px 36px}header{padding:20px 16px}header h1{font-size:23px}header p{font-size:13px}.kpis{grid-template-columns:minmax(0,1fr);gap:7px;margin:12px 0}.panel{padding:13px 11px;margin:11px 0;overflow:hidden;border-radius:13px}.metric{padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}.metric b{font-size:18px;margin:0;text-align:right}.metric span{font-size:13px}.controls{display:flex;flex-direction:column;align-items:stretch}.controls label{display:flex;align-items:stretch;flex-direction:column;gap:4px}.controls select{width:100%;min-height:44px}.compact-list{display:grid;grid-template-columns:minmax(0,1fr);gap:7px}.panel table{display:none}.bar{font-size:12px}h2{font-size:18px;margin-bottom:10px}}
 </style></head><body><header><h1>PAPA SAUCE LAB</h1><p>Dashboard Laporan Operasional</p></header><main><div class="bar"><span id="updated" class="small">Menunggu data...</span></div>
 <div id="error" class="notice">Membuka laporan tersimpan...</div><div id="app" class="hidden">
@@ -98,22 +110,53 @@ function table(target,head,rows,compact){
  if(!items.length){const empty=document.createElement('div');empty.className='small';empty.textContent='Belum ada data pada periode ini.';list.append(empty)}
  target.append(list);
 }
-function outletCards(rows){
- const grouped=new Map();
- for(const x of rows){
-  const product=String(x.product||'Tanpa Produk');
-  const outlet=String(x.outlet||'').toUpperCase()==='PSBK'?'PSB':String(x.outlet||'').toUpperCase();
-  if(!grouped.has(product))grouped.set(product,new Map());
-  const counts=grouped.get(product);
-  counts.set(outlet,(counts.get(outlet)||0)+Number(x.qty||0));
+function outletMatrix(target,rows){
+ // Display-only grouping. Do not alter persisted report, totals, or stock movements.
+ target.replaceChildren();
+ const matrix=document.createElement('div');matrix.className='outlet-matrix';
+ const grouped=new Map(), totals={PSK:0,PSP:0,PSB:0}, unknown=[];
+ for(const entry of rows||[]){
+  const name=String(entry.product||'Tanpa Produk');
+  const original=String(entry.outlet||'').toUpperCase();
+  const outlet=original==='PSBK'?'PSB':original;
+  const qty=Number(entry.qty);
+  if(!Number.isFinite(qty))continue;
+  if(!OUTLET_ORDER.includes(outlet)){unknown.push({outlet:original,product:name,qty});continue}
+  if(!grouped.has(name))grouped.set(name,{PSK:0,PSP:0,PSB:0});
+  grouped.get(name)[outlet]+=qty;totals[outlet]+=qty;
  }
- return [...grouped.entries()].sort((a,b)=>stockOrder(a[0],b[0])).map(([name,counts])=>{
-  const extras=[...counts.keys()].filter(k=>!OUTLET_ORDER.includes(k)).sort();
-  const details=[...OUTLET_ORDER,...extras].map(k=>k+': '+fmt(counts.get(k)||0)+' pax');
-  const total=[...counts.values()].reduce((a,n)=>a+n,0);
-  details.push('Total: '+fmt(total)+' pax');
-  return {title:name,details};
+ const summary=document.createElement('div');summary.className='outlet-totals';
+ OUTLET_ORDER.forEach(outlet=>{
+  const box=document.createElement('div');box.className='outlet-total';
+  const name=document.createElement('span');name.textContent=outlet==='PSB'?'PSBK':outlet;
+  const num=document.createElement('strong');num.textContent=fmt(totals[outlet]);
+  box.append(name,num);summary.append(box);
  });
+ const help=document.createElement('p');help.className='outlet-help';
+ help.textContent='Jumlah pengiriman LAB ke setiap outlet pada bulan yang dipilih. Bukan stok milik outlet.';
+ matrix.append(help,summary);
+ const t=document.createElement('table');t.setAttribute('aria-label','Distribusi LAB per produk dan outlet');
+ const h=t.createTHead().insertRow();
+ ['PRODUK','PSK','PSP','PSBK'].forEach(text=>{
+  const th=document.createElement('th');th.textContent=text;h.append(th);
+ });
+ const body=t.createTBody();
+ const items=[...grouped.entries()].sort((a,b)=>stockOrder(a[0],b[0]));
+ for(const [name,counts] of items){
+  const tr=body.insertRow();
+  [name,...OUTLET_ORDER.map(o=>fmt(counts[o]))].forEach(value=>cell(tr,value));
+ }
+ const foot=t.createTFoot().insertRow();
+ ['TOTAL',...OUTLET_ORDER.map(o=>fmt(totals[o]))].forEach(value=>cell(foot,value));
+ matrix.append(t);
+ if(!items.length){const p=document.createElement('p');p.className='small';p.textContent='Belum ada pengiriman LAB ke outlet bulan ini.';matrix.append(p)}
+ if(unknown.length){
+  const additional=unknown.reduce((sum,x)=>sum+x.qty,0);
+  const note=document.createElement('p');note.className='outlet-help';
+  note.textContent='Stock Out tanpa outlet teridentifikasi: '+fmt(additional)+' pax. Dihitung terpisah, tidak dimasukkan ke PSK/PSP/PSBK.';
+  matrix.append(note);
+ }
+ target.append(matrix);
 }
 let report=null;
 function render(){
@@ -124,7 +167,7 @@ function render(){
  el('kpis').replaceChildren();for(const [title,value] of kpis){let a=document.createElement('div');a.className='metric';let t=document.createElement('span'),b=document.createElement('b');t.textContent=title;b.textContent=value;a.append(t,b);el('kpis').append(a)}
  table(el('stock'),['Produk','Awal','Masuk','Keluar','Sisa'],st.slice().sort((a,b)=>stockOrder(a.product,b.product)).map(x=>[x.product,fmt(x.opening),fmt(x.incoming),fmt(x.outgoing),fmt(x.closing)]));
  const c=m.products[p];table(el('card'),['Tgl.','Masuk','Keluar','Sisa'],(c?.rows||[]).map(x=>[x.day,x.incoming||'–',x.outgoing||'–',fmt(x.remaining)]));
- table(el('outlets'),['Outlet','Produk','Pax'],(m.outlets||[]).map(x=>[x.outlet,x.product,fmt(x.qty)]),outletCards(m.outlets||[]));
+ outletMatrix(el('outlets'),m.outlets||[]);
  table(el('finance'),['Komponen','Nominal'],[['Penjualan LAB',money(m.sales)],['Pengeluaran LAB',money(m.expenses)],['Tambah HB',money(m.hbAdd)],...Object.entries(m.categories||{}).map(([k,v])=>['Biaya: '+k,money(v)])]);
  table(el('daily'),['Tanggal','Produksi','Keluar','Sales LAB','Expenses'],(m.daily||[]).map(x=>[x.day,x.production,x.stockOut,money(x.sales),money(x.expenses)]));
 }
