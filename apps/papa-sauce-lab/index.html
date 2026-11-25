@@ -1681,6 +1681,20 @@ window.PSLLocalDate = function(d){
 
   async function refreshV5(){ syncDatesV5();await UI.updateDashboard();await UI.renderTodayTransactions();await UI.renderStock();await UI.renderHistory(); }
 
+  // PSL v45: after IndexedDB and the v27 selected date have been restored,
+  // refresh all current dashboard components against the selected business date.
+  // Reuses the same safe read-only refresh as changing the date by hand.
+  window.PSLV5SyncAndRefresh=async function(){
+    if(!db)return false;
+    const dateInput=document.getElementById('operationalDateV5');
+    if(!dateInput)return false;
+    const chosen=String(dateInput.value||TODAY());
+    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(chosen)||chosen>TODAY())return false;
+    operationalDateV5=chosen;
+    await refreshV5();
+    return true;
+  };
+
   // Run after old app has opened its database.
   const bootV5=setInterval(async()=>{ if(db){clearInterval(bootV5);injectUIV5();syncDatesV5();await refreshV5();console.log('PSL v5 backdate + HB ledger patch active');}},50);
 })();
@@ -3370,7 +3384,7 @@ window.PSLLocalDate = function(d){
     tries++;
     if(db&&document.getElementById('operationalDateV5')){
       clearInterval(timer);
-      await restore27();
+      try{await restore27();}finally{if(window.PSLDateFix27)window.PSLDateFix27.restored=true;}
       await injectFix27();
     }else if(tries>=60)clearInterval(timer);
   },100);
@@ -4653,5 +4667,58 @@ let n=0;const timer=setInterval(()=>{if(typeof db!=='undefined'&&db&&document.ge
 })();
 </script>
 
+
+<script id="PSL_V45_STARTUP_DASHBOARD_REFRESH">
+(function(){
+ 'use strict';
+ // The dashboard is initialized by several legacy modules at different times.
+ // On a cold launch, v27 may restore a selected business date *after* earlier
+ // cards render. This queues one final complete read-only refresh instead of
+ // asking the Owner to move the date backward and forward.
+ let running=false,lastRun=0,bootDone=false,retries=0;
+ async function hydrate(reason,force){
+   if(running||!window.PSLV5SyncAndRefresh||!document.getElementById('operationalDateV5'))return false;
+   if(typeof db==='undefined'||!db)return false;
+   if(!force&&Date.now()-lastRun<4000)return false;
+   // Avoid changing dates during active typing in an input or textarea.
+   const active=document.activeElement;
+   if(!force&&active&&active.matches?.('input,textarea,select'))return false;
+   running=true;lastRun=Date.now();
+   try{
+     const done=await window.PSLV5SyncAndRefresh();
+     if(done)console.info('PSL v45 dashboard restored:',reason,document.getElementById('operationalDateV5')?.value);
+     return !!done;
+   }catch(e){
+     console.error('PSL v45 dashboard refresh error',reason,e);
+     return false;
+   }finally{running=false}
+ }
+ const timer=setInterval(()=>{
+   if(bootDone){clearInterval(timer);return}
+   retries++;
+   const ready=typeof db!=='undefined'&&!!db&&
+     !!document.getElementById('operationalDateV5')&&
+     typeof window.PSLV5SyncAndRefresh==='function'&&
+     (window.PSLDateFix27?.restored===true||retries>35);
+   if(ready){
+     bootDone=true;clearInterval(timer);
+     // Let other module installations settle before the final hydrated render.
+     setTimeout(()=>hydrate('startup',true),200);
+   }else if(retries>=160){
+     clearInterval(timer);
+     console.warn('PSL v45: database/date controls not ready');
+   }
+ },100);
+ // Android WebView can resume without reloading the page. Re-read persisted
+ // records on return; never change the selected date or write transactions.
+ document.addEventListener('visibilitychange',()=>{
+   if(document.visibilityState==='visible'&&bootDone)
+     setTimeout(()=>hydrate('resume',false),180);
+ });
+ window.addEventListener('pageshow',e=>{
+   if(bootDone&&e.persisted)setTimeout(()=>hydrate('pageshow',false),180);
+ });
+})();
+</script>
 </body>
 </html>
