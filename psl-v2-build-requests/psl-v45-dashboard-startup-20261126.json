@@ -1,0 +1,10 @@
+{
+  "request_id": "psl-v45-dashboard-startup-20261126",
+  "project_id": "papa-sauce-lab",
+  "version": 45,
+  "release_channel": "V2_STABLE",
+  "action": "build_existing",
+  "requested_at": "2026-11-26",
+  "scope": "Fix dashboard numbers showing zero at APK startup until manually switching dates. After IndexedDB loads and v27 restores selected business date, fully hydrate cards and financial/stock views. Refresh read-only values when Android WebView resumes. Preserve all local data, current date selection, reporting logic and Owner pairing.",
+  "signing": "Use canonical V2 signing key; package com.nadmo.papasaucelab; never uninstall or change appId."
+}
