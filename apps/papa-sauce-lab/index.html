@@ -2944,7 +2944,7 @@ window.PSLLocalDate = function(d){
   function note25(line){
     return String(line||'').replace(/^[\d\s.)-]{0,5}(?=[A-Za-z])/,'').replace(/[-:.,\s]+$/,'').trim();
   }
-  const meta25=/^(?:tuan|toko|not[ae]|jumlah|harga|nama\s*(?:barang)?|total|subtotal|grand\s*total|kembali|bayar|tunai|diskon|tanggal|tgl|format|tanda\s*terima|no\.?)(?:\s|:|$)/i;
+  const meta25=/^(?:tuan|toko|not[ae]|jumlah|harga|nama\s*(?:barang)?|total|subtotal|grand\s*total|kembali|tunai|diskon|tanggal|tgl|format|tanda\s*terima|no\.?)(?:\s|:|$)/i;
   function parse25(text){
     const out=[],names=[],prices=[],warnings=[];
     let statedTotal=null;
@@ -2955,6 +2955,7 @@ window.PSLLocalDate = function(d){
       const ending=x.match(/(?:^|[\s:=])(?:Rp\.?\s*)?(\d{1,3}(?:[., ]\d{3})+|\d{4,9}|\d{1,3}\s*[kK])(?:\s*(?:,-|\/-))?\s*$/i);
       if(totalLine){if(ending){const a=amount25(ending[1]);if(a)statedTotal=a}return}
       if(meta25.test(x)||/^\s*(?:0?[1-9]|[12]\d|3[01])[\/-](?:0?[1-9]|1[0-2])[\/-]\d{2,4}/.test(x))return;
+      if(/^bayar\s*(?:(?:tunai|cash)\s*)?(?:rp\.?\s*)?[\d.,\s]+$/i.test(x))return;
       if(ending){
         const value=amount25(ending[1]);
         const rawNote=note25(x.slice(0,ending.index));
@@ -3015,7 +3016,7 @@ window.PSLLocalDate = function(d){
   }
   function breakdownHtml25(){
     const summary=breakdown25();
-    const list=CATS25.filter(c=>Number(summary.categories[c]||0)>0).map(c=>
+    const list=['bahan baku','operasional',...CATS25.filter(c=>!['bahan baku','operasional'].includes(c)&&Number(summary.categories[c]||0)>0)].map(c=>
       '<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0"><span>'+LABELS25[c]+'</span><b>'+rupiah25(summary.categories[c])+'</b></div>'
     ).join('');
     return '<div style="border:1px solid #e6d8d8;background:#fff9f9;border-radius:12px;padding:11px;margin:10px 0">'+
