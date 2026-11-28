@@ -90,9 +90,9 @@ const html=String.raw`<!doctype html><html lang="id"><head><meta charset="utf-8"
 }
 </style></head><body><header><h1>PAPA SAUCE LAB</h1><p>Dashboard Laporan Operasional</p></header><main><div class="bar"><span id="updated" class="small">Menunggu data...</span></div>
 <div id="error" class="notice">Membuka laporan tersimpan...</div><div id="app" class="hidden">
-<div class="panel controls"><label>Bulan <select id="month"></select></label><label>Produk Kartu Stok <select id="product"></select></label><span class="small" id="scope"></span></div><div id="audit" class="notice hidden"></div>
+<div class="panel controls"><label>Bulan <select id="month"></select></label><label>Produk Kartu Stok <select id="product"></select></label><span class="small" id="scope"></span></div>
+<div class="panel"><h2>Kartu Stok Bulanan</h2><p class="small">Tanggal · Produksi Masuk · Keluar · Sisa. Dihitung dari riwayat yang ada di APK.</p><div id="card"></div></div><div id="audit" class="notice hidden"></div>
 <div class="kpis" id="kpis"></div><div class="panel"><h2>Stok Produk LAB</h2><div id="stock"></div></div>
-<div class="panel"><h2>Kartu Stok Bulanan</h2><p class="small">Tanggal · Produksi Masuk · Keluar · Sisa. Dihitung dari riwayat yang ada di APK.</p><div id="card"></div></div>
 <div class="panel"><h2>Distribusi ke Outlet</h2><div id="outlets"></div></div>
 <div class="panel"><h2>Ringkasan Keuangan LAB</h2><div id="finance"></div></div>
 <div class="panel"><h2>Aktivitas Harian</h2><div id="daily"></div></div>
