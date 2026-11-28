@@ -1,0 +1,10 @@
+{
+  "request_id": "psl-v46-expense-category-20261128",
+  "project_id": "papa-sauce-lab",
+  "version": 46,
+  "release_channel": "V2_STABLE",
+  "action": "build_existing",
+  "requested_at": "2026-11-28",
+  "scope": "Expense OCR Bahan Baku vs Operasional accuracy: suggest only recognized item categories; unknown requires manual selection; show category subtotals and explicit confirmation; preserve original OCR photo review, original transactions, and synced boss report schema.",
+  "signing": "Canonical V2 com.nadmo.papasaucelab signing identity only; preserve device-local data and Owner pairing; do not uninstall."
+}
