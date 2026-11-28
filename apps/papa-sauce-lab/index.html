@@ -2919,15 +2919,20 @@ window.PSLLocalDate = function(d){
     for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}
     return (h>>>0).toString(16);
   }
+  const NEEDS_CATEGORY25='__PILIH_KATEGORI__';
+  const LABELS25={'bahan baku':'Bahan Baku','operasional':'Operasional','packaging':'Packaging','transport':'Transport','kebersihan':'Kebersihan','peralatan':'Peralatan','lainnya':'Lainnya'};
   function autoCat25(text){
-    const t=String(text||'').toLowerCase();
-    if(/parkir|bensin|transport|ongkir|kurir/.test(t))return 'transport';
-    if(/plastik|box|cup|botol|kemasan|packaging|stiker|label/.test(t))return 'packaging';
-    if(/sabun|pel|sapu|tisu|kebersihan/.test(t))return 'kebersihan';
-    if(/pisau|wajan|panci|alat|blender|kompor/.test(t))return 'peralatan';
-    if(/listrik|gas|pulsa|admin|operasional/.test(t))return 'operasional';
-    return 'bahan baku';
+    // Unknown items must be assigned by Owner; never auto-book them as raw materials.
+    const t=String(text||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9. ]/g,' ').replace(/\s+/g,' ').trim();
+    if(/\b(parkir|bensin|solar|bbm|transport|ongkir|kurir|ojek|taksi|biaya kirim)\b/.test(t))return 'transport';
+    if(/\b(plastik|kresek|kemasan|packaging|bungkus|stiker|label|cup|styrofoam|kotak|box|paperbag|kantong plastik)\b/.test(t))return 'packaging';
+    if(/\b(sabun|pel|sapu|tisu|tissue|deterjen|kebersihan|pembersih|disinfektan|spons cuci)\b/.test(t))return 'kebersihan';
+    if(/\b(pisau|wajan|panci|blender|kompor|gunting|penggorengan|alat masak|talenan)\b/.test(t))return 'peralatan';
+    if(/\b(listrik|gas|lpg|elpiji|pulsa|wifi|internet|token|sewa|gaji|upah|servis|service|maintenance|administrasi|biaya admin|operasional|air galon)\b/.test(t))return 'operasional';
+    if(/\b(bawang|b\. merah|b\. putih|cabe|cabai|tomat|sereh|serai|bimoli|minyak goreng|masako|ajinomoto|kemiri|daun|kunyit|jahe|laos|lengkuas|kemangi|gula|garam|beras|telur|ayam|babi|ikan|tongkol|cumi|tepung|kecap|saus|saos|bumbu|asam|ketumbar|lada|merica|royco|penyedap|santan|mie|sayur|kacang|seledri|jeruk|kentang|wortel|terasi|kecambah|tahu|tempe|jamur|sawi|kol|sayuran|mentega|margarin)\b/.test(t))return 'bahan baku';
+    return NEEDS_CATEGORY25;
   }
+
   function amount25(token){
     let s=String(token||'').trim().replace(/^\s*Rp\.?\s*/i,'').replace(/\s*(?:,-|\/-)\s*$/,'');
     if(/^\d{1,3}\s*[kK]$/.test(s))return Number(s.replace(/[^\d]/g,''))*1000;
@@ -2955,7 +2960,7 @@ window.PSLLocalDate = function(d){
         const rawNote=note25(x.slice(0,ending.index));
         if(!value)return;
         if(rawNote&&/[a-z]{2}/i.test(rawNote)&&!meta25.test(rawNote)){
-          out.push({note:rawNote,amount:value,category:autoCat25(rawNote),use:true,confidence:'row'});
+          out.push({note:rawNote,amount:value,category:autoCat25(rawNote),use:true,confidence:'row',categoryEdited:false});
           return;
         }
         if(!rawNote)prices.push(value);
@@ -2966,7 +2971,7 @@ window.PSLLocalDate = function(d){
     if(!out.length&&names.length>=2&&names.length===prices.length&&names.length<=50){
       warnings.push('OCR membaca nama dan angka pada kolom terpisah. Periksa pasangannya satu per satu sebelum mencentang.');
       names.forEach(function(name,i){
-        out.push({note:name,amount:prices[i],category:autoCat25(name),use:false,confidence:'column'});
+        out.push({note:name,amount:prices[i],category:autoCat25(name),use:false,confidence:'column',categoryEdited:false});
       });
     }
     return {rows:out,declaredTotal:statedTotal,warnings};
@@ -2998,6 +3003,27 @@ window.PSLLocalDate = function(d){
   function total25(){
     return O25.rows.reduce(function(a,r){return a+(r.use?Number(r.amount||0):0);},0);
   }
+  function breakdown25(){
+    const categories={},bad=[];
+    for(const r of O25.rows){
+      if(!r.use)continue;
+      const n=Number(r.amount||0);
+      if(!Number.isFinite(n)||n<=0||!String(r.note||'').trim()||!CATS25.includes(r.category)){bad.push(r);continue}
+      categories[r.category]=(categories[r.category]||0)+n;
+    }
+    return {categories,bad};
+  }
+  function breakdownHtml25(){
+    const summary=breakdown25();
+    const list=CATS25.filter(c=>Number(summary.categories[c]||0)>0).map(c=>
+      '<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0"><span>'+LABELS25[c]+'</span><b>'+rupiah25(summary.categories[c])+'</b></div>'
+    ).join('');
+    return '<div style="border:1px solid #e6d8d8;background:#fff9f9;border-radius:12px;padding:11px;margin:10px 0">'+
+      '<b style="display:block;margin-bottom:5px">Pembagian Biaya per Kategori</b>'+
+      (list||'<p class="psl25-ocr-info">Belum ada item yang siap disimpan.</p>')+
+      (summary.bad.length?'<p style="font-size:12px;color:#a02030;margin-top:8px">⚠ '+summary.bad.length+' baris belum lengkap atau belum dipilih kategorinya.</p>':'')+
+      '</div>';
+  }
   function render25(){
     const title=document.getElementById('detailTitle'),body=document.getElementById('detailContent');
     if(!title||!body)return;
@@ -3010,7 +3036,7 @@ window.PSLLocalDate = function(d){
           '<input aria-label="Nominal rupiah" type="number" min="0" inputmode="numeric" class="psl25-ocr-amount" value="'+Number(r.amount||0)+'" oninput="PSLOCR25.setAmount('+i+',this.value)" placeholder="Nominal">'+
         '</div>'+
         '<select class="psl25-ocr-cat" onchange="PSLOCR25.setCat('+i+',this.value)">'+
-          CATS25.map(function(c){return '<option value="'+c+'" '+(c===r.category?'selected':'')+'>'+c+'</option>';}).join('')+
+          '<option value="'+NEEDS_CATEGORY25+'" '+(!CATS25.includes(r.category)?'selected':'')+'>⚠ Pilih Kategori Biaya</option>'+CATS25.map(function(c){return '<option value="'+c+'" '+(c===r.category?'selected':'')+'>'+LABELS25[c]+'</option>';}).join('')+
         '</select>'+
       '</div>';
     }).join('');
@@ -3023,6 +3049,7 @@ window.PSLLocalDate = function(d){
       help+
       '<div id="psl25OcrPreview">'+(rows||'<p class="psl25-ocr-info">Belum ada pasangan barang dan harga yang pasti. Tambahkan baris atau koreksi hasil bacaan di bawah.</p>')+'</div>'+
       '<button class="btn btn-secondary btn-block" style="margin-top:10px" onclick="PSLOCR25.addRow()">+ Tambah Barang Manual</button>'+
+      '<div id="psl25-category-summary">'+breakdownHtml25()+'</div>'+
       '<div class="psl25-ocr-total"><span>Total yang dipilih</span><b id="psl25OcrTotal">'+rupiah25(total25())+'</b></div>'+
       '<div id="psl25-compare">'+totalWarn+'</div>'+
       '<label class="psl25-ocr-info" style="display:block"><input type="checkbox" id="psl25-reviewed" onchange="PSLOCR25.setReviewed(this.checked)"> Saya sudah cocokkan nama barang, jumlah, dan total dengan foto nota.</label>'+
@@ -3037,6 +3064,7 @@ window.PSLLocalDate = function(d){
   }
   function updateTotal25(){
     const el=document.getElementById('psl25OcrTotal');if(el)el.textContent=rupiah25(total25());
+    const summary=document.getElementById('psl25-category-summary');if(summary)summary.innerHTML=breakdownHtml25();
     const compared=document.getElementById('psl25-compare');
     if(compared&&O25.declaredTotal!==null)compared.innerHTML=Math.abs(O25.declaredTotal-total25())>0?
       '<div class="psl25-ocr-info" style="color:#9b2739"><b>Perhatian:</b> Total nota '+rupiah25(O25.declaredTotal)+' berbeda dari jumlah dipilih '+rupiah25(total25())+'. Cocokkan dulu.</div>':'';
@@ -3164,7 +3192,7 @@ window.PSLLocalDate = function(d){
     setUse:function(i,v){if(O25.rows[i])O25.rows[i].use=!!v;O25.reviewed=false;const c=document.getElementById('psl25-reviewed');if(c)c.checked=false;updateTotal25();},
     setReviewed:function(v){O25.reviewed=!!v;},
     addRow:function(){
-      O25.rows.push({note:'',amount:0,category:'bahan baku',use:true,confidence:'manual'});
+      O25.rows.push({note:'',amount:0,category:NEEDS_CATEGORY25,use:true,confidence:'manual',categoryEdited:false});
       O25.reviewed=false;render25();
     },
     reprocess:function(){
@@ -3177,9 +3205,9 @@ window.PSLLocalDate = function(d){
       try{await runOCR25(O25.rotation===90?270:90)}
       catch(e){O25.warnings=['Baca ulang gagal: '+String(e?.message||e)+'. Coba perbaiki teks atau tambah barang manual.'];render25()}
     },
-    setNote:function(i,v){if(O25.rows[i])O25.rows[i].note=v;O25.reviewed=false;const c=document.getElementById('psl25-reviewed');if(c)c.checked=false;},
+    setNote:function(i,v){const row=O25.rows[i];if(row){row.note=v;if(!row.categoryEdited){row.category=autoCat25(v);const sel=document.querySelectorAll('.psl25-ocr-cat')[i];if(sel)sel.value=CATS25.includes(row.category)?row.category:NEEDS_CATEGORY25;}}O25.reviewed=false;const c=document.getElementById('psl25-reviewed');if(c)c.checked=false;updateTotal25();},
     setAmount:function(i,v){if(O25.rows[i])O25.rows[i].amount=Number(v||0);O25.reviewed=false;const c=document.getElementById('psl25-reviewed');if(c)c.checked=false;updateTotal25();},
-    setCat:function(i,v){if(O25.rows[i]&&CATS25.includes(v))O25.rows[i].category=v;O25.reviewed=false;const c=document.getElementById('psl25-reviewed');if(c)c.checked=false;},
+    setCat:function(i,v){if(O25.rows[i]){O25.rows[i].category=CATS25.includes(v)?v:NEEDS_CATEGORY25;O25.rows[i].categoryEdited=CATS25.includes(v);}O25.reviewed=false;const c=document.getElementById('psl25-reviewed');if(c)c.checked=false;updateTotal25();},
     save:async function(){
       const date=opDate25();
       if(currentRole!=='OWNER')return alert('Hanya OWNER dapat impor nota.');
@@ -3190,13 +3218,19 @@ window.PSLLocalDate = function(d){
       if((existing||[]).some(function(x){return x&&x.ocrBatchId===O25.batchId&&x.status!=='CORRECTED';})){
         return alert('Foto ini sudah pernah diimpor. Dibatalkan supaya pengeluaran tidak dobel.');
       }
-      const rows=O25.rows.filter(function(r){return r.use&&Number(r.amount)>0&&String(r.note||'').trim();});
+      const rows=O25.rows.filter(r=>r.use);
       if(!rows.length)return alert('Tidak ada baris yang dipilih.');
+      if(rows.some(r=>!String(r.note||'').trim()||!Number.isFinite(Number(r.amount))||Number(r.amount)<=0))
+        return alert('Ada nama barang atau nominal belum lengkap. Lengkapi sebelum menyimpan.');
+      if(rows.some(r=>!CATS25.includes(r.category)))
+        return alert('Ada kategori yang belum ditentukan. Pilih kategori setiap item sebelum menyimpan.');
       const selectedTotal=rows.reduce(function(a,r){return a+Number(r.amount||0);},0);
       if(O25.declaredTotal!==null&&Math.abs(O25.declaredTotal-selectedTotal)>0){
         if(!confirm('PERHATIAN! Total nota terbaca '+rupiah25(O25.declaredTotal)+' tapi item yang dipilih '+rupiah25(selectedTotal)+'. Pastikan sudah dikoreksi. Tetap simpan?'))return;
       }
-      if(!confirm('Simpan '+rows.length+' pengeluaran dengan total '+rupiah25(selectedTotal)+'?'))return;
+      const perCat=breakdown25().categories;
+      const details=CATS25.filter(c=>perCat[c]>0).map(c=>LABELS25[c]+': '+rupiah25(perCat[c])).join('\n');
+      if(!confirm('Periksa pembagian biaya sebelum simpan:\n'+details+'\nTOTAL: '+rupiah25(selectedTotal)+'\n\nSimpan '+rows.length+' baris pengeluaran?'))return;
       const stamp=Date.now();
       for(let i=0;i<rows.length;i++){
         const r=rows[i];
